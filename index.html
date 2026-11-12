@@ -14,6 +14,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&family=Baloo+2:wght@800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css?v=1794507330">
 <link rel="stylesheet" href="/mock.css?v=1794492417">
+<style id="signin-css">.signin{position:relative;display:inline-block}.sibtn{display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1D0F30;background:#fff;color:#1D0F30;border-radius:12px;padding:8px 13px;font:600 14px Poppins,system-ui,sans-serif;cursor:pointer}
+.sidrop{display:none;position:absolute;right:0;top:calc(100% + 10px);width:330px;background:#fff;border-radius:20px;box-shadow:0 24px 60px rgba(29,15,48,.18);padding:8px;z-index:60}.signin.open .sidrop{display:block}
+.sidrop a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:14px;text-decoration:none;color:#1D0F30}.sidrop a:hover{background:#F6F0FF}
+.sidrop .sii{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.sidrop b{display:block;font-size:14.5px}.sidrop small{display:block;color:#6B6380;font-size:12px;line-height:1.35}
+.mmenu .mhead{font-size:11px;letter-spacing:1px;color:#8E84A8;font-weight:700;padding:10px 0 2px}
+@media(max-width:900px){.signin{display:none}}</style>
+<script>document.addEventListener('click',function(){var s=document.getElementById('signin');if(s)s.classList.remove('open')});</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -69,10 +76,17 @@
 <nav id="nav"><div class="wrap">
   <a class="logo" href="/"><span class="g">गली</span>Bazaar<span class="dot">.</span></a>
   <div class="links"><a href="/" class="navon">Home</a><a href="/for-shops/">For shops</a><a href="/pricing/">Pricing</a><a href="/help/">Help</a>
+    <div class="signin" id="signin"><button class="sibtn" type="button" onclick="event.stopPropagation();this.parentNode.classList.toggle('open')"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Sign in<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="sidrop">
+      <a href="/sales/login/"><span class="sii" style="background:linear-gradient(135deg,#A855F7,#EC4899);color:#fff"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/></svg></span><span><b>Sales team</b><small>Your shops, commission, payouts &amp; TDS</small></span></a>
+      <a href="/seller/login/"><span class="sii" style="background:#E6F8EE;color:#15803D"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5-5h-13z"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></svg></span><span><b>Seller</b><small>Orders, catalogue &amp; bulk upload</small></span></a>
+      <a href="/admin/"><span class="sii" style="background:#FFF3D1;color:#B45309"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span><b>Admin</b><small>Owner &amp; admin console</small></span></a>
+      <a href="/#install"><span class="sii" style="background:#F0EEF4;color:#6B6380"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1 13H6z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></span><span><b>Customers &amp; delivery partners</b><small>Use the app</small></span></a>
+    </div></div>
     <a class="dlnav" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="ic" style="width:17px;height:17px"><use href="#i-dl"/></svg>Download app</a>
   </div>
   <div class="mright"><button class="menu-btn" aria-label="Menu" onclick="document.getElementById('mmenu').classList.toggle('open')"><svg class="ic" style="width:24px;height:24px"><use href="#i-menu"/></svg></button></div>
-  <div class="mmenu" id="mmenu" onclick="this.classList.remove('open')"><a href="/">Home</a><a href="/for-shops/">For shops</a><a href="/pricing/">Pricing</a><a href="/help/">Help</a><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download APK</a><a href="#" onclick="soon(event)">Google Play (coming soon)</a></div>
+  <div class="mmenu" id="mmenu" onclick="this.classList.remove('open')"><a href="/">Home</a><a href="/for-shops/">For shops</a><a href="/pricing/">Pricing</a><a href="/help/">Help</a><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download APK</a><a href="#" onclick="soon(event)">Google Play (coming soon)</a><div class="mhead">SIGN IN</div><a href="/sales/login/">Sales team</a><a href="/seller/login/">Seller</a><a href="/admin/">Admin</a></div>
 </div></nav>
 
 <header class="hero"><div class="wrap grid">
@@ -187,13 +201,13 @@
       <a class="fg" href="#" onclick="soon(event)"><svg class="play"><use href="#play"/></svg><span><small>Coming soon on</small><b>Google Play</b></span></a></div>
     </div>
     <div class="dcol"><h5>App</h5><a href="/">Home</a><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download APK</a><a href="#" onclick="soon(event)">Google Play (soon)</a></div>
-    <div class="dcol"><h5>For shops</h5><a href="/for-shops/">Sell with us</a><a href="/pricing/">Pricing</a><a href="/pay/">Renew plan</a></div>
-    <div class="dcol"><h5>Company</h5><a href="/help/">Help &amp; guides</a><a href="/contact/">Contact us</a><a href="/sales/">Sales team login</a><a href="/contact/">support@galibazaar.site</a></div>
+    <div class="dcol"><h5>For shops</h5><a href="/for-shops/">Sell with us</a><a href="/pricing/">Pricing</a><a href="/pay/">Renew plan</a><a href="/seller/login/">Seller login</a></div>
+    <div class="dcol"><h5>Company</h5><a href="/help/">Help &amp; guides</a><a href="/contact/">Contact us</a><a href="/sales/login/">Sales team login</a><a href="/contact/">support@galibazaar.site</a></div>
   </div>
   <div class="lgh"><span>Legal &amp; Policies</span></div>
   <div class="lcards"><a href="/terms/"><span class="li" style="background:#3B2F5C;color:#C4B5FD"><svg class="ic"><use href="#l-doc"/></svg></span><svg class="ic ch"><use href="#l-chev"/></svg><b>Terms of Service</b><small>Rules for using Gali Bazaar</small></a><a href="/privacy/"><span class="li" style="background:#163D35;color:#4ADE80"><svg class="ic"><use href="#i-shield"/></svg></span><svg class="ic ch"><use href="#l-chev"/></svg><b>Privacy Policy</b><small>What we collect &amp; why</small></a><a href="/refund-policy/"><span class="li" style="background:#4A3412;color:#FFC21A"><svg class="ic"><use href="#i-wallet"/></svg></span><svg class="ic ch"><use href="#l-chev"/></svg><b>Refund &amp; Cancellation</b><small>Orders &amp; shop plans</small></a><a href="/delivery-policy/"><span class="li" style="background:#4A1E3A;color:#FF7AA8"><svg class="ic"><use href="#l-truck"/></svg></span><svg class="ic ch"><use href="#l-chev"/></svg><b>Delivery Policy</b><small>Slots, areas &amp; timings</small></a><a href="/disclaimer/"><span class="li" style="background:#4A1E28;color:#FF6B6B"><svg class="ic"><use href="#t-x"/></svg></span><svg class="ic ch"><use href="#l-chev"/></svg><b>Disclaimer</b><small>Platform-only notice</small></a></div>
   <div class="ddisc"><span class="di"><svg class="ic"><use href="#i-shield"/></svg></span><p>Gali Bazaar is only a platform connecting customers and local shops. We are not responsible for transactions, payment scams or product quality.<br><span class="hi">गली Bazaar सिर्फ़ ग्राहकों और लोकल दुकानों को जोड़ने वाला प्लेटफ़ॉर्म है। लेन-देन, पेमेंट धोखाधड़ी या सामान की क्वालिटी की ज़िम्मेदारी हमारी नहीं है।</span></p></div>
-  <div class="mlinks2"><a href="/help/">Help &amp; guides</a><a href="/contact/">Contact us</a><a href="/pricing/">Pricing</a><a href="/sales/">Sales team login</a></div>
+  <div class="mlinks2"><a href="/help/">Help &amp; guides</a><a href="/contact/">Contact us</a><a href="/pricing/">Pricing</a><a href="/seller/login/">Seller login</a><a href="/sales/login/">Sales team login</a></div>
   <div class="dbot"><span>© 2026 Gali Bazaar. All rights reserved.</span><span>Grievance: support@galibazaar.site</span><span>Made with ❤️ in India 🇮🇳</span></div>
 </div></footer>
 
