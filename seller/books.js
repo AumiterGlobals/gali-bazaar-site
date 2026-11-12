@@ -154,7 +154,7 @@ function bkExpense() {
     ${gstOn ? `<label>GST ON THIS BILL (input credit)</label><select class="in" id="xr">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}">${r ? r + "%" : "Nil / 0%"}</option>`).join("")}</select><div class="sub" id="xs"></div>` : ""}
     <label>PAID?</label><select class="in" id="xp"><option value="Cash">Paid now — Cash</option><option value="UPI">Paid now — UPI</option><option value="Bank">Paid now — Bank</option><option value="">Pay later</option></select>
     <div id="xuw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="xu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="xud" value="${todayStr()}"></div></div>
-    <label>NOTE</label><input class="in" id="xx"><label>BILL PHOTO (optional)</label><input type="file" accept="image/*" id="xf" class="in">
+    <label>NOTE</label><input class="in" id="xx">
     <div class="msg" id="xm"></div><button class="btn pink full" id="xsv" style="margin-top:12px">Save</button>`);
   $("#xh").onchange = () => $("#xo").style.display = $("#xh").value === "Other" ? "block" : "none";
   const calc = () => { if (!gstOn) return 0; const a = +$("#xa").value || 0, r = +$("#xr").value; const g = r2(a * r / (100 + r)); $("#xs").textContent = r && a ? `Taxable ${inr2(a - g)} + GST ${inr2(g)}` : ""; return g; };
@@ -166,11 +166,8 @@ function bkExpense() {
     if (!a || !head) { m.className = "msg err"; return m.textContent = "Enter what for and the amount"; }
     $("#xsv").disabled = true;
     try {
-      let url = null; const file = $("#xf").files[0];
-      if (file) { const blob = await squeeze(await loadImg(file), 1000, 200); const path = `expenses/${S.id}/${Date.now()}.webp`;
-        const { error } = await db.storage.from("public").upload(path, blob, { upsert: false, contentType: "image/webp" }); if (!error) url = db.storage.from("public").getPublicUrl(path).data.publicUrl; }
       const pm = $("#xp").value, later = !pm;
-      const row = { shop: S.id, on_date: $("#xd").value, head, amount: a, mode: pm || "Cash", note: $("#xx").value.trim() || null, bill_url: url, vendor: $("#xv").value.trim() || null,
+      const row = { shop: S.id, on_date: $("#xd").value, head, amount: a, mode: pm || "Cash", note: $("#xx").value.trim() || null, vendor: $("#xv").value.trim() || null,
         vendor_gstin: gstOn ? ($("#xg").value.trim().toUpperCase() || null) : null, bill_no: $("#xn").value.trim() || null, gst_rate: gstOn ? +$("#xr").value : null, gst: calc(),
         paid: !later, paid_on: later ? null : (["UPI", "Bank"].includes(pm) ? $("#xud").value : $("#xd").value), paid_mode: later ? null : pm,
         ...(["UPI", "Bank"].includes(pm) && $("#xu").value.trim() ? { paid_ref: $("#xu").value.trim() } : {}) };
