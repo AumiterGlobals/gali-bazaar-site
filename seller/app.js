@@ -7,10 +7,10 @@ const banWord = (...s) => { for (const x of s) { const m = x && String(x).match(
 const ICON = {
   dash: "M3 11 12 4l9 7v9h-6v-6H9v6H3z", orders: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01", cat: "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6",
   ret: "M6 6l12 12M18 6 6 18", comp: "M3 6h18v12H3zM3 7l9 6 9-6", staff: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 7M22 21c0-3-2-5-4-5.6",
-  slots: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", bills: "M6 3h9l4 4v14H6zM14 3v5h5", shop: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
+  slots: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", bills: "M6 3h9l4 4v14H6zM14 3v5h5", books: "M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6M8 11h6", shop: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
 };
 const NAV = [["", "Dashboard", "dash"], ["orders", "Orders", "orders"], ["catalog", "Catalog", "cat"], ["returns", "Returns & cancelled", "ret"], ["complaints", "Complaints", "comp"],
-  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["shop", "Shop & KYC", "shop"]];
+  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"]];
 const ico = (k, s = 19) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[k] || k}"/></svg>`;
 let S = null, me = null, D = { items: [], orders: [], riders: [], complaints: [], cns: [], slots: [], cov: [], festivals: [] };
 let catF = "all", catQ = "", ordTab = "new", retTab = "coming", drawerOpen = false;
@@ -164,7 +164,7 @@ function page() {
   const r = route();
   if (r === "catalog/bulk") return bulk();
   if (r === "catalog/new") { catalog(); return editItem(null); }
-  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, shop }[r.split("/")[0]] || dash)();
+  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop }[r.split("/")[0]] || dash)();
 }
 function drawer(html, wide) {
   const el = $("#panel"); el.innerHTML = html; el.classList.add("open"); el.style.width = wide ? "520px" : ""; document.body.classList.add("po"); drawerOpen = true;
@@ -454,9 +454,23 @@ async function delItem(id) {
 }
 
 // ================= Bulk upload =================
-const TPL_HEAD = ["Item name*", "Price (Rs)", "Pack / unit", "In stock (Yes/No)", "MRP (Rs)", "Group (optional)", "Sizes (optional)", "Description"];
-const TPL_ROWS = [["Aashirvaad atta", 265, "5 kg", "Yes", 285, "Atta & rice", "", "Whole wheat"], ["Toor dal", 170, "1 kg", "Yes", "", "Dal", "", ""],
-  ["Tamatar", "", "", "Yes", "", "Vegetables", "250g=12; 500g=22; 1kg=40", "Fresh"], ["Paneer butter masala", "", "", "Yes", "", "Main course", "Half=140; Full=260", ""]];
+const TPL_HEAD = ["Item name*", "MRP (Rs)", "Selling price (Rs)", "Pack / unit", "In stock (Yes/No)", "Group (optional)", "Sizes (optional)", "Description",
+  "HSN code", "GST type (Inclusive / Exclusive / Nil - blank = no GST)", "GST %", "Doorstep return only (Yes)", "Return / exchange days (blank = doorstep only)"];
+const TPL_ROWS = [
+  ["Aashirvaad atta", 285, 265, "5 kg", "Yes", "Atta & rice", "", "Whole wheat", "11010000", "Inclusive", 5, "Yes", ""],
+  ["Toor dal", 185, 170, "1 kg", "Yes", "Dal", "", "", "07136000", "Exclusive", 5, "", 7],
+  ["Tamatar", "", "", "", "Yes", "Vegetables", "250g=12; 500g=22; 1kg=40", "Fresh", "07020000", "Nil", "", "Yes", ""],
+  ["Classmate notebook", 60, 55, "1 pc", "Yes", "Notebooks", "", "200 pages", "48202000", "", "", "", "3 exchange"],
+  ["Paneer butter masala", "", "", "", "Yes", "Main course", "Half=140; Full=260", "", "", "", "", "Yes", ""]];
+/** column positions from the header row; old 8-column files still work */
+function bulkCols(head) {
+  const h = head && head.map(x => String(x).toLowerCase());
+  if (!h || !h.some(c => c.includes("hsn") || c.includes("selling"))) return { name: 0, price: 1, unit: 2, stock: 3, mrp: 4, grp: 5, sizes: 6, desc: 7 };
+  const f = (...k) => h.findIndex(c => k.some(x => c.includes(x)));
+  const m = { name: f("item"), mrp: f("mrp"), price: f("selling", "price"), unit: f("pack", "unit"), stock: f("stock"), grp: f("group"), sizes: f("size"), desc: f("desc"),
+    hsn: f("hsn"), gtype: f("gst type"), grate: f("gst %", "gst%", "gst rate"), door: f("doorstep"), ret: f("return /", "return/", "exchange") };
+  Object.keys(m).forEach(k => m[k] < 0 && delete m[k]); return m;
+}
 let BU = { rows: [], file: "", photos: {} };
 const slug = s => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9ऀ-ॿ]+/g, "-").replace(/^-|-$/g, "");
 function bulk() {
@@ -464,6 +478,7 @@ function bulk() {
     <div class="grid2" style="grid-template-columns:1fr 1.25fr">
       <div>
         <div class="box"><h3>✓ 1. Download the template</h3><div class="sub">${TPL_HEAD.join(", ")}</div>
+          <div class="sub" style="margin-top:8px;line-height:1.5"><b>GST type</b>: Inclusive (price has GST) / Exclusive (GST added on top) / Nil — put the % in GST %. Blank = no GST.<br><b>Returns</b>: “Yes” in Doorstep = return only at the door. Days 1–30 = return &amp; refund (“3 exchange” = exchange). Blank = doorstep only.</div>
           <button class="btn ghost full" style="margin-top:10px" onclick="dlTemplate()">⇩ Download Excel template</button></div>
         <div class="box"><h3>2. Upload the filled file</h3>
           <div id="fdrop" style="border:1.5px dashed #16A34A;border-radius:16px;padding:22px;text-align:center;cursor:pointer;background:#F7FFF9">${BU.file ? `📊<br><b>${esc(BU.file)}</b><div class="sub">${BU.rows.length} rows read • Drop another file to replace</div>` : `📊<br><b>Drop your .xlsx or .csv here</b><div class="sub">or click to browse</div>`}</div></div>
@@ -483,7 +498,7 @@ function bulk() {
   drawPreview();
 }
 function dlTemplate() {
-  if (window.XLSX) { const ws = XLSX.utils.aoa_to_sheet([TPL_HEAD, ...TPL_ROWS]); ws["!cols"] = TPL_HEAD.map((h, i) => ({ wch: i === 0 ? 26 : i === 6 ? 26 : 16 })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Items"); XLSX.writeFile(wb, "gali-bazaar-catalogue-template.xlsx"); }
+  if (window.XLSX) { const ws = XLSX.utils.aoa_to_sheet([TPL_HEAD, ...TPL_ROWS]); ws["!cols"] = TPL_HEAD.map((h, i) => ({ wch: i === 0 ? 26 : i === 6 || i >= 9 ? 26 : 16 })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Items"); XLSX.writeFile(wb, "gali-bazaar-catalogue-template.xlsx"); }
   else csvDownload("gali-bazaar-catalogue-template.csv", [TPL_HEAD, ...TPL_ROWS]);
 }
 async function readFile(f) {
@@ -493,15 +508,27 @@ async function readFile(f) {
     if (/\.csv$/i.test(f.name) || !window.XLSX) { const t = (await f.text()).replace(/^﻿/, ""); rows = parseCsv(t); }
     else { const wb = XLSX.read(await f.arrayBuffer()); rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" }); }
   } catch (e) { return toast("Couldn't read this file"); }
-  if (rows[0] && String(rows[0][0] || "").toLowerCase().includes("item")) rows = rows.slice(1);
-  rows = rows.map((r, i) => ({ line: i + 2, r: r.map(x => String(x ?? "").trim()) })).filter(x => x.r[0]);
+  const hasHead = rows[0] && String(rows[0][0] || "").toLowerCase().includes("item");
+  const cx = bulkCols(hasHead ? rows[0] : null); if (hasHead) rows = rows.slice(1);
+  rows = rows.map((r, i) => ({ line: i + 2, r: r.map(x => String(x ?? "").trim()) })).filter(x => x.r[cx.name]);
   if (rows.length > 500) { toast("Up to 500 items at once — first 500 taken"); rows = rows.slice(0, 500); }
-  const names = new Set(D.items.map(i => i.name.toLowerCase()));
+  const names = new Set(D.items.map(i => i.name.toLowerCase())), gstShop = !!S.gst_billing;
   BU = { file: f.name, photos: BU.photos, rows: rows.map(({ line, r }) => {
-    const vs = (r[6] || "").split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
-    const price = +r[1] || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), ban = banWord(r[0], r[5], r[7]);
-    const item = { shop: S.id, name: r[0], price, unit: vs.length ? "" : r[2], in_stock: !/^no$/i.test(r[3]), mrp: +r[4] || null, grp: r[5] || null, descr: r[7] || null, variants: vs };
-    return { line, item, ban, err: ban ? null : (price <= 0 || vs.some(v => v.p <= 0)) ? "Price missing" : null, dup: names.has(r[0].toLowerCase()) };
+    const col = k => cx[k] == null ? "" : (r[cx[k]] || "");
+    const gtype = col("gtype").toLowerCase(), rate = col("grate") === "" ? null : +col("grate").replace("%", "");
+    const excl = gstShop && gtype.startsWith("ex");
+    const fin = v => excl && rate > 0 ? Math.round(v * (1 + rate / 100) * 100) / 100 : v;
+    const vs = col("sizes").split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: fin(+p.trim() || 0) }));
+    const price = (+col("price") ? fin(+col("price")) : 0) || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), ban = banWord(col("name"), col("grp"), col("desc"));
+    const gst = !gstShop ? null : (gtype.startsWith("in") || gtype.startsWith("ex")) ? rate : (gtype.startsWith("nil") || gtype === "0") ? 0 : null;
+    const auto = typeof hsnSuggest === "function" && gstShop && gst != null ? hsnSuggest(col("name"), col("grp")) : null;
+    const hsn = col("hsn").replace(/\D/g, "").slice(0, 8) || (auto ? auto.hsn : null);
+    const rt = col("ret").toLowerCase(), dm = rt.match(/\d+/), days = dm ? Math.min(30, Math.max(1, +dm[0])) : null;
+    const door = /^y/i.test(col("door")) || !days;
+    const item = { shop: S.id, name: col("name"), price, unit: vs.length ? "" : col("unit"), in_stock: !/^no$/i.test(col("stock")), mrp: +col("mrp") || null, grp: col("grp") || null,
+      descr: col("desc") || null, variants: vs, hsn, gst_rate: gst, ret_policy: door ? "none" : /exch|repl/.test(rt) ? "replace" : "return", ret_days: door ? 0 : days };
+    const badGst = gstShop && (gtype.startsWith("in") || gtype.startsWith("ex")) && ![0, 5, 12, 18, 28, 40].includes(rate);
+    return { line, item, ban, err: ban ? null : (price <= 0 || vs.some(v => v.p <= 0)) ? "Price missing" : badGst ? "GST % missing" : null, dup: names.has(col("name").toLowerCase()) };
   }) };
   bulk();
 }
@@ -519,11 +546,11 @@ function drawPreview() {
   if (!rows.length) { $("#bprev").innerHTML = `<div class="sub" style="padding:18px 0">Upload your filled template to see every row checked before anything is saved.</div>`; $("#bsum").innerHTML = ""; return; }
   const ready = rows.filter(r => !r.err && !r.ban), errs = rows.filter(r => r.err), ban = rows.filter(r => r.ban);
   $("#bsum").innerHTML = `<span class="pill ok">${ready.length} ready</span> <span class="pill bad">${errs.length} errors</span> <span class="pill" style="background:#1D0F30;color:#fff">${ban.length} blocked</span>`;
-  $("#bprev").innerHTML = `<div style="max-height:520px;overflow:auto"><table><thead><tr><th>ROW</th><th>ITEM</th><th>PRICE</th><th class="hm">UNIT</th><th class="hm">GROUP</th><th>PHOTOS</th><th>CHECK</th></tr></thead><tbody>${rows.map(r => {
+  $("#bprev").innerHTML = `<div style="max-height:520px;overflow:auto"><table><thead><tr><th>ROW</th><th>ITEM</th><th>PRICE</th><th class="hm">UNIT</th><th class="hm">GST · HSN</th><th class="hm">RETURN</th><th>PHOTOS</th><th>CHECK</th></tr></thead><tbody>${rows.map(r => {
     const ph = photoKeyFor(r.item.name), n = ph.filter(Boolean).length;
     const chk = r.ban ? `<span class="pill" style="background:#1D0F30;color:#fff">Blocked: ${r.ban}</span>` : r.err ? `<span class="pill bad">${r.err}</span>` : n === 3 ? `<span class="pill ok">Ready</span>` : `<span class="pill warn">Ready • ${n ? (3 - n) + " photo" + (3 - n > 1 ? "s" : "") + " missing" : "add photos"}</span>`;
     return `<tr><td>${r.line}</td><td><b>${esc(r.item.name)}</b>${r.dup ? `<br><span class="sub">already in your catalogue</span>` : ""}</td><td>${r.item.variants.length ? esc(r.item.variants.map(v => `${v.n}=${v.p}`).join("; ")) : r.item.price ? inr(r.item.price) : "—"}</td>
-      <td class="hm">${esc(r.item.unit || "—")}</td><td class="hm">${esc(r.item.grp || "—")}</td><td style="white-space:nowrap">${["F", "E", "I"].map((l, k) => `<span class="pill ${ph[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join("")}</td><td>${chk}</td></tr>`; }).join("")}</tbody></table></div>
+      <td class="hm">${esc(r.item.unit || "—")}</td><td class="hm">${r.item.gst_rate == null ? "No GST" : r.item.gst_rate + "%"}${r.item.hsn ? " · " + esc(r.item.hsn) : ""}</td><td class="hm">${r.item.ret_policy === "none" ? "Doorstep" : (r.item.ret_policy === "replace" ? "Exchange " : "Return ") + r.item.ret_days + "d"}</td><td style="white-space:nowrap">${["F", "E", "I"].map((l, k) => `<span class="pill ${ph[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join("")}</td><td>${chk}</td></tr>`; }).join("")}</tbody></table></div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><span class="sub" style="flex:1">Items without all 3 photos stay hidden until photos are added</span>
       <button class="btn pink" id="bup" ${ready.length ? "" : "disabled"}>⇪ Upload ${ready.length} item${ready.length === 1 ? "" : "s"}</button></div><div class="msg" id="bmsg"></div>`;
   $("#bup") && ($("#bup").onclick = doBulk);
