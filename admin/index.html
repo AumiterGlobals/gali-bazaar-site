@@ -74,7 +74,7 @@ const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fIm
 const db = supabase.createClient(SB, KEY);
 const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -128,7 +128,7 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints };
+  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals };
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
@@ -266,6 +266,46 @@ async function complaints() {
   $("#main").innerHTML = head("Complaints", `${list.filter(c => !c.reply).length} waiting for the shop's reply`) + `<div class="box"><table><thead><tr><th>DATE</th><th>SHOP</th><th>PROBLEM</th><th>STATUS</th></tr></thead><tbody>${list.map(c => `<tr>
     <td>${(c.created_at || "").slice(0, 10)}</td><td>${esc(shops.find(s => s.id === c.shop)?.name || "")}</td><td>${esc(c.reason)}<br><span class="sub">${esc((c.items || []).join(", "))}</span></td>
     <td><span class="pill ${c.reply ? "ok" : "warn"}">${c.reply ? "Replied" : "Open"}</span></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+// ---------------- Festivals ----------------
+const FEST_KEYS = ["diwali","holi","rakhi","independence","republic","christmas","newyear","eid","ganesh","navratri","janmashtami","lohri","generic"];
+async function festivals() {
+  const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const { data, error } = await db.from("festivals").select("*").gte("day", today).order("day");
+  if (error) throw error;
+  const hasCols = (data || []).length === 0 || "show_chips" in data[0];
+  $("#main").innerHTML = head("Festivals", "Festival look shows in the app from 2 days before the date and ends after the festival day") +
+    (hasCols ? "" : `<div class="soon err" style="padding:16px;margin-bottom:14px">Run <b>update-24-festival-switch.sql</b> in Supabase to use the on/off switches.</div>`) +
+    `<div class="box"><table><thead><tr><th>DATE</th><th>FESTIVAL</th><th>THEME</th><th>FESTIVAL LOOK</th><th>ITEM CHIPS</th><th></th></tr></thead><tbody>${(data || []).map(f => `<tr>
+      <td>${esc(f.day)}</td><td><b>${esc(f.name)}</b><br><span class="sub">${esc(f.greeting || "")}</span></td><td>${esc(f.theme)}</td>
+      <td><button class="tog ${f.active !== false ? "on" : ""}" onclick="festSet('${f.id}','active',${f.active === false})" aria-label="Festival look"></button></td>
+      <td><button class="tog ${f.show_chips !== false ? "on" : ""}" onclick="festSet('${f.id}','show_chips',${f.show_chips === false})" aria-label="Item chips"></button></td>
+      <td><button class="btn ghost" onclick="festDel('${f.id}','${esc(f.name).replace(/'/g, "")}')">Delete</button></td></tr>`).join("")}</tbody></table>
+      <div class="sub" style="margin-top:10px">Item chips (Diyas, Sweets…) show only when nearby sellers actually have those items. Switch them off here to hide them completely.</div></div>
+    <div class="box" style="margin-top:14px"><h3>Add festival</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="in" id="fn" placeholder="Name e.g. Diwali" style="flex:1;min-width:140px">
+        <input class="in" id="fd" type="date" style="flex:1;min-width:140px">
+        <select class="in" id="ft" style="flex:1;min-width:120px">${FEST_KEYS.map(k => `<option>${k}</option>`).join("")}</select>
+        <input class="in" id="fg" placeholder="Greeting (optional)" style="flex:2;min-width:180px">
+        <button class="btn pink" onclick="festAdd()">Add</button></div><div class="msg" id="fm"></div></div>`;
+}
+async function festSet(id, col, val) {
+  const { error } = await db.from("festivals").update({ [col]: val }).eq("id", id);
+  if (error) alert(error.message); festivals();
+}
+async function festDel(id, name) {
+  if (!confirm("Delete " + name + "?")) return;
+  const { error } = await db.from("festivals").delete().eq("id", id);
+  if (error) alert(error.message); festivals();
+}
+async function festAdd() {
+  const name = $("#fn").value.trim(), day = $("#fd").value;
+  if (!name || !day) { $("#fm").className = "msg err"; $("#fm").textContent = "Enter name and date"; return; }
+  const { error } = await db.from("festivals").insert({ name, day, theme: $("#ft").value, greeting: $("#fg").value.trim() || null });
+  if (error) { $("#fm").className = "msg err"; $("#fm").textContent = error.message; return; }
+  festivals();
 }
 
 // ---------------- Categories ----------------
