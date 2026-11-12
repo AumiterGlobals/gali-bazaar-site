@@ -23,6 +23,12 @@ img{display:block;max-width:100%}
 .btn-dl small{font-size:10.5px;font-weight:400;opacity:.85}
 .btn-dl b{font-size:16px;font-weight:600}
 .btn-dl.light{background:#fff;color:var(--ink)}
+.btn-apk{background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff;padding:12px 24px 12px 20px;box-shadow:0 14px 30px #EF287B40}
+.btn-apk .t,.btn-gp .t{display:flex;flex-direction:column;line-height:1.15;text-align:left}
+.btn-apk small,.btn-gp small{font-size:10.5px;font-weight:400;opacity:.9}
+.btn-apk b,.btn-gp b{font-size:16px;font-weight:600}
+.btn-gp{background:#fff;color:var(--ink);border:1.5px solid #E9E1F0;padding:11px 22px 11px 18px}
+.btn-gp .one{display:none}
 .btn-out{background:#fff;color:var(--ink);border:1.5px solid #E9E1F0;padding:17px 24px;font-size:15px}
 .btn-out .ic{color:var(--violet)}
 .btn-line{background:transparent;color:#fff;border:1.5px solid #4A3A6A;padding:17px 22px;font-size:15.5px}
@@ -65,7 +71,7 @@ h2{font-size:34px;letter-spacing:-1.1px;line-height:1.15;margin:0;font-weight:70
 .cat{border-radius:26px;padding:34px 26px;height:196px;position:relative;overflow:hidden}
 .cat h3{margin:0 0 10px;font-size:25px;font-weight:700;letter-spacing:-.3px}
 .cat p{margin:0;max-width:170px;font-size:13.5px;line-height:1.5;color:#3F3854}
-.cat img{position:absolute;right:22px;bottom:16px;width:132px;filter:drop-shadow(0 12px 14px #0000002a)}
+.cat img{position:absolute;right:14px;bottom:0;width:160px}
 .c1{background:linear-gradient(120deg,#FEE29E 0%,#FCCB57 60%,#F8B31A 100%)}
 .c2{background:linear-gradient(120deg,#FFD0E1 0%,#FCB2CC 55%,#F499AB 100%)}
 .c3{background:linear-gradient(120deg,#E4F0FF 0%,#C6DEFF 55%,#9DC4FA 100%)}
@@ -128,7 +134,10 @@ footer .cols a:not(.logo):hover{color:var(--violet)}
   .lead{font-size:14.5px;margin-bottom:20px}
   .lead .full{display:none}
   .lead .short{display:inline!important}
-  .btn-out.hero-sell,.stats{display:none}
+  .stats{display:none}
+  .cta{flex-direction:column;align-items:flex-start;gap:10px}
+  .btn-apk{padding:12px 26px 12px 20px}
+  .btn-gp{padding:9px 14px;border-radius:12px}.btn-gp .t{display:none}.btn-gp .one{display:inline;font-size:13.5px;font-weight:600}.btn-gp .play{width:13px;height:14px}
   .hero-img{width:110%;max-width:none;margin:22px -5% 0}
   section{padding:30px 0}
   .cats-h{text-align:left}
@@ -137,7 +146,7 @@ footer .cols a:not(.logo):hover{color:var(--violet)}
   .cat{height:auto;min-height:104px;padding:18px 16px;border-radius:18px}
   .cat h3{font-size:19px;margin-bottom:4px}
   .cat p{font-size:12px;max-width:190px}
-  .cat img{width:78px;right:16px;bottom:50%;transform:translateY(50%)}
+  .cat img{width:96px;right:12px;bottom:0}
   .how h2{display:none}
   .how .tag{margin-bottom:12px}
   .how-img{display:none}
