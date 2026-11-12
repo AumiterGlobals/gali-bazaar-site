@@ -16,13 +16,13 @@ async function accounts() {
   AC.from = AC.from || fy0(); AC.to = AC.to || today();
   AC.acc = await q("accounts", "*", x => x.eq("active", true).order("code"));
   AC.parties = await q("parties", "*", x => x.eq("active", true).order("name")).catch(() => []);
-  const tabs = [["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Payment"], ["payout", "Sales payouts (TDS)"]];
+  const tabs = [["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Receipt / payment"], ["gst", "GST paid"], ["tds", "TDS"], ["payout", "Sales payouts (TDS)"]];
   $("#main").innerHTML = head("Accounts & books", "Double-entry books — plan payments, commission and payouts post by themselves",
     `<input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
     `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${tabs.map(([k, l]) => `<button class="btn ${AC.tab === k ? "pink" : "ghost"}" onclick="AC.tab='${k}';accounts()">${l}</button>`).join("")}</div><div id="acBody"><div class="sub">Loading…</div></div>`;
   $("#acF").onchange = e => { AC.from = e.target.value; accounts(); };
   $("#acT").onchange = e => { AC.to = e.target.value; accounts(); };
-  try { await ({ reports: acReports, day: acDay, ledger: acLedger, parties: acParties, bill: acBill, pay: acPay, payout: acPayout })[AC.tab](); }
+  try { await ({ reports: acReports, day: acDay, ledger: acLedger, parties: acParties, bill: acBill, pay: acPay, gst: acGst, tds: acTds, payout: acPayout })[AC.tab](); }
   catch (e) { $("#acBody").innerHTML = `<div class="soon err">${esc(e.message || e)}<br><span class="sub">Have you run update-31-admin-books.sql in Supabase?</span></div>`; }
 }
 
@@ -75,13 +75,13 @@ async function acLedger() {
 async function acParties() {
   const bal = await rpc("party_balances");
   const kinds = { VENDOR: "Vendor", SALES: "Sales team (freelancer)", SELLER: "Seller shop" };
-  const rows = [["Party", "Type", "GSTIN", "PAN", "We owe them", "TDS deducted this FY"], ...bal.map(p => [p.name, kinds[p.kind] || p.kind, p.gstin || "", p.pan || "", n2(-Number(p.balance)), n2(p.tds_fy)])];
+  const rows = [["Party", "Type", "GSTIN", "PAN", "We owe them", "Received from them", "TDS deducted this FY"], ...bal.map(p => [p.name, kinds[p.kind] || p.kind, p.gstin || "", p.pan || "", n2(-Number(p.balance)), n2(p.received), n2(p.tds_fy)])];
   AC.dl = { parties: rows };
   $("#acBody").innerHTML = `<div class="box"><h3>Vendors &amp; parties <span>• sellers and sales people are added by themselves</span>
       <button class="edit" onclick="acPartyForm()">＋ New vendor</button> <button class="edit" onclick="csvDl('parties-${today()}.csv',AC.dl.parties)">⬇ Excel</button></h3>
-    <table><thead><tr><th>PARTY</th><th>TYPE</th><th>GSTIN / PAN</th><th style="text-align:right">WE OWE</th><th style="text-align:right">TDS THIS FY</th><th></th></tr></thead><tbody>${bal.map(p => `<tr>
+    <table><thead><tr><th>PARTY</th><th>TYPE</th><th>GSTIN / PAN</th><th style="text-align:right">WE OWE</th><th style="text-align:right">RECEIVED</th><th style="text-align:right">TDS THIS FY</th><th></th></tr></thead><tbody>${bal.map(p => `<tr>
       <td><b>${esc(p.name)}</b></td><td><span class="pill ${p.kind === "VENDOR" ? "warn" : p.kind === "SALES" ? "ok" : "grey"}">${kinds[p.kind] || p.kind}</span></td>
-      <td class="sub">${esc(p.gstin || "—")} / ${esc(p.pan || "—")}</td><td style="text-align:right"><b>${inr2(-Number(p.balance))}</b></td><td style="text-align:right">${inr2(p.tds_fy)}</td>
+      <td class="sub">${esc(p.gstin || "—")} / ${esc(p.pan || "—")}</td><td style="text-align:right"><b>${inr2(-Number(p.balance))}</b></td><td style="text-align:right">${inr2(p.received)}</td><td style="text-align:right">${inr2(p.tds_fy)}</td>
       <td><button class="edit" onclick="acPartyLedger('${p.id}')">Ledger</button> <button class="edit" onclick="acPartyForm('${p.id}')">Edit</button></td></tr>`).join("")}</tbody></table></div>`;
 }
 function acPartyForm(id) {
@@ -155,16 +155,70 @@ function acBill() {
 }
 
 function acPay() {
-  const vend = AC.parties.filter(p => p.kind !== "SELLER");
-  $("#acBody").innerHTML = `<div class="box" style="max-width:560px"><h3>Pay a vendor <span>• against their bills (part or full)</span></h3>
-    <label>VENDOR</label><select class="in" id="yv">${vend.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
+  const money = AC.acc.filter(a => ["1000", "1010", "1020"].includes(a.code));
+  $("#acBody").innerHTML = `<div class="box" style="max-width:600px"><h3>Receipt / payment <span>• money received from, or paid to, anyone</span></h3>
+    <div style="display:flex;gap:6px"><button class="btn pink" id="yk1">Paid to</button><button class="btn ghost" id="yk2">Received from</button></div>
+    <label>PARTY (optional)</label><select class="in" id="yv"><option value="">— none —</option>${AC.parties.map(p => `<option value="${p.id}">${esc(p.name)} · ${p.kind === "SELLER" ? "seller" : p.kind === "SALES" ? "sales team" : "vendor"}</option>`).join("")}</select>
+    <label id="yal">AGAINST (WHAT IS THIS FOR)</label><select class="in" id="yg">${AC.acc.filter(a => !["1000", "1010", "1020"].includes(a.code)).map(a => `<option value="${a.code}">${a.code} · ${esc(a.name)}</option>`).join("")}</select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ya" inputmode="decimal"></div><div><label>DATE</label><input class="in" type="date" id="yd" value="${today()}"></div></div>
-    <label>PAID FROM</label><select class="in" id="yf">${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select>
-    <label>UTR / CHEQUE / REF</label><input class="in" id="yr"><div class="msg" id="ym"></div><button class="btn pink full" id="ysv" style="margin-top:12px">Save payment</button></div>`;
+    <label id="yml">PAID FROM</label><select class="in" id="yf">${money.map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select>
+    <label>UTR / CHEQUE / REF</label><input class="in" id="yr"><label>NOTE</label><input class="in" id="yx">
+    <div class="msg" id="ym"></div><button class="btn pink full" id="ysv" style="margin-top:12px">Save</button></div>`;
+  let kind = "PAYMENT";
+  const set = k => { kind = k; $("#yk1").className = "btn " + (k === "PAYMENT" ? "pink" : "ghost"); $("#yk2").className = "btn " + (k === "RECEIPT" ? "pink" : "ghost");
+    $("#yml").textContent = k === "PAYMENT" ? "PAID FROM" : "RECEIVED INTO"; dflt(); };
+  const dflt = () => { const p = AC.parties.find(x => x.id === $("#yv").value); $("#yg").value = !p ? (kind === "PAYMENT" ? "2300" : "4100") : p.kind === "SALES" ? "2000" : p.kind === "SELLER" ? (kind === "RECEIPT" ? "4000" : "4100") : "2300"; };
+  $("#yk1").onclick = () => set("PAYMENT"); $("#yk2").onclick = () => set("RECEIPT"); $("#yv").onchange = dflt; set("PAYMENT");
   $("#ysv").onclick = async () => {
     const a = Number($("#ya").value || 0); if (!a) return $("#ym").textContent = "Enter the amount";
-    try { await rpc("admin_vendor_payment", { p_party: $("#yv").value, p_date: $("#yd").value, p_amount: a, p_from: $("#yf").value, p_ref: $("#yr").value.trim() || null }); AC.tab = "parties"; accounts(); }
+    try { await rpc("admin_money", { p_kind: kind, p_date: $("#yd").value, p_amount: a, p_mode: $("#yf").value, p_against: $("#yg").value, p_party: $("#yv").value || null, p_ref: $("#yr").value.trim() || null, p_narr: $("#yx").value.trim() || null });
+      AC.tab = "day"; accounts(); }
     catch (e) { $("#ym").textContent = e.message; }
+  };
+}
+
+async function acGst() {
+  const b = await rpc("account_balances", { p_from: AC.from, p_to: AC.to });
+  const bal = c => Number((b.find(x => x.code === c) || {}).closing || 0);
+  const out = { c: -bal("2201"), s: -bal("2202"), i: -bal("2203") }, itc = bal("1100");
+  $("#acBody").innerHTML = `<div class="box" style="max-width:640px"><h3>GST paid (GSTR-3B) <span>• output GST cleared with input credit + cash</span></h3>
+    <div class="sub">As on ${AC.to}: output CGST ${inr2(out.c)} · SGST ${inr2(out.s)} · IGST ${inr2(out.i)} · input credit available ${inr2(itc)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><label>CGST ₹</label><input class="in" id="gc" value="${n2(Math.max(out.c, 0))}"></div><div><label>SGST ₹</label><input class="in" id="gs" value="${n2(Math.max(out.s, 0))}"></div><div><label>IGST ₹</label><input class="in" id="gi" value="${n2(Math.max(out.i, 0))}"></div></div>
+    <label>INPUT CREDIT USED ₹</label><input class="in" id="gt" value="${n2(Math.max(0, Math.min(itc, out.c + out.s + out.i)))}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>PAID FROM</label><select class="in" id="gf">${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select></div><div><label>DATE</label><input class="in" type="date" id="gd" value="${today()}"></div></div>
+    <label>CHALLAN / CPIN / CIN</label><input class="in" id="gr"><div class="sub" id="gsum" style="margin-top:8px"></div><div class="msg" id="gm"></div><button class="btn pink full" id="gsv" style="margin-top:12px">Record GST payment</button></div>`;
+  const v = id => Number($(id).value || 0);
+  const sum = () => $("#gsum").innerHTML = `Total GST ${inr2(v("#gc") + v("#gs") + v("#gi"))} − input credit ${inr2(v("#gt"))} = <b>cash ${inr2(v("#gc") + v("#gs") + v("#gi") - v("#gt"))}</b>`;
+  ["#gc", "#gs", "#gi", "#gt"].forEach(x => $(x).oninput = sum); sum();
+  $("#gsv").onclick = async () => {
+    try { await rpc("admin_gst_payment", { p_date: $("#gd").value, p_cgst: v("#gc"), p_sgst: v("#gs"), p_igst: v("#gi"), p_itc: v("#gt"), p_mode: $("#gf").value, p_ref: $("#gr").value.trim() || null }); AC.tab = "reports"; accounts(); }
+    catch (e) { $("#gm").textContent = e.message; }
+  };
+}
+
+async function acTds() {
+  const acc = AC.acc.find(a => a.code === "2100");
+  const rows = acc ? await rpc("ledger", { p_account: acc.id, p_from: AC.from, p_to: AC.to }) : [];
+  const b = await rpc("account_balances", { p_from: AC.from, p_to: AC.to }); const me = b.find(x => x.code === "2100") || { opening: 0, closing: 0 };
+  const bal = await rpc("party_balances");
+  let run = Number(me.opening);
+  const out = [["Date", "Voucher", "Narration", "Ref", "Deducted (Cr)", "Deposited (Dr)", "Balance to deposit"], ["", "", "Opening", "", "", "", n2(-run)],
+    ...rows.map(r => { run += Number(r.debit) - Number(r.credit); return [r.vdate, r.vno, r.narration, r.ref || "", Number(r.credit) ? n2(r.credit) : "", Number(r.debit) ? n2(r.debit) : "", n2(-run)]; })];
+  const pw = [["Party", "PAN", "TDS deducted this FY"], ...bal.filter(p => Number(p.tds_fy) > 0).map(p => [p.name, p.pan || "NO PAN", n2(p.tds_fy)])];
+  AC.dl = { tds: out, tdsp: pw };
+  $("#acBody").innerHTML = `<div class="box"><h3>TDS ledger <span>• to deposit: ${inr2(-Number(me.closing))}</span>
+      <button class="edit" onclick="csvDl('tds-ledger-${AC.from}_to_${AC.to}.csv',AC.dl.tds)">⬇ Excel</button></h3>
+    <table><thead><tr>${out[0].map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${out.slice(1).map(r => `<tr>${r.map(v => `<td>${/^-?\d+\.\d\d$/.test(v) ? inr2(v) : esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+    <div class="box"><h3>TDS by party <span>• for Form 26Q / 16A</span> <button class="edit" onclick="csvDl('tds-party-wise-${today()}.csv',AC.dl.tdsp)">⬇ Excel</button></h3>
+      ${pw.slice(1).map(r => `<div class="req"><b>${esc(r[0])}<br><span>PAN ${esc(r[1])}</span></b><b style="flex:0">${inr2(r[2])}</b></div>`).join("") || '<div class="sub">No TDS deducted this year.</div>'}</div>
+    <div class="box" style="max-width:520px"><h3>TDS deposited (challan 281)</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ta" value="${n2(Math.max(-Number(me.closing), 0))}"></div><div><label>DATE</label><input class="in" type="date" id="td" value="${today()}"></div></div>
+      <label>PAID FROM</label><select class="in" id="tf">${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select>
+      <label>CHALLAN NO / BSR / CIN</label><input class="in" id="tr"><div class="msg" id="tm"></div><button class="btn pink full" id="tsv" style="margin-top:12px">Record TDS deposit</button></div>`;
+  $("#tsv").onclick = async () => {
+    const a = Number($("#ta").value || 0); if (!a) return $("#tm").textContent = "Enter the amount";
+    try { await rpc("admin_money", { p_kind: "PAYMENT", p_date: $("#td").value, p_amount: a, p_mode: $("#tf").value, p_against: "2100", p_party: null, p_ref: $("#tr").value.trim() || null, p_narr: "TDS deposited (challan 281)" }); accounts(); }
+    catch (e) { $("#tm").textContent = e.message; }
   };
 }
 
