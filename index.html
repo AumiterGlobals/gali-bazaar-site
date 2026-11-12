@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&family=Baloo+2:wght@800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css?v=1794492417">
+<link rel="stylesheet" href="/site.css?v=1794503665">
 <link rel="stylesheet" href="/mock.css?v=1794492417">
 </head>
 <body>
@@ -124,7 +124,7 @@
     <span class="tag" style="background:#EFE3FF;color:#6E2FC9">What you can order</span>
     <h2>Everything your gali sells</h2>
   </div>
-  <div class="cats">
+  <div class="cats" data-cats="home">
     <div class="cat c1"><h3>Grocery</h3><p>Atta, dal, milk, spices &amp; daily needs</p><img src="/img/cat-grocery.png" alt=""></div>
     <div class="cat c2"><h3>Food Corner</h3><p>Chaat, samosa, sweets &amp; snacks</p><img src="/img/cat-food.png" alt=""></div>
     <div class="cat c3"><h3>Stationery</h3><p>Notebooks, pens, art &amp; office</p><img src="/img/cat-stationery.png" alt=""></div>
@@ -166,7 +166,7 @@
     <div class="tc"><span class="ti" style="background:#DDF6E8;color:#12A866"><svg class="ic"><use href="#i-shield"/></svg></span><div><b>KYC-verified shops</b><span>Every shop owner &amp; delivery partner verifies Aadhaar + PAN</span></div></div>
     <div class="tc"><span class="ti" style="background:#FFEBD6;color:#F08A1A"><svg class="ic"><use href="#i-wallet"/></svg></span><div><b>Pay cash at your door</b><span>No online payment, no card details — pay only when it arrives</span></div></div>
     <div class="tc"><span class="ti" style="background:#EFE6FF;color:#7C3AED"><svg class="ic"><use href="#t-phone"/></svg></span><div><b>Number shared only for your order</b><span>Only the shop &amp; delivery partner of your order can call you</span></div></div>
-    <div class="tc"><span class="ti" style="background:#FDE3EC;color:#EF287B"><svg class="ic"><use href="#t-mail"/></svg></span><div><b>Complaints reach the shop</b><span>Report with a photo — shop gets it in-app and on WhatsApp</span></div></div>
+    <div class="tc"><span class="ti" style="background:#FDE3EC;color:#EF287B"><svg class="ic"><use href="#t-mail"/></svg></span><div><b>Complaints reach the shop</b><span>Report with a photo — the shop gets it in the app right away</span></div></div>
     <div class="tc"><span class="ti" style="background:#DDF3F1;color:#0E9F8A"><svg class="ic"><use href="#i-store"/></svg></span><div><b>Shops you already know</b><span>Your own gali’s kirana, chaat corner and stationer</span></div></div>
     <div class="tc"><span class="ti" style="background:#FDE3E3;color:#E5383B"><svg class="ic"><use href="#t-x"/></svg></span><div><b>No tobacco or illegal items</b><span>Blocked automatically on the platform</span></div></div>
   </div>
@@ -231,5 +231,6 @@ fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=
   if (s.trial_days) document.querySelectorAll(".td").forEach(e => e.textContent = s.trial_days);
 }).catch(() => {});
 </script>
+<script src="/cats.js" defer></script>
 </body>
 </html>

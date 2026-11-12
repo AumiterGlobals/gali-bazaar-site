@@ -346,3 +346,13 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
   .psec .pr .bv{top:-10px;right:14px}
 }
 @media (max-width:640px){.psec .pr.best .bv{position:absolute!important;top:-10px!important;bottom:auto!important;right:14px!important;left:auto!important;grid-row:auto!important;grid-column:auto!important}.psec .pr.best{margin-top:8px}}
+/* categories from the admin (cats.js) */
+.cats.cats-dyn{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.cat.dyn{height:auto;min-height:190px;padding:24px 22px 100px}
+.cat.dyn h3{font-size:21px;margin-bottom:6px}
+.cat.dyn img{width:82px;right:14px;bottom:12px}
+.cat.dyn .ctag{display:inline-block;font-style:normal;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;margin-bottom:8px}
+.ctag.soon{background:#fff;color:#15803D}.ctag.new{background:#EF287B;color:#fff}
+.cat.more,.cat.req{background:#fff;border:1.5px dashed #D9C8FB;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:#6B6380;text-decoration:none}
+.cat.req b{font-size:30px;color:#EF287B;line-height:1}.cat.req h3{font-size:17px;color:#1D0F30;margin:6px 0 4px}.cat.more p,.cat.req p{max-width:none;color:#6B6380}
+@media(max-width:640px){.cats.cats-dyn{grid-template-columns:1fr 1fr;gap:12px}.cat.dyn{min-height:150px;padding:16px 14px 76px}.cat.dyn h3{font-size:16px}.cat.dyn p{font-size:12px}.cat.dyn img{width:64px}}
