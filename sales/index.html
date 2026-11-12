@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales panel · Gali Bazaar</title><meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Poppins,system-ui,sans-serif;background:#F5F1FB;color:#1D0F30;font-size:14px}
+button,input{font:inherit}a{color:inherit}
+.app{display:flex;min-height:100vh}
+.side{width:236px;background:#1D0F30;color:#CFC6E3;padding:22px 16px;flex-shrink:0;position:sticky;top:0;height:100vh}
+.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#1D0F30}
+.logo .g{color:#6D28D9}.logo .d{color:#EC4899}
+.side small{display:block;letter-spacing:1.5px;font-size:10.5px;margin:10px 0 26px 6px;color:#8E84A8}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-decoration:none;margin-bottom:4px;cursor:pointer}
+.nav a:hover{background:#2A1A44}.nav a.on{background:linear-gradient(90deg,#A855F7,#EC4899);color:#fff;font-weight:600}
+.main{flex:1;padding:30px 30px 60px;min-width:0}
+h1{font-size:26px;margin:0}.sub{color:#6B6380;font-size:13px;margin-top:4px}
+.top{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}.top .sp{flex:1}
+.btn{border:0;border-radius:14px;padding:11px 18px;font-weight:600;cursor:pointer}
+.pink{background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff}.dark{background:#1D0F30;color:#fff;padding:7px 14px;border-radius:10px;font-size:12.5px}
+.ghost{background:#fff;border:1px solid #E6DEF2}
+.card{background:#fff;border-radius:22px;padding:8px 18px;margin-bottom:18px;box-shadow:0 1px 2px rgba(29,15,48,.04)}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;letter-spacing:.6px;color:#8E84A8;font-weight:600;padding:14px 8px;border-bottom:1px solid #F0EAF7}
+td{padding:12px 8px;border-bottom:1px solid #F5F1FA;vertical-align:middle}tr:last-child td{border-bottom:0}
+tr.drag{opacity:.4}.hand{cursor:grab;color:#C4BAD6;user-select:none}
+.ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center}.ic img{width:26px;height:26px}
+.tag{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px}.t-none{background:#E6F8EE;color:#15803D}.t-draft{background:#F0EEF4;color:#6B6380}
+.tog{width:42px;height:24px;border-radius:20px;background:#DDD6E8;position:relative;cursor:pointer;border:0;flex-shrink:0}
+.tog::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.15s}
+.tog.on{background:#16A34A}.tog.on::after{left:21px}
+.edit{color:#7C3AED;font-weight:600;cursor:pointer;background:none;border:0}
+.req{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #F5F1FA}.req:last-child{border:0}.req b{flex:1}.req span{color:#8E84A8;font-size:12px}
+.panel{position:fixed;right:20px;top:20px;bottom:20px;width:380px;background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(29,15,48,.18);padding:0 22px 22px;overflow:auto;display:none;z-index:40}
+.panel.open{display:block}.panel h2{margin:0 -22px 12px;padding:18px 22px 12px;font-size:20px;display:flex;align-items:center;position:sticky;top:0;background:#fff;z-index:2;border-bottom:1px solid #F0EAF7}.panel h2 span{flex:1}.x{background:#F3F0F8;border:0;font-size:22px;cursor:pointer;color:#1D0F30;width:38px;height:38px;border-radius:50%;line-height:1}
+label{display:block;font-size:11px;letter-spacing:.6px;font-weight:600;color:#6B6380;margin:14px 0 6px}
+.in{width:100%;border:1px solid #E6DEF2;border-radius:12px;padding:11px 13px}.in:focus{outline:none;border-color:#8B5CF6}
+.icons{display:flex;flex-wrap:wrap;gap:8px}.icons button{width:44px;height:44px;border-radius:12px;border:1.5px solid #EEE7F6;background:#FAF7FD;cursor:pointer;padding:0}
+.icons button img{width:28px;height:28px}.icons button.on{border:2px solid #F08A1A;background:#FFF3E2}
+.sw{display:flex;gap:8px;flex-wrap:wrap}.sw button{width:30px;height:30px;border-radius:9px;border:1.5px solid #E6DEF2;cursor:pointer}.sw button.on{outline:2px solid #1D0F30;outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid #E6DEF2;border-radius:20px;padding:5px 11px;font-size:12.5px;cursor:pointer}.chip.add{border:1.5px dashed #EF287B;color:#EF287B}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #F5F1FA;margin-top:12px}.row div{flex:1}.row b{display:block;font-size:13.5px}.row span{font-size:11.5px;color:#8E84A8}
+.note{background:#F3EDFF;color:#6D28D9;border-radius:12px;padding:10px 12px;font-size:12px;margin:14px 0}
+.full{width:100%;padding:14px}
+.msg{margin:8px 0;font-size:12.5px}.err{color:#DC2626}.ok{color:#16A34A}
+.login{max-width:380px;margin:12vh auto;background:#fff;border-radius:24px;padding:30px;box-shadow:0 20px 60px rgba(29,15,48,.1)}
+.login h1{font-size:22px;margin:18px 0 6px}
+.soon{background:#fff;border-radius:22px;padding:40px;text-align:center;color:#6B6380}
+body.po .main{padding-right:430px}
+@media(max-width:900px){body.po .main{padding-right:18px}}
+.mtop{display:none}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}.kpi{background:#fff;border-radius:20px;padding:16px 18px}
+.kpi span{font-size:12.5px;color:#6B6380}.kpi b{display:block;font-size:26px;margin:6px 0 2px}.kpi small{font-size:11.5px;font-weight:600}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.box{background:#fff;border-radius:22px;padding:16px 18px;margin-bottom:16px;overflow-x:auto}.box h3{margin:0 0 10px;font-size:16px}.box h3 span{color:#8E84A8;font-weight:400;font-size:12px}
+.pill{font-size:11px;font-weight:600;padding:3px 8px;border-radius:7px;white-space:nowrap}.ok{background:#E6F8EE;color:#15803D}.warn{background:#FFF1DC;color:#B45309}.bad{background:#FFE4EC;color:#BE185D}.grey{background:#F0EEF4;color:#6B6380}
+.mini{border:1px solid #E6DEF2;background:#fff;border-radius:9px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-left:4px}.mini.dk{background:#1D0F30;color:#fff;border-color:#1D0F30}
+.search{border:1px solid #E6DEF2;border-radius:12px;padding:9px 12px;width:260px;max-width:100%}
+.docs a{display:inline-block;margin-right:8px;color:#7C3AED;font-size:12px;font-weight:600;cursor:pointer}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:900px){
+ .app{display:block}.side{position:fixed;left:0;top:0;bottom:0;height:auto;z-index:20;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.3)}
+ .side.open{transform:none}.scrim{display:none;position:fixed;inset:0;background:rgba(29,15,48,.4);z-index:15}.scrim.open{display:block}
+ .mtop{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;background:#1D0F30;padding:12px 14px}
+ .mtop button{background:none;border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:2px 6px}.mtop .logo{font-size:17px;padding:6px 11px}
+ .mtop small{color:#CFC6E3;margin-left:auto;font-size:12px}
+ .main{padding:16px 12px 60px}.top{flex-wrap:wrap}.top .sp{display:none}.top .btn{width:100%}h1{font-size:22px}
+ .card{padding:4px 10px}th.hi,td.hi,th.hand,td.hand{display:none}td,th{padding:10px 4px}td b{font-size:13.5px}.tag{display:inline-block;margin:4px 0 0}
+ .panel{left:8px;right:8px;top:8px;bottom:8px;width:auto}
+}
+
+.code{font-size:34px;font-weight:800;color:#6D28D9;letter-spacing:2px}
+.kpis.k4{grid-template-columns:repeat(4,1fr)}
+.tds{background:linear-gradient(135deg,#1D0F30,#4C1D95);color:#fff;border-radius:22px;padding:18px 20px;margin-bottom:16px}
+.tds .r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13.5px}.tds .r:last-child{border:0}
+.tds b{font-size:15px}.tds small{color:#CFC6E3}
+@media(max-width:1100px){.kpis.k4{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
+const db = supabase.createClient(SB, KEY);
+const NAV = [["overview","Overview"],["shops","Your shops"],["payouts","Payouts & TDS"],["profile","Profile"]];
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const day = s => (s || "").slice(0, 10);
+const LOGO = '<span class="logo"><span class="g">गली</span> Bazaar<span class="d">.</span></span>';
+let page = (location.hash || "#overview").slice(1), me = null, D = null;
+
+async function start() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return loginView();
+  const { data: sp } = await db.from("sales_people").select("*").eq("profile", session.user.id).maybeSingle();
+  if (!sp) {
+    $("#root").innerHTML = `<div class="login">${LOGO}<h1>Not a sales account</h1><p class="sub">${esc(session.user.email)} is not added to the Gali Bazaar sales team. Ask your admin to add this email.</p>
+      <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
+    return;
+  }
+  me = sp; shell(); await load(); go(page);
+}
+
+function loginView() {
+  let sent = false;
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Sales panel</h1><div class="sub">Sign in with the email your admin added. We email you a code.</div>
+    <label>EMAIL</label><input class="in" id="em" type="email" autocomplete="email" placeholder="you@gmail.com">
+    <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
+    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button></div>`;
+  $("#lb").onclick = async () => {
+    const email = $("#em").value.trim().toLowerCase(), m = $("#lm");
+    if (!email) { m.className = "msg err"; m.textContent = "Enter your email"; return; }
+    m.textContent = ""; $("#lb").disabled = true;
+    if (!sent) {
+      const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+      if (error) { m.className = "msg err"; m.textContent = error.message; }
+      else { sent = true; $("#em").disabled = true; $("#cw").style.display = "block"; $("#lb").textContent = "Verify & sign in"; m.className = "msg ok"; m.textContent = "Code sent. Check Inbox / Spam."; }
+    } else {
+      const { error } = await db.auth.verifyOtp({ email, token: $("#cd").value.trim(), type: "email" });
+      if (error) { m.className = "msg err"; m.textContent = "Wrong or expired code."; } else return start();
+    }
+    $("#lb").disabled = false;
+  };
+}
+
+function shell() {
+  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>SALES PANEL</small><nav class="nav">
+    ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
+    <a onclick="db.auth.signOut().then(()=>location.reload())" style="margin-top:20px">Sign out</a></nav></aside>
+    <main class="main" id="main"></main></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
+  document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button onclick="menu(true)" aria-label="Menu">☰</button>${LOGO}<small>Sales panel</small></div>`);
+  window.onhashchange = () => go(location.hash.slice(1));
+}
+function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").classList.toggle("open", open); }
+function head(title, sub, right = "") { return `<div class="top"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div><div class="sp"></div>${right}</div>`; }
+
+async function load() {
+  const [shops, com, pay, tds] = await Promise.all([
+    db.rpc("my_referral_shops"), db.from("commissions").select("*").order("created_at", { ascending: false }),
+    db.from("payouts").select("*").order("pdate", { ascending: false }), db.rpc("my_tds"),
+  ]);
+  let list = shops.data;
+  if (shops.error) { const r = await db.rpc("my_referrals"); list = r.data || []; }
+  D = { shops: list || [], com: com.data || [], pay: pay.data || [], tds: tds.data || null };
+}
+
+function go(k) {
+  page = NAV.some(n => n[0] === k) ? k : "overview"; menu(false);
+  document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
+  ({ overview, shops, payouts, profile })[page]();
+}
+
+const status = s => {
+  const live = s.sub_until && new Date(s.sub_until) > new Date();
+  if (s.kyc !== "APPROVED") return `<span class="pill warn">KYC ${esc((s.kyc || "pending").toLowerCase())}</span>`;
+  if (s.paid && live) return `<span class="pill ok">Paid${s.months ? " · " + s.months + " mo" : ""}</span>`;
+  if (live) return `<span class="pill grey">Free trial</span>`;
+  return `<span class="pill bad">Inactive</span>`;
+};
+const shareText = () => `Grow your shop with Gali Bazaar — 0% commission, customers from your own gali.\nDownload: https://galibazaar.site\nOpen the app → tap “Register your shop” → enter my code in Referral code: ${me.code}`;
+
+function overview() {
+  const earned = D.com.reduce((a, c) => a + Number(c.amount || 0), 0);
+  const due = D.com.filter(c => c.status !== "PAID").reduce((a, c) => a + Number(c.amount || 0), 0);
+  const paidShops = D.shops.filter(s => s.paid).length;
+  $("#main").innerHTML = head(`Hello, ${esc(me.name.split(" ")[0])} 👋`, me.active ? "Your referral code, shops and commission" : "<b style='color:#BE185D'>Your sales account is inactive — no new commission. Contact admin.</b>") +
+    `<div class="box"><div class="sub">Your referral code · ${me.commission_pct}% of every plan payment</div><div class="code">${esc(me.code)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn pink" onclick="share()">Share with a shop</button>
+        <button class="btn ghost" onclick="copy('${esc(me.code)}')">Copy code</button>
+        <a class="btn ghost" style="text-decoration:none" target="_blank" href="https://wa.me/?text=${encodeURIComponent(shareText().replace(/\\n/g, "\n"))}">Send on WhatsApp</a></div>
+      <div class="msg" id="sm"></div></div>
+    <div class="kpis k4">
+      <div class="kpi"><span>Shops joined</span><b>${D.shops.length}</b><small>${paidShops} paying</small></div>
+      <div class="kpi"><span>Total earned</span><b>${inr(earned)}</b><small>all time</small></div>
+      <div class="kpi"><span>Pending payout</span><b>${inr(due)}</b><small>paid by admin to your UPI</small></div>
+      <div class="kpi"><span>Paid out</span><b>${inr(D.pay.reduce((a, p) => a + Number(p.net || 0), 0))}</b><small>${D.pay.length} payout${D.pay.length === 1 ? "" : "s"}</small></div>
+    </div>
+    ${tdsCard()}
+    <div class="box"><h3>Latest shops <span>· ${D.shops.length}</span></h3>${shopTable(D.shops.slice(0, 5))}
+      ${D.shops.length > 5 ? `<a href="#shops" style="color:#7C3AED;font-weight:600">See all shops →</a>` : ""}</div>
+    <div class="note">Commission: ${me.commission_pct}% of every plan payment a shop from your code makes (amount before GST), for as long as the shop stays and your account is active. Nothing during the free trial. Payouts go to your UPI with TDS as per law.</div>`;
+}
+function tdsCard() {
+  const t = D.tds; if (!t) return "";
+  return `<div class="tds"><b>TDS this financial year</b> <small>· ${t.rate}% above ${inr(t.threshold)}${t.has_pan ? "" : " · 20% without PAN"}</small>
+    <div class="r"><span>Credited this FY</span><b>${inr(t.fy_credited)}</b></div>
+    <div class="r"><span>Pending now</span><b>${inr(t.due)}</b></div>
+    <div class="r"><span>TDS on pending</span><b>− ${inr(t.tds)}</b></div>
+    <div class="r"><span>You'll get</span><b>${inr(t.net)}</b></div>
+    <div class="r"><span>PAN</span><b>${t.pan_masked ? esc(t.pan_masked) : "Not added — ask admin"}</b></div></div>`;
+}
+function shopTable(list) {
+  if (!list.length) return `<div class="sub" style="padding:10px 0">No shops yet. Share your code — shops appear here as soon as they register.</div>`;
+  return `<table><thead><tr><th>SHOP</th><th>AREA</th><th>PHONE</th><th>STATUS</th><th>JOINED</th></tr></thead><tbody>${list.map(s => `<tr>
+    <td><b>${esc(s.name)}</b></td><td>${esc([s.locality, s.city].filter(Boolean).join(", "))}</td>
+    <td>${s.phone ? `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a>` : "—"}</td><td>${status(s)}</td><td>${day(s.created_at)}</td></tr>`).join("")}</tbody></table>`;
+}
+function shops() {
+  $("#main").innerHTML = head("Your shops", `${D.shops.length} shop${D.shops.length === 1 ? "" : "s"} joined with code ${esc(me.code)}`,
+    `<input class="search" id="q" placeholder="Search shop or area">`) + `<div class="box" id="tb">${shopTable(D.shops)}</div>`;
+  $("#q").oninput = e => { const q = e.target.value.toLowerCase(); $("#tb").innerHTML = shopTable(D.shops.filter(s => (s.name + " " + s.locality + " " + s.city).toLowerCase().includes(q))); };
+}
+function payouts() {
+  const name = id => D.shops.find(s => s.id === id)?.name || "Shop";
+  $("#main").innerHTML = head("Payouts & TDS", "Commission on every plan payment, and what the admin has paid you") + tdsCard() +
+    `<div class="box"><h3>Commission <span>· ${D.com.length}</span></h3>${D.com.length ? `<table><thead><tr><th>DATE</th><th>SHOP</th><th>PLAN (BEFORE GST)</th><th>%</th><th>COMMISSION</th><th>STATUS</th></tr></thead><tbody>${D.com.map(c => `<tr>
+      <td>${day(c.created_at)}</td><td>${esc(name(c.shop))}</td><td>${inr(c.base_amount)}</td><td>${c.pct}%</td><td><b>${inr(c.amount)}</b></td>
+      <td><span class="pill ${c.status === "PAID" ? "ok" : "warn"}">${c.status === "PAID" ? "Paid" : "Due"}</span></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No commission yet — it starts when a shop from your code pays for a plan.</div>`}</div>
+    <div class="box"><h3>Payouts received <span>· ${D.pay.length}</span></h3>${D.pay.length ? `<table><thead><tr><th>DATE</th><th>GROSS</th><th>TDS</th><th>NET PAID</th><th>UTR / REF</th></tr></thead><tbody>${D.pay.map(p => `<tr>
+      <td>${day(p.pdate)}</td><td>${inr(p.gross)}</td><td>− ${inr(p.tds)}</td><td><b>${inr(p.net)}</b></td><td>${esc(p.ref || "—")}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No payouts yet.</div>`}</div>`;
+}
+function profile() {
+  $("#main").innerHTML = head("Profile", "Your sales account details") + `<div class="box">
+    <div class="row" style="border:0;margin:0"><div><b>Name</b><span>${esc(me.name)}</span></div></div>
+    <div class="row"><div><b>Phone</b><span>${esc(me.phone)}</span></div></div>
+    <div class="row"><div><b>Email</b><span>${esc(me.email || "")}</span></div></div>
+    <div class="row"><div><b>UPI for payouts</b><span>${esc(me.upi || "Not added")}</span></div></div>
+    <div class="row"><div><b>PAN</b><span>${D.tds?.pan_masked ? esc(D.tds.pan_masked) : "Not added"}</span></div></div>
+    <div class="row"><div><b>Referral code</b><span>${esc(me.code)} · ${me.commission_pct}% commission</span></div><span class="pill ${me.active ? "ok" : "bad"}">${me.active ? "Active" : "Inactive"}</span></div>
+    <div class="note">To change your UPI, phone or PAN, ask the Gali Bazaar admin. The same account works in the app (sign in with Google using this email).</div>
+    <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
+}
+async function share() {
+  const t = shareText().replace(/\\n/g, "\n");
+  if (navigator.share) { try { await navigator.share({ text: t }); return; } catch (e) {} }
+  copy(t);
+}
+function copy(t) { navigator.clipboard?.writeText(t).then(() => { const m = $("#sm"); if (m) { m.className = "msg ok"; m.textContent = "Copied"; } }); }
+
+start();
+</script></body></html>

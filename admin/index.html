@@ -269,7 +269,7 @@ async function complaints() {
 }
 
 // ---------------- Festivals ----------------
-const FEST_KEYS = ["diwali","holi","rakhi","independence","republic","christmas","newyear","eid","ganesh","navratri","janmashtami","lohri","generic"];
+const FEST_KEYS = ["diwali","holi","eid","christmas","navratri","ganesh","india","sankranti","rakhi","chhath","igas","phooldei","harela","ghughutiya"];
 async function festivals() {
   const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const { data, error } = await db.from("festivals").select("*").gte("day", today).order("day");
