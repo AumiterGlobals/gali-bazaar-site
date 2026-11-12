@@ -29,8 +29,8 @@ tr.drag{opacity:.4}.hand{cursor:grab;color:#C4BAD6;user-select:none}
 .tog.on{background:#16A34A}.tog.on::after{left:21px}
 .edit{color:#7C3AED;font-weight:600;cursor:pointer;background:none;border:0}
 .req{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #F5F1FA}.req:last-child{border:0}.req b{flex:1}.req span{color:#8E84A8;font-size:12px}
-.panel{position:fixed;right:20px;top:20px;bottom:20px;width:380px;background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(29,15,48,.18);padding:22px;overflow:auto;display:none;z-index:5}
-.panel.open{display:block}.panel h2{margin:0 0 16px;font-size:20px;display:flex}.panel h2 span{flex:1}.x{background:none;border:0;font-size:22px;cursor:pointer;color:#8E84A8}
+.panel{position:fixed;right:20px;top:20px;bottom:20px;width:380px;background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(29,15,48,.18);padding:0 22px 22px;overflow:auto;display:none;z-index:40}
+.panel.open{display:block}.panel h2{margin:0 -22px 12px;padding:18px 22px 12px;font-size:20px;display:flex;align-items:center;position:sticky;top:0;background:#fff;z-index:2;border-bottom:1px solid #F0EAF7}.panel h2 span{flex:1}.x{background:#F3F0F8;border:0;font-size:22px;cursor:pointer;color:#1D0F30;width:38px;height:38px;border-radius:50%;line-height:1}
 label{display:block;font-size:11px;letter-spacing:.6px;font-weight:600;color:#6B6380;margin:14px 0 6px}
 .in{width:100%;border:1px solid #E6DEF2;border-radius:12px;padding:11px 13px}.in:focus{outline:none;border-color:#8B5CF6}
 .icons{display:flex;flex-wrap:wrap;gap:8px}.icons button{width:44px;height:44px;border-radius:12px;border:1.5px solid #EEE7F6;background:#FAF7FD;cursor:pointer;padding:0}
@@ -249,11 +249,17 @@ async function featured() {
 }
 async function sales() {
   const [sp, comm, shops] = await Promise.all([q("sales_people", "*"), q("commissions", "sales,amount,status"), q("shops", "id,referred_by")]);
-  $("#main").innerHTML = head("Sales team", "Commission on every plan payment of shops from their code") + `<div class="box"><table><thead><tr><th>NAME</th><th>CODE</th><th>SHOPS</th><th>EARNED</th><th>PENDING</th><th>UPI</th></tr></thead><tbody>${sp.map(p => {
+  $("#main").innerHTML = head("Sales team", "Commission on every plan payment of shops from their code") + `<div class="box"><table><thead><tr><th>NAME</th><th>CODE</th><th>SHOPS</th><th>EARNED</th><th>PENDING</th><th>UPI</th><th></th></tr></thead><tbody>${sp.map(p => {
     const mine = comm.filter(c => c.sales === p.id);
     return `<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc(p.email || "")}</span></td><td>${esc(p.code)} · ${p.commission_pct}%</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
-      <td>${inr(mine.reduce((a, c) => a + Number(c.amount), 0))}</td><td><b style="color:#6D28D9">${inr(mine.filter(c => c.status === "DUE").reduce((a, c) => a + Number(c.amount), 0))}</b></td><td>${esc(p.upi || "—")}</td></tr>`; }).join("")}</tbody></table>
+      <td>${inr(mine.reduce((a, c) => a + Number(c.amount), 0))}</td><td><b style="color:#6D28D9">${inr(mine.filter(c => c.status === "DUE").reduce((a, c) => a + Number(c.amount), 0))}</b></td><td>${esc(p.upi || "—")}</td>
+      <td>${p.active === false ? `<span class="pill grey">Removed</span><button class="mini" onclick="spSet('${p.id}',true)">Restore</button>` : `<button class="mini" style="color:#BE185D" onclick="spSet('${p.id}',false)">Remove</button>`}</td></tr>`; }).join("")}</tbody></table>
     <div class="sub" style="margin-top:10px">Add people and send payouts (with TDS) from the Admin panel in the app.</div></div>`;
+}
+async function spSet(id, on) {
+  if (!on && !confirm("Remove this sales person? Their code stops working for new shops. Commission already earned stays and can still be paid out.")) return;
+  const { error } = await db.from("sales_people").update({ active: on }).eq("id", id);
+  if (error) alert(error.message); else go(page);
 }
 async function complaints() {
   const [list, shops] = await Promise.all([q("complaints", "*", x => x.order("created_at", { ascending: false }).limit(100)), q("shops", "id,name")]);
@@ -339,7 +345,10 @@ function renderForm() {
     <div class="row" style="margin-top:0"><div><b>Allow shop sign-ups</b><span>Shops can pick this type</span></div><button class="tog ${f.allow_signup ? "on" : ""}" onclick="setF('allow_signup', ${!f.allow_signup})"></button></div>
     <div class="note"><b>Cards are made automatically</b> from name + icon + colour — app home, Categories, seller sign-up &amp; website.</div>
     <div class="msg" id="fm"></div>
-    <button class="btn pink full" onclick="saveForm()">Save category</button>`;
+    <button class="btn pink full" onclick="saveForm()">Save category</button>
+    <button class="btn ghost full" style="margin-top:8px" onclick="closeForm()">Cancel</button>
+    ${f.isNew ? "" : `<button class="btn full" style="margin-top:8px;background:#FFE4EC;color:#BE185D" onclick="delCat('${f.key}')">Delete category</button>
+      <div class="sub" style="margin-top:6px;font-size:11.5px">Only a category with no shops can be deleted. Otherwise switch “Show to customers” off.</div>`}`;
 }
 function keepTyped() { if (!$("#f-name")) return; form.name = $("#f-name").value; form.name_hi = $("#f-hi").value; form.short_line = $("#f-line").value; }
 function setF(k, v) { keepTyped(); form[k] = v; renderForm(); }
@@ -357,6 +366,13 @@ async function upload(inp) {
   form.icon = `${SB}/storage/v1/object/public/public/${path}`; renderForm();
 }
 
+async function delCat(key) {
+  if ((counts[key] || 0) > 0) return alert(`${counts[key]} shop(s) use this category. Switch "Show to customers" off instead.`);
+  if (!confirm("Delete this category for good?")) return;
+  const { error } = await db.rpc("admin_delete_category", { p_key: key });
+  if (error) return alert(error.message);
+  closeForm(); loadCats();
+}
 async function saveForm() {
   keepTyped();
   const f = form, m = $("#fm");
