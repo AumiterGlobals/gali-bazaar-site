@@ -178,3 +178,18 @@ footer .cols a:not(.logo):hover{color:var(--violet)}
   .sticky small{color:#C9C1E2;font-size:12px;display:block}
   .sticky a{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff;padding:12px 18px;border-radius:12px;text-decoration:none;font-weight:600;font-size:14.5px}
 }
+
+.help{border:0;border-radius:22px;padding:0;width:min(560px,92vw);max-height:84vh;box-shadow:0 30px 80px #1A113055;font-family:inherit;color:var(--ink)}
+.help::backdrop{background:#1A113066;backdrop-filter:blur(3px)}
+.help .hd{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.help .hd b{font-size:19px}
+.help .hd button{border:0;background:#F3EFF8;width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer}
+.help details{border-bottom:1px solid #F2EDF4;padding:14px 20px}
+.help summary{cursor:pointer;font-weight:600;font-size:15px;list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help summary:after{content:"+";float:right;color:var(--violet);font-size:20px;line-height:1}
+.help details[open] summary:after{content:"–"}
+.help p{color:var(--muted);font-size:14px;line-height:1.6;margin:8px 0 0}
+.help .mail{padding:16px 20px 20px;font-size:14px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,20px);background:#1A1130;color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:60;width:max-content;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
