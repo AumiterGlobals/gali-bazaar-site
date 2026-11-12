@@ -10,7 +10,7 @@ a{color:inherit}
 img{display:block;max-width:100%}
 .wrap{max-width:1316px;margin:0 auto;padding:0 72px}
 .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.logo{font-weight:700;font-size:24px;letter-spacing:-.3px;text-decoration:none;color:#3A0C62;display:inline-flex;align-items:baseline;white-space:nowrap}
+.logo{font-weight:700;font-size:24px;letter-spacing:-.3px;text-decoration:none;color:#1C1C1C;display:inline-flex;align-items:baseline;white-space:nowrap}
 .logo .g{font-family:"Baloo 2","Noto Sans Devanagari",sans-serif;font-weight:800;color:#6C1CB4;font-size:1.12em;margin-right:7px;letter-spacing:0}
 .logo .dot{color:#F0306F}
 .hi{font-family:"Noto Sans Devanagari",Poppins,sans-serif}
@@ -107,7 +107,7 @@ footer .cols{display:grid;grid-template-columns:2.1fr 1fr 1fr 1fr;gap:30px}
 footer h5{font-size:13.5px;margin:0 0 14px;font-weight:600}
 footer .cols a:not(.logo){display:block;text-decoration:none;margin-bottom:11px;font-size:13.5px;color:var(--muted)}
 footer .cols a:not(.logo):hover{color:var(--violet)}
-.tagline{color:var(--muted);font-size:13.5px;margin:10px 0 16px}
+.tagline{color:#6C1CB4;font-weight:600;font-size:13.5px;margin:10px 0 16px}
 .disc{border:1px solid #EEE5EA;background:#fff;border-radius:14px;padding:14px 16px;font-size:12px;line-height:1.55;color:#3F3854;max-width:550px}
 
 .sticky{display:none}
