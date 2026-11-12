@@ -10,9 +10,9 @@ a{color:inherit}
 img{display:block;max-width:100%}
 .wrap{max-width:1316px;margin:0 auto;padding:0 72px}
 .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.logo{font-weight:700;font-size:23px;letter-spacing:-.4px;text-decoration:none;color:var(--logo);display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
-.logo .g{font-family:"Noto Sans Devanagari",sans-serif;font-weight:700}
-.logo .dot{color:var(--pink)}
+.logo{font-weight:700;font-size:24px;letter-spacing:-.3px;text-decoration:none;color:#3A0C62;display:inline-flex;align-items:baseline;white-space:nowrap}
+.logo .g{font-family:"Baloo 2","Noto Sans Devanagari",sans-serif;font-weight:800;color:#6C1CB4;font-size:1.12em;margin-right:7px;letter-spacing:0}
+.logo .dot{color:#F0306F}
 .hi{font-family:"Noto Sans Devanagari",Poppins,sans-serif}
 
 .btn{display:inline-flex;align-items:center;gap:12px;border-radius:14px;font-weight:600;text-decoration:none;border:0;cursor:pointer;font-family:inherit;white-space:nowrap;transition:transform .15s}
