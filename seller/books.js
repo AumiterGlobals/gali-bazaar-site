@@ -4,6 +4,7 @@ const BK = { CASH: "Cash in hand", BANK: "UPI / Bank", DEBT: "Customers (udhaar)
   VEND: "Vendors (bills to pay)", CAP: "Owner's capital", DRAW: "Owner's drawings", SALES: "Sales", DEL: "Delivery charges", RET: "Sales returns (credit notes)", PLAN: "Gali Bazaar plan", EARLIER: "Profit of earlier years" };
 const bkType = a => [BK.CASH, BK.BANK, BK.DEBT, BK.INGST].includes(a) ? "ASSET" : [BK.CGST, BK.SGST, BK.VEND].includes(a) ? "LIABILITY" : [BK.CAP, BK.DRAW, BK.EARLIER].includes(a) ? "EQUITY" : [BK.SALES, BK.DEL, BK.RET].includes(a) ? "INCOME" : "EXPENSE";
 const bkNom = a => ["INCOME", "EXPENSE"].includes(bkType(a));
+const dupMsg = e => { const m = niceErr(e); return /no_dup_bill/.test(m) ? "This vendor invoice is already entered" : /no_dup_utr/.test(m) ? "This UTR is already entered" : m; };
 const r2 = v => Math.round(v * 100) / 100, f2 = v => Number(v || 0).toFixed(2);
 const bkDay = ts => { if (!ts) return ""; const d = new Date(ts); return isNaN(d) ? String(ts).slice(0, 10) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const bkMoney = m => /^cash/i.test(m || "CASH") ? BK.CASH : BK.BANK;
@@ -175,7 +176,7 @@ function bkExpense() {
       if (row.vendor && BKD.vendors && !BKD.vendors.some(v => v.name.toLowerCase() === row.vendor.toLowerCase()))
         await db.from("shop_vendors").insert({ shop: S.id, name: row.vendor, gstin: row.vendor_gstin });
       closeDrawer(); toast("Saved"); BKD.tab = "vend"; books();
-    } catch (e) { m.className = "msg err"; m.textContent = niceErr(e); $("#xsv").disabled = false; }
+    } catch (e) { m.className = "msg err"; m.textContent = dupMsg(e); $("#xsv").disabled = false; }
   };
 }
 function bkOwner() {
@@ -200,7 +201,7 @@ function bkCollect(id) {
   $("#csv").onclick = async () => {
     const a = +$("#ca").value || 0; if (!a) return;
     const { error } = await db.from("shop_receipts").insert({ shop: S.id, kind: "UDHAAR", sale_id: id, on_date: $("#cd").value, amount: a, mode: $("#cm").value, ...($("#cu").value.trim() ? { ref: $("#cu").value.trim() } : {}) });
-    if (error) { $("#cmg").className = "msg err"; return $("#cmg").textContent = niceErr(error); }
+    if (error) { $("#cmg").className = "msg err"; return $("#cmg").textContent = dupMsg(error); }
     closeDrawer(); toast(`Payment recorded against ${u.c.bill_no}`); books();
   };
 }
@@ -211,7 +212,7 @@ function bkPay(id) {
     <div class="msg" id="pmg"></div><button class="btn pink full" id="psv2" style="margin-top:12px">Mark paid</button>`);
   $("#psv2").onclick = async () => {
     const { error } = await db.from("shop_expenses").update({ paid: true, paid_on: $("#pd2").value, paid_mode: $("#pm2").value, ...($("#pu2").value.trim() ? { paid_ref: $("#pu2").value.trim() } : {}) }).eq("id", id);
-    if (error) return $("#pmg").textContent = niceErr(error);
+    if (error) return $("#pmg").textContent = dupMsg(error);
     closeDrawer(); books();
   };
 }
