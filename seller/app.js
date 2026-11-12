@@ -124,7 +124,7 @@ function counts() {
 function shell() {
   document.body.innerHTML = `<div class="app"><aside class="side">${LOGO}<div class="tagline g">SELLER PANEL</div><nav class="nav" id="snav"></nav>
     <div class="who"><div class="r"><span class="av" style="background:linear-gradient(135deg,#FFC93C,#FF8A1F)">${S.logo_url ? `<img src="${esc(S.logo_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">` : "🏪"}</span><div><b>${esc(S.name)}</b><small>${esc(me.email || "")}</small></div></div>
-    <a id="so">✕ Sign out</a></div></aside><main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim"></div>`;
+    <a href="/">← Website</a><a id="so">✕ Sign out</a></div></aside><main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim"></div>`;
   document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button id="mb" aria-label="Menu">☰</button>${LOGO}<small>Seller panel</small></div>`);
   $("#so").onclick = async () => { await db.auth.signOut(); location.href = "/seller/login/"; };
   $("#mb").onclick = () => menu(true); $("#scrim").onclick = () => { menu(false); };

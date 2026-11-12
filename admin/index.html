@@ -107,7 +107,8 @@ function loginView() {
   $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">Sign in with the admin email. We send a code.</p>
     <label>EMAIL</label><input class="in" id="em" type="email" placeholder="admin email">
     <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
-    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button></div>`;
+    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button>
+    <a href="/" style="display:block;text-align:center;margin-top:16px;color:#7C3AED;font-weight:600;text-decoration:none">← Go to galibazaar.site</a></div>`;
   $("#lb").onclick = async () => {
     const email = $("#em").value.trim().toLowerCase(), m = $("#lm");
     m.textContent = ""; $("#lb").disabled = true;
@@ -126,7 +127,7 @@ function loginView() {
 function shell() {
   $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>ADMIN CONSOLE</small><nav class="nav">
     ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
-    <a onclick="db.auth.signOut().then(()=>location.reload())" style="margin-top:20px">Sign out</a></nav></aside>
+    <a href="/" style="margin-top:20px">← Website</a><a onclick="db.auth.signOut().then(()=>location.reload())">Sign out</a></nav></aside>
     <main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
   document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button onclick="menu(true)" aria-label="Menu">☰</button>${LOGO}<small>Admin console</small></div>`);
   window.onhashchange = () => go(location.hash.slice(1));
@@ -522,5 +523,5 @@ async function saveForm() {
 
 start();
 </script>
-<script src="/admin/books.js?v=4"></script>
+<script src="/admin/books.js?v=5"></script>
 </body></html>

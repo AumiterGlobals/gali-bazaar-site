@@ -202,7 +202,7 @@ function shell() {
   document.body.innerHTML = `<div class="app"><aside class="side">${LOGO}<div class="tagline">SALES TEAM</div><nav class="nav">
     ${NAV.map(([k, l, d]) => `<a data-k="${k}" href="/sales/${k ? k + "/" : ""}">${ico(d)}${l}</a>`).join("")}</nav>
     <div class="who"><div class="r"><span class="av">${esc(first)}</span><div><b>${esc(me.name)}</b><small>${esc(me.email || "")}</small></div></div>
-    <a id="so">✕ Sign out</a></div></aside><main class="main" id="main"></main></div><div class="scrim" id="scrim"></div>`;
+    <a href="/">← Website</a><a id="so">✕ Sign out</a></div></aside><main class="main" id="main"></main></div><div class="scrim" id="scrim"></div>`;
   document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button id="mb" aria-label="Menu">☰</button>${LOGO}<small>Sales team</small></div>`);
   $$(".nav a").forEach(a => a.onclick = e => { e.preventDefault(); menu(false); go(a.dataset.k); });
   $("#so").onclick = async () => { await db.auth.signOut(); me = null; location.href = "/sales/login/"; };

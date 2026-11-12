@@ -1,6 +1,8 @@
 /* Admin console · Accounts & books — trial balance, P&L, balance sheet, day book, ledgers, parties (vendors),
    vendor bills with GST + TDS, vendor payments, sales-team payouts with a TDS choice, CA downloads.
    Uses the accounting RPCs (accounting.sql + update-31-admin-books.sql). */
+const TDS_SEC = { "194H": "2100", "194C": "2101", "194J": "2102", "194I": "2104", "194Q": "2105", "192": "2106", "194O": "2107" };
+const tdsHeads = () => AC.acc.filter(a => /^21\d\d$/.test(a.code));
 let AC = { tab: "reports", from: null, to: null, acc: [], parties: [] };
 const fy0 = (d = new Date()) => { const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return `${y}-04-01`; };
 const n2 = v => Number(v || 0).toFixed(2);
@@ -127,7 +129,8 @@ function acBill() {
     <label>EXPENSE HEAD</label><select class="in" id="bh">${heads.map(a => `<option value="${a.code}">${a.code} · ${esc(a.name)}</option>`).join("")}</select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>TAXABLE VALUE ₹</label><input class="in" id="bt" inputmode="decimal"></div>
       <div><label>GST %</label><select class="in" id="bg">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}" ${r === 18 ? "selected" : ""}>${r === 0 ? "Nil / 0" : r}%</option>`).join("")}</select></div></div>
-    <label><input type="checkbox" id="btd"> Deduct TDS</label><div id="btw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>TDS %</label><input class="in" id="btr" inputmode="decimal" value="10"></div><div><label>TDS ₹</label><input class="in" id="bta" inputmode="decimal"></div></div>
+    <label><input type="checkbox" id="btd"> Deduct TDS</label><div id="btw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div style="grid-column:1/3"><label>TDS HEAD (SECTION)</label><select class="in" id="bth">${tdsHeads().map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select></div>
+      <div><label>TDS %</label><input class="in" id="btr" inputmode="decimal" value="10"></div><div><label>TDS ₹</label><input class="in" id="bta" inputmode="decimal"></div></div>
     <label>PAID?</label><select class="in" id="bp"><option value="">Not yet — pay later</option>${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">Paid now from ${esc(a.name)}</option>`).join("")}</select>
     <div id="bpw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="bu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="bud" value="${today()}"></div></div>
     <label>NOTE</label><input class="in" id="bx" placeholder="e.g. galibazaar.site renewal 1 year">
@@ -140,7 +143,8 @@ function acBill() {
     $("#bsum").innerHTML = `Taxable ${inr2(t)} + GST ${inr2(g)} = <b>${inr2(t + g)}</b>${tds ? ` · TDS ${inr2(tds)} · pay ${esc(p.name || "")} <b>${inr2(t + g - tds)}</b>` : ""}`;
     return { t, g, tds };
   };
-  const pick = () => { const p = AC.parties.find(x => x.id === $("#bv").value) || {}; if (p.tds_rate) { $("#btd").checked = true; $("#btr").value = p.tds_rate; } $("#btw").style.display = $("#btd").checked ? "grid" : "none"; calc(); };
+  const pick = () => { const p = AC.parties.find(x => x.id === $("#bv").value) || {}; if (p.tds_rate) { $("#btd").checked = true; $("#btr").value = p.tds_rate; }
+    const sec = String(p.tds_section || (p.kind === "SALES" ? "194H" : "")).toUpperCase().replace(/\s/g, ""); if (TDS_SEC[sec]) $("#bth").value = TDS_SEC[sec]; $("#btw").style.display = $("#btd").checked ? "grid" : "none"; calc(); };
   ["#bt", "#bg", "#btr"].forEach(s => $(s).oninput = calc); $("#bg").onchange = calc; $("#bv").onchange = pick;
   $("#bta").oninput = () => { $("#bta").dataset.own = "1"; calc(); };
   $("#btd").onchange = () => { $("#btw").style.display = $("#btd").checked ? "grid" : "none"; calc(); };
@@ -152,7 +156,7 @@ function acBill() {
     try {
       await rpc("admin_vendor_bill", { p_party: $("#bv").value, p_date: $("#bd").value, p_bill_no: $("#bn").value.trim() || null, p_head: $("#bh").value,
         p_taxable: t, p_gst: g, p_tds: tds, p_paid_from: $("#bp").value || null, p_pay_date: $("#bp").value ? $("#bud").value : null, p_narr: $("#bx").value.trim() || null, p_attachment: null,
-        p_utr: $("#bp").value ? ($("#bu").value.trim() || null) : null });
+        p_utr: $("#bp").value ? ($("#bu").value.trim() || null) : null, p_tds_code: $("#bth").value });
       AC.tab = "parties"; accounts();
     } catch (e) { $("#bm").textContent = e.message; $("#bsv").disabled = false; }
   };
@@ -201,27 +205,37 @@ async function acGst() {
 }
 
 async function acTds() {
-  const acc = AC.acc.find(a => a.code === "2100");
-  const rows = acc ? await rpc("ledger", { p_account: acc.id, p_from: AC.from, p_to: AC.to }) : [];
-  const b = await rpc("account_balances", { p_from: AC.from, p_to: AC.to }); const me = b.find(x => x.code === "2100") || { opening: 0, closing: 0 };
+  AC.tdsAcc = AC.tdsAcc || "all";
+  const heads = tdsHeads(), b = await rpc("account_balances", { p_from: AC.from, p_to: AC.to });
+  const pick = AC.tdsAcc === "all" ? heads : heads.filter(h => h.code === AC.tdsAcc);
+  const led = (await Promise.all(pick.map(h => rpc("ledger", { p_account: h.id, p_from: AC.from, p_to: AC.to }).then(r => r.map(x => ({ ...x, head: h.name })))))).flat()
+    .sort((x, y) => (x.vdate + x.vno).localeCompare(y.vdate + y.vno));
+  let run = pick.reduce((a, h) => a + Number((b.find(x => x.code === h.code) || {}).opening || 0), 0);
+  const out = [["Date", "Voucher", "TDS head", "Narration", "Ref", "Deducted (Cr)", "Deposited (Dr)", "Balance to deposit"], ["", "", "", "Opening", "", "", "", n2(-run)],
+    ...led.map(r => { run += Number(r.debit) - Number(r.credit); return [r.vdate, r.vno, r.head, r.narration, r.ref || "", Number(r.credit) ? n2(r.credit) : "", Number(r.debit) ? n2(r.debit) : "", n2(-run)]; })];
+  const sum = heads.map(h => { const x = b.find(y => y.code === h.code) || {}; return [h.name, n2(x.credit), n2(x.debit), n2(-Number(x.closing || 0))]; });
   const bal = await rpc("party_balances");
-  let run = Number(me.opening);
-  const out = [["Date", "Voucher", "Narration", "Ref", "Deducted (Cr)", "Deposited (Dr)", "Balance to deposit"], ["", "", "Opening", "", "", "", n2(-run)],
-    ...rows.map(r => { run += Number(r.debit) - Number(r.credit); return [r.vdate, r.vno, r.narration, r.ref || "", Number(r.credit) ? n2(r.credit) : "", Number(r.debit) ? n2(r.debit) : "", n2(-run)]; })];
   const pw = [["Party", "PAN", "TDS deducted this FY"], ...bal.filter(p => Number(p.tds_fy) > 0).map(p => [p.name, p.pan || "NO PAN", n2(p.tds_fy)])];
-  AC.dl = { tds: out, tdsp: pw };
-  $("#acBody").innerHTML = `<div class="box"><h3>TDS ledger <span>• to deposit: ${inr2(-Number(me.closing))}</span>
+  const recv = b.find(x => x.code === "1150");
+  AC.dl = { tds: out, tdsp: pw, tdss: [["TDS head", "Deducted", "Deposited", "To deposit"], ...sum] };
+  $("#acBody").innerHTML = `<div class="box"><h3>TDS heads <span>• ${AC.from} to ${AC.to}</span> <button class="edit" onclick="csvDl('tds-summary-${AC.from}_to_${AC.to}.csv',AC.dl.tdss)">⬇ Excel</button></h3>
+      <table><thead><tr><th>TDS HEAD</th><th style="text-align:right">DEDUCTED</th><th style="text-align:right">DEPOSITED</th><th style="text-align:right">TO DEPOSIT</th></tr></thead><tbody>${sum.map(r => `<tr><td>${esc(r[0])}</td><td style="text-align:right">${inr2(r[1])}</td><td style="text-align:right">${inr2(r[2])}</td><td style="text-align:right"><b>${inr2(r[3])}</b></td></tr>`).join("")}</tbody></table>
+      ${recv ? `<div class="sub" style="margin-top:8px">TDS receivable (deducted by your customers, claim in your return): <b>${inr2(recv.closing)}</b></div>` : ""}</div>
+    <div class="box"><h3>TDS ledger <select class="in" style="width:auto;display:inline-block" onchange="AC.tdsAcc=this.value;acTds()"><option value="all">All TDS heads</option>${heads.map(h => `<option value="${h.code}" ${AC.tdsAcc === h.code ? "selected" : ""}>${esc(h.name)}</option>`).join("")}</select>
       <button class="edit" onclick="csvDl('tds-ledger-${AC.from}_to_${AC.to}.csv',AC.dl.tds)">⬇ Excel</button></h3>
     <table><thead><tr>${out[0].map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${out.slice(1).map(r => `<tr>${r.map(v => `<td>${/^-?\d+\.\d\d$/.test(v) ? inr2(v) : esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     <div class="box"><h3>TDS by party <span>• for Form 26Q / 16A</span> <button class="edit" onclick="csvDl('tds-party-wise-${today()}.csv',AC.dl.tdsp)">⬇ Excel</button></h3>
       ${pw.slice(1).map(r => `<div class="req"><b>${esc(r[0])}<br><span>PAN ${esc(r[1])}</span></b><b style="flex:0">${inr2(r[2])}</b></div>`).join("") || '<div class="sub">No TDS deducted this year.</div>'}</div>
-    <div class="box" style="max-width:520px"><h3>TDS deposited (challan 281)</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ta" value="${n2(Math.max(-Number(me.closing), 0))}"></div><div><label>DATE</label><input class="in" type="date" id="td" value="${today()}"></div></div>
+    <div class="box" style="max-width:560px"><h3>TDS deposited (challan 281)</h3>
+      <label>TDS HEAD</label><select class="in" id="tth">${heads.map(h => `<option value="${h.code}">${esc(h.name)}</option>`).join("")}</select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ta"></div><div><label>CHALLAN DATE</label><input class="in" type="date" id="td" value="${today()}"></div></div>
       <label>PAID FROM</label><select class="in" id="tf">${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select>
       <label>CHALLAN NO / BSR / CIN</label><input class="in" id="tr"><div class="msg" id="tm"></div><button class="btn pink full" id="tsv" style="margin-top:12px">Record TDS deposit</button></div>`;
+  const fill = () => { const r = sum.find(x => x[0] === (heads.find(h => h.code === $("#tth").value) || {}).name); $("#ta").value = r ? Math.max(0, +r[3]).toFixed(2) : ""; };
+  $("#tth").onchange = fill; fill();
   $("#tsv").onclick = async () => {
     const a = Number($("#ta").value || 0); if (!a) return $("#tm").textContent = "Enter the amount";
-    try { await rpc("admin_money", { p_kind: "PAYMENT", p_date: $("#td").value, p_amount: a, p_mode: $("#tf").value, p_against: "2100", p_party: null, p_ref: $("#tr").value.trim() || null, p_narr: "TDS deposited (challan 281)" }); accounts(); }
+    try { await rpc("admin_money", { p_kind: "PAYMENT", p_date: $("#td").value, p_amount: a, p_mode: $("#tf").value, p_against: $("#tth").value, p_party: null, p_ref: $("#tr").value.trim() || null, p_narr: "TDS deposited (challan 281)" }); accounts(); }
     catch (e) { $("#tm").textContent = e.message; }
   };
 }
@@ -326,9 +340,10 @@ function acInvPaid(id) {
   const i = AC.own.find(x => x.id === id) || {};
   el.innerHTML = `<h2><span>Payment for ${esc(i.inv_no)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">${esc(i.bill_to)} · ${inr2(i.total)}</div>
     <label>RECEIVED IN</label><select class="in" id="pf"><option value="1000">Bank (UPI / transfer)</option><option value="1010">Cash</option></select>
-    <label>UTR NO</label><input class="in" id="pu"><label>UTR DATE</label><input class="in" type="date" id="pd" value="${today()}"><div class="msg" id="pmm"></div>
+    <label>UTR NO</label><input class="in" id="pu"><label>UTR DATE</label><input class="in" type="date" id="pd" value="${today()}">
+    <label>TDS DEDUCTED BY CUSTOMER ₹ (if any)</label><input class="in" id="ptd" inputmode="decimal" placeholder="0"><div class="msg" id="pmm"></div>
     <button class="btn pink full" id="psv" style="margin-top:12px">Mark paid</button>`;
-  $("#psv").onclick = async () => { try { await rpc("admin_invoice_paid", { p_id: id, p_from: $("#pf").value, p_utr: $("#pu").value.trim() || null, p_date: $("#pd").value }); closeForm(); accounts(); } catch (e) { $("#pmm").textContent = e.message; } };
+  $("#psv").onclick = async () => { try { await rpc("admin_invoice_paid", { p_id: id, p_from: $("#pf").value, p_utr: $("#pu").value.trim() || null, p_date: $("#pd").value, p_tds: +$("#ptd").value || 0 }); closeForm(); accounts(); } catch (e) { $("#pmm").textContent = e.message; } };
 }
 // printable invoice (Print → Save as PDF)
 async function acInvPrint(kind, id) {
