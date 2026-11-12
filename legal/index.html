@@ -4,37 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gali Bazaar — Privacy Policy, Terms & Account Deletion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css?v=1794490136">
 <style>
-  :root { --ink:#1c1c1c; --muted:#5b6670; --purple:#4B1C7A; --line:#ececec; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:#fafafa; line-height:1.6; }
-  header { background: linear-gradient(135deg,#FFD447,#FFB443 55%,#FF8F3C); padding: 36px 20px 28px; }
-  header .in, main { max-width: 820px; margin: 0 auto; }
-  h1 { margin:0; font-size: 34px; } h1 span { color: var(--purple); }
-  header p { margin: 6px 0 0; color:#4a3d10; }
-  nav { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
-  nav a { background:#fff; color:var(--purple); text-decoration:none; padding:7px 14px; border-radius:999px; font-weight:600; font-size:14px; }
-  main { padding: 10px 20px 60px; }
-  section { background:#fff; border:1px solid var(--line); border-radius:18px; padding: 8px 24px 20px; margin-top: 22px; }
-  h2 { font-size: 24px; margin: 18px 0 4px; color: var(--purple); }
-  h3 { font-size: 17px; margin: 22px 0 4px; }
-  .muted { color: var(--muted); font-size: 14px; }
-  ul { padding-left: 22px; } li { margin: 4px 0; }
-  .box { background:#f6f0fb; border-radius:12px; padding:12px 16px; }
-  .hi { background:#fff8e6; border-radius:12px; padding:12px 16px; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  td, th { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
-  th { background: #faf7fd; }
-  footer { text-align:center; color: var(--muted); font-size: 13px; margin-top: 30px; }
+  .lg main{max-width:860px;margin:0 auto;padding:6px 24px 70px}
+  .lg h1{font-size:40px;letter-spacing:-1.4px;margin:18px 0 6px;line-height:1.1}
+  .lg .lead2{color:var(--muted);margin:0 0 18px}
+  .lg .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .lg .tabs a{background:#fff;border:1px solid #EEE5EA;color:var(--ink);text-decoration:none;padding:8px 14px;border-radius:999px;font-weight:500;font-size:14px}
+  .lg .tabs a:hover{border-color:var(--violet);color:var(--violet)}
+  .lg section{background:#fff;border:1px solid #F0E8EE;border-radius:22px;padding:8px 26px 22px;margin-top:22px;line-height:1.65;font-size:15px;color:#2E2742}
+  .lg h2{font-size:24px;margin:20px 0 4px;letter-spacing:-.4px}
+  .lg h3{font-size:16.5px;margin:22px 0 4px}
+  .lg .muted{color:var(--muted);font-size:13.5px}
+  .lg ul,.lg ol{padding-left:22px}.lg li{margin:4px 0}
+  .lg .box{background:#F5F0FF;border-radius:14px;padding:12px 16px}
+  .lg .hi{background:#FFF6E3;border-radius:14px;padding:12px 16px}
+  .lg table{border-collapse:collapse;width:100%;font-size:14px}
+  .lg td,.lg th{border:1px solid #EEE7F3;padding:8px;text-align:left;vertical-align:top}
+  .lg th{background:#FAF7FD}
+  .lg a{color:var(--violet)}
+  .lg footer{text-align:center;color:var(--muted);font-size:13px;margin-top:30px;padding:0}
+  @media (max-width:640px){.lg h1{font-size:30px}.lg section{padding:6px 18px 18px}.lg table{font-size:12.5px}}
 </style>
 </head>
-<body>
-<header><div class="in">
-  <h1>गली <span>Bazaar</span></h1>
-  <p>Mohalle ki dukaan, ab aapke phone par</p>
-  <nav><a href="/">Home</a><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#delete-account">Delete account</a><a href="#contact">Contact</a></nav>
-</div></header>
+<body class="lg">
+<div class="page">
+<nav><div class="wrap">
+  <a class="logo" href="/"><span class="g">गली</span> Bazaar<span class="dot">.</span></a>
+  <div class="links"><a href="/">Home</a><a href="/#shops">For shops</a><a href="/pay/">Pricing</a><a href="/#help">Help</a></div>
+</div></nav>
 <main>
+  <h1>Policies</h1>
+  <p class="lead2">Your neighbourhood shops, now on your phone.</p>
+  <div class="tabs"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#delete-account">Delete account</a><a href="#contact">Contact</a></div>
+
 
 <section id="privacy">
   <h2>Privacy Policy</h2>
@@ -42,7 +48,7 @@
 
   <p>Gali Bazaar (“we”, “us”) is a platform that connects customers with local grocery, food-corner, sweets, fruits &amp; vegetables and stationery shops in their neighbourhood. This policy explains what personal data we collect, why, who we share it with, and the choices you have. We process personal data in line with India’s Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000 and rules made under them.</p>
 
-  <div class="hi"><b>Short version (हिंदी में):</b> हम सिर्फ़ वही जानकारी लेते हैं जो ऑर्डर पहुँचाने, दुकान/डिलीवरी वालों की KYC और हिसाब-किताब के लिए ज़रूरी है। हम आपका डेटा बेचते नहीं हैं। ग्राहक का मोबाइल नंबर दुकान को नहीं दिखाया जाता। आप कभी भी अपना अकाउंट डिलीट करवा सकते हैं।</div>
+  <div class="hi"><b>Short version:</b> We collect only what is needed to deliver orders, verify shops and delivery staff (KYC) and keep accounts. We never sell your data. A customer's mobile number is never shown to the shop. You can ask us to delete your account at any time.</div>
 
   <h3>1. Data we collect</h3>
   <table>
@@ -97,8 +103,7 @@
   <h2>Terms of Use</h2>
   <p class="muted">Last updated: 11 November 2026</p>
 
-  <div class="box"><b>Disclaimer:</b> This app is only a platform that connects buyers and sellers. We are not responsible for any transaction, payment scam, or product quality. Users deal at their own responsibility.<br>
-  यह ऐप सिर्फ एक प्लेटफॉर्म है जो खरीदारों और विक्रेताओं को जोड़ता है। हम किसी भी लेन-देन, पेमेंट स्कैम या प्रोडक्ट की क्वालिटी के लिए ज़िम्मेदार नहीं हैं। यूज़र्स अपनी ज़िम्मेदारी पर डील करें।</div>
+  <div class="box"><b>Disclaimer:</b> This app is only a platform that connects buyers and sellers. We are not responsible for any transaction, payment scam, or product quality. Users deal at their own responsibility.</div>
 
   <h3>1. The service</h3>
   <p>Gali Bazaar lets customers browse local shops, place orders for a delivery slot set by the shop, and pay the shop in cash on delivery. The shop — not Gali Bazaar — sells the goods, sets prices, delivers through its own staff, issues the bill and is responsible for the goods. We do not hold stock, collect order payments or deliver orders.</p>
@@ -126,7 +131,7 @@
 
   <h3>5. Seller plan and paid placement</h3>
   <ul>
-    <li>A free trial (currently 7 days) starts when your KYC is approved. After that the shop stays listed only with an active plan (currently ₹99 for 1 month; 3, 6 and 12-month plans at a discount). Current prices are shown in the app.</li>
+    <li>A free trial (currently 14 days) starts when your KYC is approved. After that the shop stays listed only with an active plan (currently ₹99 for 1 month; 3, 6 and 12-month plans at a discount). Current prices are shown on galibazaar.site.</li>
     <li>Payment is made outside the app through the link we send; your plan activates after we verify the payment reference. Fees once activated are non-refundable, except where required by law or if we fail to provide the service.</li>
     <li>“Sponsored / Top shop” placement is optional and paid separately. It changes the position of your shop only and is always labelled “Sponsored”.</li>
     <li>We may change prices with prior notice in the app; changes apply from your next payment.</li>
@@ -170,5 +175,6 @@
 
 <footer>© 2026 Gali Bazaar</footer>
 </main>
+</div>
 </body>
 </html>
