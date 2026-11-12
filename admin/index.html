@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin console · Gali Bazaar</title><meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Poppins,system-ui,sans-serif;background:#F5F1FB;color:#1D0F30;font-size:14px}
+button,input{font:inherit}a{color:inherit}
+.app{display:flex;min-height:100vh}
+.side{width:236px;background:#1D0F30;color:#CFC6E3;padding:22px 16px;flex-shrink:0;position:sticky;top:0;height:100vh}
+.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#1D0F30}
+.logo .g{color:#6D28D9}.logo .d{color:#EC4899}
+.side small{display:block;letter-spacing:1.5px;font-size:10.5px;margin:10px 0 26px 6px;color:#8E84A8}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-decoration:none;margin-bottom:4px;cursor:pointer}
+.nav a:hover{background:#2A1A44}.nav a.on{background:linear-gradient(90deg,#A855F7,#EC4899);color:#fff;font-weight:600}
+.main{flex:1;padding:30px 30px 60px;min-width:0}
+h1{font-size:26px;margin:0}.sub{color:#6B6380;font-size:13px;margin-top:4px}
+.top{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px}.top .sp{flex:1}
+.btn{border:0;border-radius:14px;padding:11px 18px;font-weight:600;cursor:pointer}
+.pink{background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff}.dark{background:#1D0F30;color:#fff;padding:7px 14px;border-radius:10px;font-size:12.5px}
+.ghost{background:#fff;border:1px solid #E6DEF2}
+.card{background:#fff;border-radius:22px;padding:8px 18px;margin-bottom:18px;box-shadow:0 1px 2px rgba(29,15,48,.04)}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;letter-spacing:.6px;color:#8E84A8;font-weight:600;padding:14px 8px;border-bottom:1px solid #F0EAF7}
+td{padding:12px 8px;border-bottom:1px solid #F5F1FA;vertical-align:middle}tr:last-child td{border-bottom:0}
+tr.drag{opacity:.4}.hand{cursor:grab;color:#C4BAD6;user-select:none}
+.ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center}.ic img{width:26px;height:26px}
+.tag{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px}.t-none{background:#E6F8EE;color:#15803D}.t-draft{background:#F0EEF4;color:#6B6380}
+.tog{width:42px;height:24px;border-radius:20px;background:#DDD6E8;position:relative;cursor:pointer;border:0;flex-shrink:0}
+.tog::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.15s}
+.tog.on{background:#16A34A}.tog.on::after{left:21px}
+.edit{color:#7C3AED;font-weight:600;cursor:pointer;background:none;border:0}
+.req{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #F5F1FA}.req:last-child{border:0}.req b{flex:1}.req span{color:#8E84A8;font-size:12px}
+.panel{position:fixed;right:20px;top:20px;bottom:20px;width:380px;background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(29,15,48,.18);padding:22px;overflow:auto;display:none;z-index:5}
+.panel.open{display:block}.panel h2{margin:0 0 16px;font-size:20px;display:flex}.panel h2 span{flex:1}.x{background:none;border:0;font-size:22px;cursor:pointer;color:#8E84A8}
+label{display:block;font-size:11px;letter-spacing:.6px;font-weight:600;color:#6B6380;margin:14px 0 6px}
+.in{width:100%;border:1px solid #E6DEF2;border-radius:12px;padding:11px 13px}.in:focus{outline:none;border-color:#8B5CF6}
+.icons{display:flex;flex-wrap:wrap;gap:8px}.icons button{width:44px;height:44px;border-radius:12px;border:1.5px solid #EEE7F6;background:#FAF7FD;cursor:pointer;padding:0}
+.icons button img{width:28px;height:28px}.icons button.on{border:2px solid #F08A1A;background:#FFF3E2}
+.sw{display:flex;gap:8px;flex-wrap:wrap}.sw button{width:30px;height:30px;border-radius:9px;border:1.5px solid #E6DEF2;cursor:pointer}.sw button.on{outline:2px solid #1D0F30;outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid #E6DEF2;border-radius:20px;padding:5px 11px;font-size:12.5px;cursor:pointer}.chip.add{border:1.5px dashed #EF287B;color:#EF287B}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #F5F1FA;margin-top:12px}.row div{flex:1}.row b{display:block;font-size:13.5px}.row span{font-size:11.5px;color:#8E84A8}
+.note{background:#F3EDFF;color:#6D28D9;border-radius:12px;padding:10px 12px;font-size:12px;margin:14px 0}
+.full{width:100%;padding:14px}
+.msg{margin:8px 0;font-size:12.5px}.err{color:#DC2626}.ok{color:#16A34A}
+.login{max-width:380px;margin:12vh auto;background:#fff;border-radius:24px;padding:30px;box-shadow:0 20px 60px rgba(29,15,48,.1)}
+.login h1{font-size:22px;margin:18px 0 6px}
+.soon{background:#fff;border-radius:22px;padding:40px;text-align:center;color:#6B6380}
+body.po .main{padding-right:430px}
+@media(max-width:900px){body.po .main{padding-right:18px}}
+@media(max-width:900px){.side{display:none}.main{padding:18px}.panel{left:10px;right:10px;width:auto}}
+</style></head><body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
+const db = supabase.createClient(SB, KEY);
+const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
+const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["blocked","Blocked items"],["settings","Settings"]];
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
+const LOGO = '<span class="logo"><span class="g">गली</span> Bazaar<span class="d">.</span></span>';
+let page = (location.hash || "#categories").slice(1), cats = [], counts = {}, reqs = [], form = null;
+
+async function start() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return loginView();
+  const { data: me } = await db.from("profiles").select("role,name,email").eq("id", session.user.id).single();
+  if (!me || me.role !== "admin") {
+    $("#root").innerHTML = `<div class="login">${LOGO}<h1>Not an admin account</h1><p class="sub">${esc(session.user.email)} is not set as admin.</p>
+      <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
+    return;
+  }
+  shell(); go(page);
+}
+
+function loginView() {
+  let sent = false;
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">Sign in with the admin email. We send a code.</p>
+    <label>EMAIL</label><input class="in" id="em" type="email" placeholder="admin email">
+    <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
+    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button></div>`;
+  $("#lb").onclick = async () => {
+    const email = $("#em").value.trim().toLowerCase(), m = $("#lm");
+    m.textContent = ""; $("#lb").disabled = true;
+    if (!sent) {
+      const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+      if (error) { m.className = "msg err"; m.textContent = error.message; }
+      else { sent = true; $("#cw").style.display = "block"; $("#lb").textContent = "Verify & sign in"; m.className = "msg ok"; m.textContent = "Code sent. Check Inbox / Spam."; }
+    } else {
+      const { error } = await db.auth.verifyOtp({ email, token: $("#cd").value.trim(), type: "email" });
+      if (error) { m.className = "msg err"; m.textContent = "Wrong or expired code."; } else return start();
+    }
+    $("#lb").disabled = false;
+  };
+}
+
+function shell() {
+  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>ADMIN CONSOLE</small><nav class="nav">
+    ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
+    <a onclick="db.auth.signOut().then(()=>location.reload())" style="margin-top:20px">Sign out</a></nav></aside>
+    <main class="main" id="main"></main></div><div class="panel" id="panel"></div>`;
+  window.onhashchange = () => go(location.hash.slice(1));
+}
+
+function go(k) {
+  page = k || "categories";
+  document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
+  if (page === "categories") return loadCats();
+  const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
+  $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
+    <div class="soon"><b>Coming to the web console soon.</b><br>Until then, use the Admin panel inside the Gali Bazaar app (same admin email).</div>`;
+}
+
+// ---------------- Categories ----------------
+async function loadCats() {
+  $("#main").innerHTML = `<div class="sub">Loading…</div>`;
+  const [c, n, r] = await Promise.all([
+    db.from("categories").select("*").order("sort"),
+    db.rpc("admin_category_counts"),
+    db.rpc("admin_category_requests"),
+  ]);
+  if (c.error) { $("#main").innerHTML = `<div class="soon err">Couldn't load categories: ${esc(c.error.message)}<br>Run update-19-categories.sql in Supabase first.</div>`; return; }
+  cats = c.data || []; counts = {}; (n.data || []).forEach(x => counts[x.key] = x.shops); reqs = r.data || [];
+  renderCats();
+}
+
+function renderCats() {
+  $("#main").innerHTML = `<div class="top"><div><h1>Shop categories</h1><div class="sub">Shown in the customer app, seller sign-up and website — changes go live instantly, no app update</div></div>
+    <div class="sp"></div><button class="btn pink" onclick="openForm()">＋ Add category</button></div>
+    <div class="card"><table><thead><tr><th></th><th>ICON</th><th>NAME</th><th>HINDI</th><th>SHOPS</th><th>VISIBLE</th><th></th></tr></thead><tbody id="tb">
+    ${cats.map(c => `<tr draggable="true" data-k="${c.key}"><td class="hand">⋮⋮</td>
+      <td><div class="ic" style="background:${esc(c.color)}"><img src="${esc(iconSrc(c.icon))}" alt=""></div></td>
+      <td><b>${esc(c.name)}</b>${!c.visible ? '<span class="tag t-draft">Draft</span>' : (counts[c.key] || 0) === 0 ? '<span class="tag t-none">No shops yet</span>' : ""}</td>
+      <td>${esc(c.name_hi || "")}</td><td><b>${counts[c.key] ?? 0}</b></td>
+      <td><button class="tog ${c.visible ? "on" : ""}" onclick="flag('${c.key}', ${!c.visible})" aria-label="Show to customers"></button></td>
+      <td><button class="edit" onclick="openForm('${c.key}')">Edit</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="card" style="padding:16px 18px"><b>Requested by shops</b> <span class="sub">· from "Request new" in sign-up</span>
+      ${reqs.length ? reqs.map(r => `<div class="req"><b>${esc(r.name)}</b><span>${r.asked} shop${r.asked == 1 ? "" : "s"} asked</span>
+        <button class="btn dark" onclick='openForm(null, ${JSON.stringify(r.name).replace(/'/g, "&#39;")})'>Create</button></div>`).join("")
+        : `<div class="sub" style="padding:12px 0">No requests yet.</div>`}</div>`;
+  dragSort();
+}
+
+function dragSort() {
+  let from = null;
+  document.querySelectorAll("#tb tr").forEach(tr => {
+    tr.ondragstart = () => { from = tr; tr.classList.add("drag"); };
+    tr.ondragend = () => tr.classList.remove("drag");
+    tr.ondragover = e => { e.preventDefault(); if (from && from !== tr) { const r = tr.getBoundingClientRect(); tr.parentNode.insertBefore(from, e.clientY > r.top + r.height / 2 ? tr.nextSibling : tr); } };
+    tr.ondrop = async () => {
+      const keys = [...document.querySelectorAll("#tb tr")].map(x => x.dataset.k);
+      const { error } = await db.rpc("admin_reorder_categories", { p_keys: keys });
+      if (error) alert(error.message); else loadCats();
+    };
+  });
+}
+
+async function flag(key, visible) {
+  const { error } = await db.rpc("admin_category_flag", { p_key: key, p_visible: visible, p_signup: null });
+  if (error) alert(error.message); else loadCats();
+}
+
+const slug = s => s.toLowerCase().normalize("NFKD").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^([0-9])/, "c$1").slice(0, 30) || "category";
+
+function openForm(key, name) {
+  const c = cats.find(x => x.key === key);
+  form = c ? { ...c, subs: [...(c.subs || [])], isNew: false }
+    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, isNew: true };
+  renderForm();
+}
+
+function renderForm() {
+  const f = form, p = $("#panel");
+  p.classList.add("open"); document.body.classList.add("po");
+  p.innerHTML = `<h2><span>${f.isNew ? "New category" : "Edit category"}</span><button class="x" onclick="closeForm()">×</button></h2>
+    <label>NAME (ENGLISH)</label><input class="in" id="f-name" value="${esc(f.name)}" placeholder="e.g. Bakery">
+    <label>NAME (हिंदी)</label><input class="in" id="f-hi" value="${esc(f.name_hi)}" placeholder="e.g. बेकरी">
+    <label>SHORT LINE (WEBSITE CARD)</label><input class="in" id="f-line" value="${esc(f.short_line)}" placeholder="e.g. Bread, cakes, cookies & rusk">
+    <label>ICON</label><div class="icons">${ICONS.map(i => `<button class="${f.icon === i ? "on" : ""}" onclick="setF('icon','${i}')" title="${i}"><img src="${iconSrc(i)}" alt=""></button>`).join("")}
+      <button title="Upload your own" onclick="$('#up').click()" class="${/^https?:/.test(f.icon) ? "on" : ""}">${/^https?:/.test(f.icon) ? `<img src="${esc(f.icon)}">` : "⇪"}</button>
+      <input type="file" id="up" accept="image/png,image/webp,image/jpeg" style="display:none" onchange="upload(this)"></div>
+    <label>CARD COLOUR</label><div class="sw">${COLORS.map(c => `<button style="background:${c}" class="${f.color === c ? "on" : ""}" onclick="setF('color','${c}')"></button>`).join("")}
+      <input class="in" style="width:110px;padding:6px 10px" value="${esc(f.color)}" onchange="setF('color', this.value)"></div>
+    <label>SUB-CATEGORIES</label><div class="chips">${f.subs.map((s, i) => `<span class="chip" title="Remove" onclick="form.subs.splice(${i},1);keepTyped();renderForm()">${esc(s)} ×</span>`).join("")}
+      <span class="chip add" onclick="addSub()">＋ Add</span></div>
+    <div class="row"><div><b>Show to customers</b><span>Off = draft</span></div><button class="tog ${f.visible ? "on" : ""}" onclick="setF('visible', ${!f.visible})"></button></div>
+    <div class="row" style="margin-top:0"><div><b>Allow shop sign-ups</b><span>Shops can pick this type</span></div><button class="tog ${f.allow_signup ? "on" : ""}" onclick="setF('allow_signup', ${!f.allow_signup})"></button></div>
+    <div class="note"><b>Cards are made automatically</b> from name + icon + colour — app home, Categories, seller sign-up &amp; website.</div>
+    <div class="msg" id="fm"></div>
+    <button class="btn pink full" onclick="saveForm()">Save category</button>`;
+}
+function keepTyped() { if (!$("#f-name")) return; form.name = $("#f-name").value; form.name_hi = $("#f-hi").value; form.short_line = $("#f-line").value; }
+function setF(k, v) { keepTyped(); form[k] = v; renderForm(); }
+function addSub() { const s = prompt("Sub-category name (e.g. Cakes)"); if (s && s.trim()) { keepTyped(); form.subs.push(s.trim()); renderForm(); } }
+function closeForm() { $("#panel").classList.remove("open"); document.body.classList.remove("po"); form = null; }
+
+async function upload(inp) {
+  const file = inp.files[0]; if (!file) return;
+  if (file.size > 400 * 1024) return alert("Please use an image under 400 KB (square PNG/WebP works best).");
+  keepTyped();
+  const { data: { user } } = await db.auth.getUser();
+  const path = `${user.id}/categories/${Date.now()}.${(file.name.split(".").pop() || "png").toLowerCase()}`;
+  const { error } = await db.storage.from("public").upload(path, file, { upsert: true, contentType: file.type });
+  if (error) return alert(error.message);
+  form.icon = `${SB}/storage/v1/object/public/public/${path}`; renderForm();
+}
+
+async function saveForm() {
+  keepTyped();
+  const f = form, m = $("#fm");
+  if (!f.name.trim()) { m.className = "msg err"; m.textContent = "Name is required"; return; }
+  const key = f.isNew ? slug(f.name) : f.key;
+  if (f.isNew && cats.some(c => c.key === key)) { m.className = "msg err"; m.textContent = `"${key}" already exists — edit that one instead.`; return; }
+  const { error } = await db.rpc("admin_save_category", { p: { key, name: f.name.trim(), name_hi: f.name_hi, short_line: f.short_line, icon: f.icon,
+    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup } });
+  if (error) { m.className = "msg err"; m.textContent = error.message; return; }
+  closeForm(); loadCats();
+}
+
+start();
+</script>
+</body></html>
