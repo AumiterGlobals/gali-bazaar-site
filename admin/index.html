@@ -249,12 +249,30 @@ async function featured() {
 }
 async function sales() {
   const [sp, comm, shops] = await Promise.all([q("sales_people", "*"), q("commissions", "sales,amount,status"), q("shops", "id,referred_by")]);
-  $("#main").innerHTML = head("Sales team", "Commission on every plan payment of shops from their code") + `<div class="box"><table><thead><tr><th>NAME</th><th>CODE</th><th>SHOPS</th><th>EARNED</th><th>PENDING</th><th>UPI</th><th></th></tr></thead><tbody>${sp.map(p => {
+  $("#main").innerHTML = head("Sales team", "Commission on every plan payment of shops from their code") + `<div class="box"><table><thead><tr><th>NAME</th><th>USERNAME</th><th>CODE</th><th>SHOPS</th><th>EARNED</th><th>PENDING</th><th>UPI</th><th></th></tr></thead><tbody>${sp.map(p => {
     const mine = comm.filter(c => c.sales === p.id);
-    return `<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc(p.email || "")}</span></td><td>${esc(p.code)} · ${p.commission_pct}%</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
+    return `<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc(p.email || "")}</span></td>
+      <td>${p.username ? `<b>${esc(p.username)}</b>` : `<span class="pill grey">Not set yet</span>`}<br><button class="mini" style="margin:4px 0 0" onclick='spLogin(${JSON.stringify({ id: p.id, name: p.name, username: p.username || "", signed: !!p.profile }).replace(/'/g, "&#39;")})'>Change login</button></td>
+      <td>${esc(p.code)} · ${p.commission_pct}%</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
       <td>${inr(mine.reduce((a, c) => a + Number(c.amount), 0))}</td><td><b style="color:#6D28D9">${inr(mine.filter(c => c.status === "DUE").reduce((a, c) => a + Number(c.amount), 0))}</b></td><td>${esc(p.upi || "—")}</td>
       <td>${p.active === false ? `<span class="pill grey">Removed</span><button class="mini" onclick="spSet('${p.id}',true)">Restore</button>` : `<button class="mini" style="color:#BE185D" onclick="spSet('${p.id}',false)">Remove</button>`}</td></tr>`; }).join("")}</tbody></table>
-    <div class="sub" style="margin-top:10px">Add people and send payouts (with TDS) from the Admin panel in the app.</div></div>`;
+    <div class="sub" style="margin-top:10px">Sales panel for them: <b>galibazaar.site/sales</b> (also linked in the website footer as “Sales team login”). First time they sign in with the email you added here, then create a username + password. Add people and send payouts (with TDS) from the Admin panel in the app.</div></div>`;
+}
+function spLogin(p) {
+  const el = $("#panel"); el.classList.add("open"); document.body.classList.add("po");
+  el.innerHTML = `<h2><span>Login · ${esc(p.name)}</span><button class="x" onclick="closeForm()" aria-label="Close">×</button></h2>
+    ${p.signed ? "" : `<div class="note">${esc(p.name)} hasn't signed in even once. They must first open galibazaar.site/sales and sign in with the email code — then you can set a password here.</div>`}
+    <label>USERNAME</label><input class="in" id="lu" value="${esc(p.username)}" placeholder="e.g. rahul.sales" autocomplete="off">
+    <label>NEW PASSWORD <span style="font-weight:400">(leave empty to keep the old one)</span></label><input class="in" id="lp" type="text" placeholder="min 8 characters" autocomplete="off">
+    <div class="note">Tell the new username / password to ${esc(p.name)} directly. Passwords are stored encrypted — nobody can see the old one, you can only set a new one.</div>
+    <div class="msg" id="lmsg"></div>
+    <button class="btn pink full" onclick="spLoginSave('${p.id}')">Save login</button>`;
+}
+async function spLoginSave(id) {
+  const m = $("#lmsg");
+  const { error } = await db.rpc("admin_sales_set_login", { p_sales: id, p_username: $("#lu").value.trim(), p_password: $("#lp").value });
+  if (error) { m.className = "msg err"; m.textContent = /function/.test(error.message) ? "Run update-25-sales-web-login.sql in Supabase first." : error.message; return; }
+  closeForm(); go(page);
 }
 async function spSet(id, on) {
   if (!on && !confirm("Remove this sales person? Their code stops working for new shops. Commission already earned stays and can still be paid out.")) return;

@@ -96,28 +96,74 @@ async function start() {
       <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
     return;
   }
+  if (sp.username === null || sp.username === undefined) {
+    if (!("username" in sp)) { $("#root").innerHTML = `<div class="login">${LOGO}<h1>Almost ready</h1><p class="sub">The sales login isn't switched on yet. Ask your admin to run update-25 in Supabase.</p></div>`; return; }
+    return setupView();
+  }
   me = sp; shell(); await load(); go(page);
 }
 
-function loginView() {
+function loginView(mode = "pass") {
+  if (mode === "pass") {
+    $("#root").innerHTML = `<div class="login">${LOGO}<h1>Sales panel</h1><div class="sub">Sign in with your username and password.</div>
+      <label>USERNAME</label><input class="in" id="un" autocomplete="username" autocapitalize="none">
+      <label>PASSWORD</label><input class="in" id="pw" type="password" autocomplete="current-password">
+      <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Sign in</button>
+      <p class="sub" style="margin-top:16px">First time here? <a href="#" id="first" style="color:#7C3AED;font-weight:600">Sign in with your email code</a></p>
+      <p class="sub">Forgot your username or password? Ask your Gali Bazaar admin to reset it.</p></div>`;
+    $("#first").onclick = e => { e.preventDefault(); loginView("email"); };
+    const go1 = async () => {
+      const m = $("#lm"), un = $("#un").value.trim(), pw = $("#pw").value;
+      if (!un || !pw) { m.className = "msg err"; m.textContent = "Enter username and password"; return; }
+      $("#lb").disabled = true; m.textContent = "";
+      const { data: email, error } = await db.rpc("sales_login_email", { p_username: un, p_password: pw });
+      if (error || !email) { m.className = "msg err"; m.textContent = error && /function/.test(error.message) ? "Sales login isn't set up yet. Ask admin." : "Wrong username or password."; $("#lb").disabled = false; return; }
+      const r = await db.auth.signInWithPassword({ email, password: pw });
+      if (r.error) { m.className = "msg err"; m.textContent = "Wrong username or password."; $("#lb").disabled = false; return; }
+      start();
+    };
+    $("#lb").onclick = go1; $("#pw").onkeydown = e => { if (e.key === "Enter") go1(); };
+    return;
+  }
   let sent = false;
-  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Sales panel</h1><div class="sub">Sign in with the email your admin added. We email you a code.</div>
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>First sign in</h1><div class="sub">Enter the email your admin added to the sales team. We email you a code.</div>
     <label>EMAIL</label><input class="in" id="em" type="email" autocomplete="email" placeholder="you@gmail.com">
     <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
-    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button></div>`;
+    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button>
+    <p class="sub" style="margin-top:16px"><a href="#" id="back" style="color:#7C3AED;font-weight:600">← Sign in with username & password</a></p></div>`;
+  $("#back").onclick = e => { e.preventDefault(); loginView("pass"); };
   $("#lb").onclick = async () => {
     const email = $("#em").value.trim().toLowerCase(), m = $("#lm");
     if (!email) { m.className = "msg err"; m.textContent = "Enter your email"; return; }
     m.textContent = ""; $("#lb").disabled = true;
     if (!sent) {
+      const ok = await db.rpc("sales_email_ok", { p_email: email });
+      if (ok.error || ok.data !== true) { m.className = "msg err"; m.textContent = "This email is not on the Gali Bazaar sales team. Ask your admin to add it."; $("#lb").disabled = false; return; }
       const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
       if (error) { m.className = "msg err"; m.textContent = error.message; }
-      else { sent = true; $("#em").disabled = true; $("#cw").style.display = "block"; $("#lb").textContent = "Verify & sign in"; m.className = "msg ok"; m.textContent = "Code sent. Check Inbox / Spam."; }
+      else { sent = true; $("#em").disabled = true; $("#cw").style.display = "block"; $("#lb").textContent = "Verify"; m.className = "msg ok"; m.textContent = "Code sent. Check Inbox / Spam."; }
     } else {
       const { error } = await db.auth.verifyOtp({ email, token: $("#cd").value.trim(), type: "email" });
       if (error) { m.className = "msg err"; m.textContent = "Wrong or expired code."; } else return start();
     }
     $("#lb").disabled = false;
+  };
+}
+
+function setupView() {
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Create your login</h1><div class="sub">Next time you sign in with this username and password — no email code needed.</div>
+    <label>USERNAME</label><input class="in" id="un" autocapitalize="none" autocomplete="username" placeholder="e.g. rahul.sales">
+    <div class="sub" style="font-size:11.5px">4–20 letters, numbers, dot or underscore</div>
+    <label>PASSWORD</label><input class="in" id="pw" type="password" autocomplete="new-password" placeholder="min 8 characters">
+    <label>CONFIRM PASSWORD</label><input class="in" id="pw2" type="password" autocomplete="new-password">
+    <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Save & continue</button></div>`;
+  $("#lb").onclick = async () => {
+    const m = $("#lm"), un = $("#un").value.trim(), pw = $("#pw").value;
+    if (pw !== $("#pw2").value) { m.className = "msg err"; m.textContent = "Passwords don't match"; return; }
+    $("#lb").disabled = true;
+    const { error } = await db.rpc("sales_set_login", { p_username: un, p_password: pw });
+    if (error) { m.className = "msg err"; m.textContent = error.message; $("#lb").disabled = false; return; }
+    start();
   };
 }
 
@@ -155,7 +201,6 @@ const status = s => {
   if (live) return `<span class="pill grey">Free trial</span>`;
   return `<span class="pill bad">Inactive</span>`;
 };
-const shareText = () => `Grow your shop with Gali Bazaar — 0% commission, customers from your own gali.\nDownload: https://galibazaar.site\nOpen the app → tap “Register your shop” → enter my code in Referral code: ${me.code}`;
 
 function overview() {
   const earned = D.com.reduce((a, c) => a + Number(c.amount || 0), 0);
@@ -164,9 +209,8 @@ function overview() {
   $("#main").innerHTML = head(`Hello, ${esc(me.name.split(" ")[0])} 👋`, me.active ? "Your referral code, shops and commission" : "<b style='color:#BE185D'>Your sales account is inactive — no new commission. Contact admin.</b>") +
     `<div class="box"><div class="sub">Your referral code · ${me.commission_pct}% of every plan payment</div><div class="code">${esc(me.code)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn pink" onclick="share()">Share with a shop</button>
-        <button class="btn ghost" onclick="copy('${esc(me.code)}')">Copy code</button>
-        <a class="btn ghost" style="text-decoration:none" target="_blank" href="https://wa.me/?text=${encodeURIComponent(shareText().replace(/\\n/g, "\n"))}">Send on WhatsApp</a></div>
+        <button class="btn ghost" onclick="copy('${esc(me.code)}')">Copy code</button></div>
+      <div class="sub" style="margin-top:8px">Help the shop download the app from galibazaar.site, tap “Register your shop” and enter this code in “Referral code”.</div>
       <div class="msg" id="sm"></div></div>
     <div class="kpis k4">
       <div class="kpi"><span>Shops joined</span><b>${D.shops.length}</b><small>${paidShops} paying</small></div>
@@ -212,17 +256,13 @@ function profile() {
   $("#main").innerHTML = head("Profile", "Your sales account details") + `<div class="box">
     <div class="row" style="border:0;margin:0"><div><b>Name</b><span>${esc(me.name)}</span></div></div>
     <div class="row"><div><b>Phone</b><span>${esc(me.phone)}</span></div></div>
+    <div class="row"><div><b>Username</b><span>${esc(me.username || "")}</span></div></div>
     <div class="row"><div><b>Email</b><span>${esc(me.email || "")}</span></div></div>
     <div class="row"><div><b>UPI for payouts</b><span>${esc(me.upi || "Not added")}</span></div></div>
     <div class="row"><div><b>PAN</b><span>${D.tds?.pan_masked ? esc(D.tds.pan_masked) : "Not added"}</span></div></div>
     <div class="row"><div><b>Referral code</b><span>${esc(me.code)} · ${me.commission_pct}% commission</span></div><span class="pill ${me.active ? "ok" : "bad"}">${me.active ? "Active" : "Inactive"}</span></div>
-    <div class="note">To change your UPI, phone or PAN, ask the Gali Bazaar admin. The same account works in the app (sign in with Google using this email).</div>
+    <div class="note">To change your UPI, phone, PAN, username or password, ask the Gali Bazaar admin. The same email also works in the app (sign in with Google).</div>
     <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
-}
-async function share() {
-  const t = shareText().replace(/\\n/g, "\n");
-  if (navigator.share) { try { await navigator.share({ text: t }); return; } catch (e) {} }
-  copy(t);
 }
 function copy(t) { navigator.clipboard?.writeText(t).then(() => { const m = $("#sm"); if (m) { m.className = "msg ok"; m.textContent = "Copied"; } }); }
 
