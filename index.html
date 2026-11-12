@@ -104,23 +104,7 @@
       <div><b class="s-v">3</b><span>shop categories</span></div>
       <div><b class="s-p">Cash</b><span>pay at your door</span></div>
     </div>
-    <div id="joined" style="display:none;margin-top:18px;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid #F0E6D6;border-radius:18px;padding:12px 18px;width:fit-content;box-shadow:0 8px 24px rgba(29,15,48,.06)">
-      <span style="width:9px;height:9px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 4px #DCFCE7"></span>
-      <span><b id="jc" style="font-size:22px;color:#6D28D9">0</b> <span style="color:#6B6380">customers</span></span>
-      <span style="color:#D9CFE8">•</span>
-      <span><b id="js" style="font-size:22px;color:#EF287B">0</b> <span style="color:#6B6380">shops live</span></span>
-      <span style="color:#6B6380;font-size:13px">have joined Gali Bazaar</span>
-    </div>
-    <script>
-    // live counter — stays hidden until counting is switched on (after test data is cleared)
-    fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/rpc/public_counts", { method: "POST", headers: { apikey: "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1", "Content-Type": "application/json" }, body: "{}" })
-      .then(r => r.ok ? r.json() : null).then(d => {
-        if (!d || d.customers == null) return;
-        const box = document.getElementById("joined"); box.style.display = "flex";
-        const up = (el, n) => { const t0 = performance.now(); const f = t => { const k = Math.min(1, (t - t0) / 1200); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))).toLocaleString("en-IN"); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
-        up(document.getElementById("jc"), d.customers); up(document.getElementById("js"), d.sellers);
-      }).catch(() => {});
-    </script>
+
   </div>
   <div class="stage"><div class="ph p1"><div class="sc">
 <div class="hm-top"><div class="sb"><span>9:41</span><span class="r"><svg class="mi"><use href="#m-sig"/></svg><svg class="mi"><use href="#m-wifi"/></svg><svg class="mi" style="width:20px"><use href="#m-bat"/></svg>82%</span></div><div class="cam"></div>
@@ -190,6 +174,99 @@
 <div class="pay2"><span>Pay in cash</span><b>₹325</b></div></div><div class="bar"></div></div></div></div>
 </div></section>
 
+<section id="live-counter" style="padding-top:10px;display:none"><div class="wrap">
+<div class="gbc">
+  <div class="gbc-grid"></div>
+  <div class="gbc-glow g1"></div><div class="gbc-glow g2"></div>
+  <div class="gbc-head">
+    <span class="gbc-live"><i></i>LIVE</span>
+    <h2>The <b>gali</b> is growing.</h2>
+    <p>Real people. Real shops. Counted the moment they join.</p>
+  </div>
+  <div class="gbc-cards">
+    <div class="gbc-card c1">
+      <div class="gbc-label"><span class="ic">🧺</span> Customers joined</div>
+      <div class="gbc-odo" data-target="customers"></div>
+      <div class="gbc-foot"><span class="up">▲ <b id="gbc-ct">+0</b> today</span><span class="bar"><s id="gbc-cb" style="width:6%"></s></span></div>
+    </div>
+    <div class="gbc-card c2">
+      <div class="gbc-label"><span class="ic">🏪</span> Shops selling</div>
+      <div class="gbc-odo" data-target="shops"></div>
+      <div class="gbc-foot"><span class="up">▲ <b id="gbc-st">+0</b> this week</span><span class="bar"><s id="gbc-sb" style="width:6%"></s></span></div>
+    </div>
+  </div>
+  <div class="gbc-ticker" id="gbc-ticker" style="display:none"><span class="dot"></span><div class="gbc-tk" id="gbc-tk"></div></div>
+</div></div></section>
+<style>
+.gbc{--pu:#6A1BB0;--pk:#F0287A;--y:#FFC21A;position:relative;overflow:hidden;border-radius:36px;padding:64px 64px 30px;background:radial-gradient(1200px 500px at 50% -10%,#3a1366 0%,#1B1030 55%,#120a1f 100%);color:#fff;font-family:Poppins,system-ui,sans-serif}
+.gbc-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%)}
+.gbc-glow{position:absolute;width:520px;height:520px;border-radius:50%;filter:blur(90px);opacity:.45}
+.gbc-glow.g1{background:var(--pu);left:-120px;top:120px}.gbc-glow.g2{background:var(--pk);right:-140px;top:60px;opacity:.35}
+.gbc-head{position:relative;text-align:center}
+.gbc-live{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:2px;color:#3BE39A;background:rgba(59,227,154,.1);border:1px solid rgba(59,227,154,.3);padding:6px 14px;border-radius:30px}
+.gbc-live i{width:8px;height:8px;border-radius:50%;background:#3BE39A;box-shadow:0 0 0 0 rgba(59,227,154,.7);animation:gbcp 1.6s infinite}
+@keyframes gbcp{70%{box-shadow:0 0 0 12px rgba(59,227,154,0)}100%{box-shadow:0 0 0 0 rgba(59,227,154,0)}}
+.gbc-head h2{font-size:54px;font-weight:800;letter-spacing:-2px;margin:16px 0 6px}
+.gbc-head h2 b{background:linear-gradient(90deg,var(--y),#FF8A00,var(--pk));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gbc-head p{color:#c9bde0;font-size:17px;margin:0}
+.gbc-cards{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:40px}
+.gbc-card{position:relative;border-radius:30px;padding:28px 30px;background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);overflow:hidden}
+.gbc-card:before{content:"";position:absolute;inset:-1px;border-radius:30px;padding:1.5px;background:conic-gradient(from var(--a,0deg),transparent 0 70%,var(--c) 85%,transparent 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:gbcr 5s linear infinite}
+.c1{--c:#B983FF}.c2{--c:#FF6FA8}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes gbcr{to{--a:360deg}}
+.gbc-label{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:#d8ccec}
+.gbc-label .ic{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:20px}
+.gbc-odo{display:flex;gap:8px;margin:18px 0 16px;height:104px}
+.gbc-odo .d{position:relative;width:72px;height:104px;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#2a1c45 0%,#1e1334 50%,#170e29 50.5%,#22163a 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 14px 30px rgba(0,0,0,.35)}
+.gbc-odo .d:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.55)}
+.gbc-odo .d .s{position:absolute;left:0;right:0;top:0;transition:transform 2.2s cubic-bezier(.2,.9,.1,1)}
+.gbc-odo .d .s span{display:block;height:104px;line-height:104px;text-align:center;font-size:62px;font-weight:800;letter-spacing:-1px}
+.c1 .gbc-odo .d .s span{background:linear-gradient(180deg,#fff 30%,#CDB3FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.c2 .gbc-odo .d .s span{background:linear-gradient(180deg,#fff 30%,#FFB3D0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gbc-odo .sep{width:14px;display:flex;align-items:flex-end;padding-bottom:16px;font-size:44px;font-weight:800;color:rgba(255,255,255,.35)}
+.gbc-foot{display:flex;align-items:center;gap:14px;font-size:13.5px;color:#c9bde0}
+.gbc-foot .up{color:#3BE39A;font-weight:600}.gbc-foot .up b{color:#3BE39A}
+.gbc-foot .bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.gbc-foot .bar s{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--c),var(--y))}
+.gbc-ticker{position:relative;display:flex;align-items:center;gap:12px;margin-top:26px;padding:12px 18px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);overflow:hidden;font-size:14px;color:#d8ccec}
+.gbc-ticker .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--y);box-shadow:0 0 12px var(--y)}
+.gbc-tk{display:flex;gap:48px;white-space:nowrap;animation:gbct 26s linear infinite}
+@keyframes gbct{to{transform:translateX(-50%)}}
+@media(max-width:720px){.gbc{padding:40px 18px 20px;border-radius:28px}.gbc-head h2{font-size:34px;letter-spacing:-1px}.gbc-head p{font-size:14px}.gbc-cards{grid-template-columns:1fr;gap:14px;margin-top:26px}.gbc-card{padding:20px}
+.gbc-odo{gap:5px;height:68px;margin:14px 0 12px}.gbc-odo .d{width:46px;height:68px;border-radius:12px}.gbc-odo .d .s span{height:68px;line-height:68px;font-size:40px}.gbc-odo .sep{width:8px;font-size:30px;padding-bottom:10px}}
+</style>
+<script>
+// Real counts from the database (public_counts). Stays hidden until counting is switched on after test data is cleared.
+(function(){
+  function render(el, value){
+    const s = Number(value || 0).toLocaleString('en-IN'); el.innerHTML = '';
+    [...s].forEach(ch => {
+      if (ch === ',') { const sp=document.createElement('div'); sp.className='sep'; sp.textContent=','; el.appendChild(sp); return; }
+      const d=document.createElement('div'); d.className='d';
+      const st=document.createElement('div'); st.className='s';
+      for (let r=0;r<2;r++) for (let k=0;k<10;k++){ const sp=document.createElement('span'); sp.textContent=k; st.appendChild(sp); }
+      d.appendChild(st); el.appendChild(d);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ const h=d.clientHeight; st.style.transform=`translateY(${-(10+ +ch)*h}px)`; }));
+    });
+  }
+  const KIND = { grocery:["🛒","kirana store"], fruitveg:["🍎","fruits & veg shop"], sweets:["🍬","sweet shop"], food:["🍢","food corner"], stationery:["✏️","stationery shop"] };
+  fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/rpc/public_counts", { method:"POST", headers:{ apikey:"sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1", "Content-Type":"application/json" }, body:"{}" })
+    .then(r => r.ok ? r.json() : null).then(d => {
+      if (!d || d.customers == null) return;
+      document.getElementById("live-counter").style.display = "";
+      const sec = document.querySelector(".gbc");
+      sec.querySelectorAll(".gbc-odo").forEach(o => render(o, o.dataset.target === "customers" ? d.customers : d.shops));
+      document.getElementById("gbc-ct").textContent = "+" + Number(d.customers_today || 0).toLocaleString("en-IN");
+      document.getElementById("gbc-st").textContent = "+" + Number(d.shops_week || 0).toLocaleString("en-IN");
+      const pct = (a, b) => Math.max(6, Math.min(100, b ? Math.round(a / b * 100) : 6)) + "%";
+      document.getElementById("gbc-cb").style.width = pct(d.customers_today, d.customers);
+      document.getElementById("gbc-sb").style.width = pct(d.shops_week, d.shops);
+      const rec = (d.recent || []).map(x => { const k = KIND[x.type] || ["🏪", "shop"]; return `<span>${k[0]} A ${k[1]}${x.city ? " in " + String(x.city).replace(/[<>&]/g, "") : ""} just joined</span>`; });
+      if (rec.length) { const list = rec.concat(rec).join(""); document.getElementById("gbc-tk").innerHTML = list; document.getElementById("gbc-ticker").style.display = ""; }
+    }).catch(() => {});
+})();
+</script>
 <section id="trust" style="padding-top:10px"><div class="wrap">
   <div class="cats-h"><span class="tag" style="background:#DDF6E8;color:#0F7A4A">Why people trust Gali Bazaar</span>
   <h2 style="margin-bottom:8px">Safe, simple and local</h2><p class="tsub">Built so you never have to worry about who you’re ordering from</p></div>
