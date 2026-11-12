@@ -333,7 +333,7 @@ function drawCat() {
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
   const fei = i => { const p = photos(i); return ["F", "E", "I"].map((l, k) => `<span class="pill ${p[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
-    <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(photos(i)[0])}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
+    <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
     <td class="hm">${i.mrp ? `<s style="color:#8E84A8">${inr(i.mrp)}</s>` : "—"}</td><td><b>${(i.variants || []).length ? i.variants.map(v => `${esc(v.n)} ${inr(v.p)}`).join("<br>") : inr(i.price)}</b></td>
     <td style="white-space:nowrap">${fei(i)}</td><td><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button></td>
@@ -346,18 +346,29 @@ async function stock(id, on) {
   if (error) { i.in_stock = !on; drawCat(); toast(niceErr(error)); }
 }
 // ---- item photos: resize to 900px WebP and upload to the same storage as the app ----
-async function toWebp(file, max = 900) {
-  const img = await new Promise((ok, bad) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = u; });
-  const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
-  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-  return await new Promise(ok => c.toBlob(ok, "image/webp", .85));
+// Same look, small file: WebP; lower quality step by step (not below .45), then shrink a little, until ≤ maxKb.
+async function loadImg(file) { return await new Promise((ok, bad) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = u; }); }
+async function squeeze(img, max, maxKb, q = .74) {
+  let s = Math.min(1, max / Math.max(img.width, img.height)), blob;
+  const c = document.createElement("canvas");
+  for (let i = 0; i < 12; i++) {
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, c.width, c.height);
+    blob = await new Promise(ok => c.toBlob(ok, "image/webp", q));
+    if (blob.size <= maxKb * 1024) break;
+    if (q > .46) q -= .07; else { s *= .85; q = .6; }
+  }
+  return blob;
 }
 async function uploadPhoto(file, k) {
-  const blob = await toWebp(file), path = `${me.id}/items/${Date.now()}_${k}_${Math.random().toString(36).slice(2, 6)}.webp`;
-  const { error } = await db.storage.from("public").upload(path, blob, { upsert: true, contentType: "image/webp" });
+  const img = await loadImg(file), name = `${me.id}/items/${Date.now()}_${k}_${Math.random().toString(36).slice(2, 6)}`;
+  const [big, th] = await Promise.all([squeeze(img, 900, 75), squeeze(img, 320, 22, .65)]);
+  await db.storage.from("public").upload(name + "_t.webp", th, { upsert: true, contentType: "image/webp" }).catch(() => {});
+  const { error } = await db.storage.from("public").upload(name + ".webp", big, { upsert: true, contentType: "image/webp" });
   if (error) throw error;
-  return db.storage.from("public").getPublicUrl(path).data.publicUrl;
+  return db.storage.from("public").getPublicUrl(name + ".webp").data.publicUrl;
 }
+const thumbUrl = u => u && /\/items\/.*\.webp$/.test(u) && !/_t\.webp$/.test(u) ? u.replace(/\.webp$/, "_t.webp") : u;
 let F_ = null;   // item form state
 function editItem(id) {
   const i = id ? D.items.find(x => x.id === id) : null;
