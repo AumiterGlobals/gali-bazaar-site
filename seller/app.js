@@ -390,13 +390,19 @@ function editItem(id) {
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
     <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
       <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
-      ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
-        <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 1101">` : ""}
+      ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28, 40].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
+        <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 11010000">` : ""}
       <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${v.p}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
     <div class="msg" id="fe"></div>
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
     ${i ? `<button class="btn ghost full" style="margin-top:8px;color:#BE185D" onclick="delItem('${i.id}')">Delete item</button>` : ""}`);
   drawPhotos(); paintPol();
+  // HSN + GST % fill in by themselves from the item name (GST shops); seller can still change them
+  if (S.gst_billing && $("#fh") && typeof hsnSuggest === "function") {
+    let auto = !(i && i.hsn);
+    $("#fh").addEventListener("input", () => auto = false); $("#fgst").addEventListener("change", () => auto = false);
+    $("#fn").addEventListener("input", () => { if (!auto) return; const h = hsnSuggest($("#fn").value); if (h) { $("#fh").value = h.hsn; $("#fgst").value = String(h.rate); } });
+  }
   $$("#pol .fchip").forEach(b => b.onclick = () => { F_.pol = +b.dataset.k; paintPol(); });
   $("#fs").onclick = () => { F_.stock = !F_.stock; $("#fs").classList.toggle("on", F_.stock); };
   ["#fm", "#fp"].forEach(s => $(s).oninput = offLine); offLine();

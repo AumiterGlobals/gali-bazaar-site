@@ -74,7 +74,7 @@ const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fIm
 const db = supabase.createClient(SB, KEY);
 const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -133,7 +133,7 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals };
+  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts };
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
@@ -504,4 +504,5 @@ async function saveForm() {
 
 start();
 </script>
+<script src="/admin/books.js?v=1"></script>
 </body></html>
