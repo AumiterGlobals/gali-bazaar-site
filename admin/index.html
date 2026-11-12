@@ -46,7 +46,26 @@ label{display:block;font-size:11px;letter-spacing:.6px;font-weight:600;color:#6B
 .soon{background:#fff;border-radius:22px;padding:40px;text-align:center;color:#6B6380}
 body.po .main{padding-right:430px}
 @media(max-width:900px){body.po .main{padding-right:18px}}
-@media(max-width:900px){.side{display:none}.main{padding:18px}.panel{left:10px;right:10px;width:auto}}
+.mtop{display:none}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}.kpi{background:#fff;border-radius:20px;padding:16px 18px}
+.kpi span{font-size:12.5px;color:#6B6380}.kpi b{display:block;font-size:26px;margin:6px 0 2px}.kpi small{font-size:11.5px;font-weight:600}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.box{background:#fff;border-radius:22px;padding:16px 18px;margin-bottom:16px;overflow-x:auto}.box h3{margin:0 0 10px;font-size:16px}.box h3 span{color:#8E84A8;font-weight:400;font-size:12px}
+.pill{font-size:11px;font-weight:600;padding:3px 8px;border-radius:7px;white-space:nowrap}.ok{background:#E6F8EE;color:#15803D}.warn{background:#FFF1DC;color:#B45309}.bad{background:#FFE4EC;color:#BE185D}.grey{background:#F0EEF4;color:#6B6380}
+.mini{border:1px solid #E6DEF2;background:#fff;border-radius:9px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-left:4px}.mini.dk{background:#1D0F30;color:#fff;border-color:#1D0F30}
+.search{border:1px solid #E6DEF2;border-radius:12px;padding:9px 12px;width:260px;max-width:100%}
+.docs a{display:inline-block;margin-right:8px;color:#7C3AED;font-size:12px;font-weight:600;cursor:pointer}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:900px){
+ .app{display:block}.side{position:fixed;left:0;top:0;bottom:0;height:auto;z-index:20;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.3)}
+ .side.open{transform:none}.scrim{display:none;position:fixed;inset:0;background:rgba(29,15,48,.4);z-index:15}.scrim.open{display:block}
+ .mtop{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;background:#1D0F30;padding:12px 14px}
+ .mtop button{background:none;border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:2px 6px}.mtop .logo{font-size:17px;padding:6px 11px}
+ .mtop small{color:#CFC6E3;margin-left:auto;font-size:12px}
+ .main{padding:16px 12px 60px}.top{flex-wrap:wrap}.top .sp{display:none}.top .btn{width:100%}h1{font-size:22px}
+ .card{padding:4px 10px}th.hi,td.hi,th.hand,td.hand{display:none}td,th{padding:10px 4px}td b{font-size:13.5px}.tag{display:inline-block;margin:4px 0 0}
+ .panel{left:8px;right:8px;top:8px;bottom:8px;width:auto}
+}
 </style></head><body>
 <div id="root"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -60,7 +79,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
 const LOGO = '<span class="logo"><span class="g">गली</span> Bazaar<span class="d">.</span></span>';
-let page = (location.hash || "#categories").slice(1), cats = [], counts = {}, reqs = [], form = null;
+let page = (location.hash || "#dashboard").slice(1), cats = [], counts = {}, reqs = [], form = null;
 
 async function start() {
   const { data: { session } } = await db.auth.getSession();
@@ -99,17 +118,148 @@ function shell() {
   $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>ADMIN CONSOLE</small><nav class="nav">
     ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
     <a onclick="db.auth.signOut().then(()=>location.reload())" style="margin-top:20px">Sign out</a></nav></aside>
-    <main class="main" id="main"></main></div><div class="panel" id="panel"></div>`;
+    <main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
+  document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button onclick="menu(true)" aria-label="Menu">☰</button>${LOGO}<small>Admin console</small></div>`);
   window.onhashchange = () => go(location.hash.slice(1));
 }
 
+function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").classList.toggle("open", open); }
 function go(k) {
-  page = k || "categories";
+  page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
+  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints };
+  if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
     <div class="soon"><b>Coming to the web console soon.</b><br>Until then, use the Admin panel inside the Gali Bazaar app (same admin email).</div>`;
+}
+
+
+// ---------------- shared ----------------
+const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const today = () => new Date().toISOString().slice(0, 10);
+const live = s => s.kyc === "APPROVED" && s.sub_until && s.sub_until >= today() && !s.quality_hold;
+const score = s => { const c = s.kyc_report?.checks; if (!c?.length) return null; return Math.round(100 * c.filter(x => x.ok).length / c.length); };
+async function q(t, sel, mod) { let x = db.from(t).select(sel || "*"); if (mod) x = mod(x); const { data, error } = await x; if (error) throw error; return data || []; }
+function head(title, sub, right = "") { return `<div class="top"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div><div class="sp"></div>${right}</div>`; }
+
+// ---------------- Dashboard ----------------
+async function dash() {
+  const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10), m0 = today().slice(0, 8) + "01";
+  const [shops, claims, orders, comm, sp] = await Promise.all([
+    q("shops", "id,name,owner,type,kyc,kyc_report,sub_until,quality_hold,created_at,pan_name,referred_by"),
+    q("pay_claims", "*", x => x.order("created_at", { ascending: false }).limit(300)),
+    q("orders", "id", x => x.gte("created_at", today())),
+    q("commissions", "sales,amount"),
+    q("sales_people", "id,name,code,commission_pct"),
+  ]);
+  const paidShops = new Set(claims.filter(c => c.status === "APPROVED" && (c.purpose || "PLAN") === "PLAN").map(c => c.shop));
+  const act = shops.filter(live), trial = act.filter(s => !paidShops.has(s.id)), inact = shops.filter(s => s.kyc === "APPROVED" && !live(s));
+  const month = claims.filter(c => c.status === "APPROVED" && c.paid_on >= m0).reduce((a, c) => a + Number(c.amount), 0);
+  const days = [...Array(7)].map((_, i) => new Date(Date.now() - (6 - i) * 864e5).toISOString().slice(0, 10));
+  const rev = days.map(d => claims.filter(c => c.status === "APPROVED" && c.paid_on === d).reduce((a, c) => a + Number(c.amount), 0));
+  const kq = shops.filter(s => s.kyc === "PENDING");
+  const h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const max = Math.max(1, ...rev), pts = rev.map((v, i) => `${10 + i * 80},${150 - v / max * 130}`).join(" ");
+  const bySales = sp.map(p => ({ ...p, amt: comm.filter(c => c.sales === p.id).reduce((a, c) => a + Number(c.amount), 0), n: shops.filter(s => s.referred_by === p.id).length }));
+  $("#main").innerHTML = head(`${hi}, Admin`, new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }) + " • All India") + `
+  <div class="kpis">
+    <div class="kpi"><span>Active shops</span><b>${act.length}</b><small style="color:#16A34A">${shops.filter(s => s.created_at >= since).length} joined this week</small></div>
+    <div class="kpi"><span>On free trial</span><b>${trial.length}</b><small style="color:#B45309">${trial.filter(s => s.sub_until <= new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)).length} end this week</small></div>
+    <div class="kpi"><span>Inactive</span><b>${inact.length}</b><small style="color:#BE185D">plan / trial ended</small></div>
+    <div class="kpi"><span>Revenue this month</span><b>${inr(month)}</b><small style="color:#6B6380">approved payments</small></div>
+    <div class="kpi"><span>Orders today</span><b>${orders.length}</b><small style="color:#6B6380">all shops</small></div></div>
+  <div class="grid2"><div class="box"><h3>KYC queue <span>• auto-checker</span> <a href="#kyc" style="float:right;color:#EF287B;font-size:13px">View all ${kq.length}</a></h3>${kycTable(kq.slice(0, 5))}</div>
+    <div class="box"><h3>Revenue (₹, last 7 days)</h3><svg viewBox="0 0 500 160" style="width:100%;height:170px"><polyline fill="none" stroke="#8B5CF6" stroke-width="3" points="${pts}"/>
+      ${rev.map((v, i) => `<circle cx="${10 + i * 80}" cy="${150 - v / max * 130}" r="4" fill="#EF287B"/>`).join("")}</svg>
+      <div class="sub" style="display:flex;justify-content:space-between">${days.map(d => `<span>${d.slice(8)}</span>`).join("")}</div></div></div>
+  <div class="grid3">
+    <div class="box"><h3>Payments <span>• latest</span></h3>${claimTable(claims.filter(c => (c.purpose || "PLAN") === "PLAN").slice(0, 5), shops, false)}</div>
+    <div class="box"><h3>Featured requests <span>• Be #1 boost</span></h3>${claimTable(claims.filter(c => c.purpose === "FEATURED" && c.status === "PENDING").slice(0, 5), shops, true) || '<div class="sub">No requests.</div>'}</div>
+    <div class="box"><h3>Sales team <span>• lifetime commission</span></h3>${bySales.map(p => `<div class="req"><b>${esc(p.name)}<br><span class="sub">${p.n} sellers onboarded</span></b><b style="flex:0;color:#16A34A">${inr(p.amt)}</b></div>`).join("") || '<div class="sub">No sales people yet.</div>'}</div></div>`;
+}
+
+function kycTable(list) {
+  if (!list.length) return '<div class="sub">Nothing waiting. 🎉</div>';
+  return `<table><thead><tr><th>SHOP</th><th>OWNER (PAN NAME)</th><th>TYPE</th><th>AUTO SCORE</th><th>STATUS</th><th></th></tr></thead><tbody>${list.map(s => {
+    const sc = score(s), cls = sc == null ? "grey" : sc >= 90 ? "ok" : "warn";
+    return `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.pan_name || "")}</td><td>${esc(s.type)}</td><td><b style="color:${sc >= 90 ? "#16A34A" : "#B45309"}">${sc == null ? "—" : sc + "%"}</b></td>
+      <td><span class="pill ${cls}">${sc == null ? "Checking" : sc >= 90 ? "Looks good" : "Review"}</span></td>
+      <td style="white-space:nowrap"><button class="mini" onclick="docs('${s.id}')">Docs</button><button class="mini dk" onclick="kycSet('${s.id}','APPROVED')">Approve</button><button class="mini" onclick="kycSet('${s.id}','REJECTED')">Reject</button></td></tr>`;
+  }).join("")}</tbody></table>`;
+}
+async function kycSet(id, st) {
+  const reason = st === "REJECTED" ? prompt("Reason (the shop sees this)") : null;
+  if (st === "REJECTED" && !reason) return;
+  const { error } = await db.from("shops").update({ kyc: st, kyc_reason: reason }).eq("id", id);
+  if (error) alert(error.message); else go(page);
+}
+async function docs(id) {
+  const [s] = await q("shops", "name,kyc_files,pan_number,aadhaar_last4,kyc_report", x => x.eq("id", id));
+  const links = await Promise.all(Object.entries(s.kyc_files || {}).map(async ([k, path]) => {
+    const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`;
+  }));
+  const checks = (s.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
+  const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
+  p.innerHTML = `<h2><span>${esc(s.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(s.pan_number || "—")} · Aadhaar XXXX ${esc(s.aadhaar_last4 || "")}</div>
+    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div>
+    <div style="margin-top:16px"><button class="btn pink" onclick="kycSet('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="kycSet('${id}','REJECTED');closeForm()">Reject</button></div>`;
+}
+function claimTable(list, shops, featured) {
+  if (!list.length) return "";
+  const nm = id => esc(shops.find(s => s.id === id)?.name || "Shop");
+  return `<table><thead><tr><th>SHOP</th><th>${featured ? "DAYS" : "PLAN"}</th><th>AMOUNT</th><th>STATUS</th>${featured || list.some(c => c.status === "PENDING") ? "<th></th>" : ""}</tr></thead><tbody>${list.map(c => `<tr>
+    <td>${nm(c.shop)}<br><span class="sub">UTR ${esc(c.utr)}</span></td><td>${featured ? (c.days || "") + " days" : c.months + " month" + (c.months > 1 ? "s" : "")}</td><td><b>${inr(c.amount)}</b></td>
+    <td><span class="pill ${c.status === "APPROVED" ? "ok" : c.status === "PENDING" ? "warn" : "bad"}">${c.status === "APPROVED" ? "Paid" : c.status === "PENDING" ? "Check" : "Rejected"}</span></td>
+    ${c.status === "PENDING" ? `<td style="white-space:nowrap"><button class="mini dk" onclick="claimOk('${c.id}')">Approve</button><button class="mini" onclick="claimNo('${c.id}')">Decline</button></td>` : (featured ? "<td></td>" : "")}</tr>`).join("")}</tbody></table>`;
+}
+async function claimOk(id) { const { error } = await db.rpc("approve_claim", { p_claim: id }); if (error) alert(error.message); else go(page); }
+async function claimNo(id) { const r = prompt("Reason (the shop sees this)"); if (!r) return; const { error } = await db.from("pay_claims").update({ status: "REJECTED", reason: r }).eq("id", id); if (error) alert(error.message); else go(page); }
+
+// ---------------- Sellers ----------------
+async function sellers() {
+  const shops = await q("shops", "id,name,type,city,locality,phone,kyc,sub_until,quality_hold,created_at", x => x.order("created_at", { ascending: false }));
+  const draw = f => {
+    const t = (f || "").toLowerCase(), list = shops.filter(s => !t || (s.name + " " + s.city + " " + s.locality + " " + s.phone).toLowerCase().includes(t));
+    $("#tb2").innerHTML = list.map(s => `<tr><td><b>${esc(s.name)}</b><br><span class="sub">${esc(s.type)}</span></td><td>${esc(s.locality)}, ${esc(s.city)}</td><td>${esc(s.phone)}</td>
+      <td><span class="pill ${live(s) ? "ok" : s.kyc !== "APPROVED" ? "warn" : "bad"}">${live(s) ? "Live till " + s.sub_until : s.kyc !== "APPROVED" ? "KYC " + s.kyc.toLowerCase() : "Inactive"}</span></td><td>${(s.created_at || "").slice(0, 10)}</td></tr>`).join("");
+  };
+  $("#main").innerHTML = head("Sellers", `${shops.length} shops · ${shops.filter(live).length} live`, `<input class="search" placeholder="Search name, city, phone" oninput="window._sd(this.value)">`) +
+    `<div class="box"><table><thead><tr><th>SHOP</th><th>AREA</th><th>PHONE</th><th>STATUS</th><th>JOINED</th></tr></thead><tbody id="tb2"></tbody></table></div>`;
+  window._sd = draw; draw("");
+}
+async function kyc() {
+  const [shops, riders] = await Promise.all([q("shops", "*", x => x.eq("kyc", "PENDING")), q("riders", "id,name,phone,kyc,shop", x => x.eq("kyc", "PENDING"))]);
+  $("#main").innerHTML = head("KYC queue", `${shops.length} shops · ${riders.length} delivery partners waiting`) + `<div class="box"><h3>Shops</h3>${kycTable(shops)}</div>
+    <div class="box"><h3>Delivery partners</h3>${riders.length ? `<table><tbody>${riders.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td>
+      <td style="white-space:nowrap"><button class="mini dk" onclick="riderKyc('${r.id}','APPROVED')">Approve</button><button class="mini" onclick="riderKyc('${r.id}','REJECTED')">Reject</button></td></tr>`).join("")}</tbody></table>` : '<div class="sub">None.</div>'}</div>`;
+}
+async function riderKyc(id, st) { const reason = st === "REJECTED" ? prompt("Reason") : null; if (st === "REJECTED" && !reason) return;
+  const { error } = await db.from("riders").update({ kyc: st, kyc_reason: reason }).eq("id", id); if (error) alert(error.message); else go(page); }
+async function payments() {
+  const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "PLAN").order("created_at", { ascending: false }).limit(200)), q("shops", "id,name")]);
+  $("#main").innerHTML = head("Payments", `${claims.filter(c => c.status === "PENDING").length} waiting to be checked`) + `<div class="box">${claimTable(claims, shops, false) || '<div class="sub">No payments yet.</div>'}</div>`;
+}
+async function featured() {
+  const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "FEATURED").order("created_at", { ascending: false }).limit(100)), q("shops", "id,name,featured_until")]);
+  const on = shops.filter(s => s.featured_until && s.featured_until >= today());
+  $("#main").innerHTML = head("Featured shops", `${on.length} featured now`) + `<div class="box"><h3>Requests</h3>${claimTable(claims, shops, true) || '<div class="sub">No requests.</div>'}</div>
+    <div class="box"><h3>Featured now</h3>${on.map(s => `<div class="req"><b>${esc(s.name)}</b><span>till ${s.featured_until}</span></div>`).join("") || '<div class="sub">None.</div>'}</div>`;
+}
+async function sales() {
+  const [sp, comm, shops] = await Promise.all([q("sales_people", "*"), q("commissions", "sales,amount,status"), q("shops", "id,referred_by")]);
+  $("#main").innerHTML = head("Sales team", "Commission on every plan payment of shops from their code") + `<div class="box"><table><thead><tr><th>NAME</th><th>CODE</th><th>SHOPS</th><th>EARNED</th><th>PENDING</th><th>UPI</th></tr></thead><tbody>${sp.map(p => {
+    const mine = comm.filter(c => c.sales === p.id);
+    return `<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc(p.email || "")}</span></td><td>${esc(p.code)} · ${p.commission_pct}%</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
+      <td>${inr(mine.reduce((a, c) => a + Number(c.amount), 0))}</td><td><b style="color:#6D28D9">${inr(mine.filter(c => c.status === "DUE").reduce((a, c) => a + Number(c.amount), 0))}</b></td><td>${esc(p.upi || "—")}</td></tr>`; }).join("")}</tbody></table>
+    <div class="sub" style="margin-top:10px">Add people and send payouts (with TDS) from the Admin panel in the app.</div></div>`;
+}
+async function complaints() {
+  const [list, shops] = await Promise.all([q("complaints", "*", x => x.order("created_at", { ascending: false }).limit(100)), q("shops", "id,name")]);
+  $("#main").innerHTML = head("Complaints", `${list.filter(c => !c.reply).length} waiting for the shop's reply`) + `<div class="box"><table><thead><tr><th>DATE</th><th>SHOP</th><th>PROBLEM</th><th>STATUS</th></tr></thead><tbody>${list.map(c => `<tr>
+    <td>${(c.created_at || "").slice(0, 10)}</td><td>${esc(shops.find(s => s.id === c.shop)?.name || "")}</td><td>${esc(c.reason)}<br><span class="sub">${esc((c.items || []).join(", "))}</span></td>
+    <td><span class="pill ${c.reply ? "ok" : "warn"}">${c.reply ? "Replied" : "Open"}</span></td></tr>`).join("")}</tbody></table></div>`;
 }
 
 // ---------------- Categories ----------------
@@ -128,11 +278,11 @@ async function loadCats() {
 function renderCats() {
   $("#main").innerHTML = `<div class="top"><div><h1>Shop categories</h1><div class="sub">Shown in the customer app, seller sign-up and website — changes go live instantly, no app update</div></div>
     <div class="sp"></div><button class="btn pink" onclick="openForm()">＋ Add category</button></div>
-    <div class="card"><table><thead><tr><th></th><th>ICON</th><th>NAME</th><th>HINDI</th><th>SHOPS</th><th>VISIBLE</th><th></th></tr></thead><tbody id="tb">
+    <div class="card"><table><thead><tr><th class="hand"></th><th>ICON</th><th>NAME</th><th class="hi">HINDI</th><th>SHOPS</th><th>VISIBLE</th><th></th></tr></thead><tbody id="tb">
     ${cats.map(c => `<tr draggable="true" data-k="${c.key}"><td class="hand">⋮⋮</td>
       <td><div class="ic" style="background:${esc(c.color)}"><img src="${esc(iconSrc(c.icon))}" alt=""></div></td>
       <td><b>${esc(c.name)}</b>${!c.visible ? '<span class="tag t-draft">Draft</span>' : (counts[c.key] || 0) === 0 ? '<span class="tag t-none">No shops yet</span>' : ""}</td>
-      <td>${esc(c.name_hi || "")}</td><td><b>${counts[c.key] ?? 0}</b></td>
+      <td class="hi">${esc(c.name_hi || "")}</td><td><b>${counts[c.key] ?? 0}</b></td>
       <td><button class="tog ${c.visible ? "on" : ""}" onclick="flag('${c.key}', ${!c.visible})" aria-label="Show to customers"></button></td>
       <td><button class="edit" onclick="openForm('${c.key}')">Edit</button></td></tr>`).join("")}
     </tbody></table></div>
