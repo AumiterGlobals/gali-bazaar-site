@@ -232,10 +232,11 @@ async function sellers() {
   const draw = f => {
     const t = (f || "").toLowerCase(), list = shops.filter(s => !t || (s.name + " " + s.city + " " + s.locality + " " + s.phone).toLowerCase().includes(t));
     $("#tb2").innerHTML = list.map(s => `<tr><td><b>${esc(s.name)}</b><br><span class="sub">${esc(s.type)}</span></td><td>${esc(s.locality)}, ${esc(s.city)}</td><td>${esc(s.phone)}</td>
-      <td><span class="pill ${live(s) ? "ok" : s.kyc !== "APPROVED" ? "warn" : "bad"}">${live(s) ? "Live till " + s.sub_until : s.kyc !== "APPROVED" ? "KYC " + s.kyc.toLowerCase() : "Inactive"}</span></td><td>${(s.created_at || "").slice(0, 10)}</td></tr>`).join("");
+      <td><span class="pill ${live(s) ? "ok" : s.kyc !== "APPROVED" ? "warn" : "bad"}">${live(s) ? "Live till " + s.sub_until : s.kyc !== "APPROVED" ? "KYC " + s.kyc.toLowerCase() : "Inactive"}</span></td><td>${(s.created_at || "").slice(0, 10)}</td>
+      <td style="white-space:nowrap"><a class="edit" href="/pay/?shop=${s.id}" target="_blank">Payment page</a> <button class="edit" onclick="navigator.clipboard.writeText(location.origin+'/pay/?shop=${s.id}').then(()=>alert('Payment link copied'))">Copy link</button></td></tr>`).join("");
   };
   $("#main").innerHTML = head("Sellers", `${shops.length} shops · ${shops.filter(live).length} live`, `<input class="search" placeholder="Search name, city, phone" oninput="window._sd(this.value)">`) +
-    `<div class="box"><table><thead><tr><th>SHOP</th><th>AREA</th><th>PHONE</th><th>STATUS</th><th>JOINED</th></tr></thead><tbody id="tb2"></tbody></table></div>`;
+    `<div class="box"><table><thead><tr><th>SHOP</th><th>AREA</th><th>PHONE</th><th>STATUS</th><th>JOINED</th><th>PAYMENT</th></tr></thead><tbody id="tb2"></tbody></table></div>`;
   window._sd = draw; draw("");
 }
 async function kyc() {
@@ -521,5 +522,5 @@ async function saveForm() {
 
 start();
 </script>
-<script src="/admin/books.js?v=3"></script>
+<script src="/admin/books.js?v=4"></script>
 </body></html>

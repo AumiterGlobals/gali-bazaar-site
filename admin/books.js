@@ -16,13 +16,13 @@ async function accounts() {
   AC.from = AC.from || fy0(); AC.to = AC.to || today();
   AC.acc = await q("accounts", "*", x => x.eq("active", true).order("code"));
   AC.parties = await q("parties", "*", x => x.eq("active", true).order("name")).catch(() => []);
-  const tabs = [["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Receipt / payment"], ["gst", "GST paid"], ["tds", "TDS"], ["payout", "Sales payouts (TDS)"]];
+  const tabs = [["inv", "Sales invoices"], ["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Receipt / payment"], ["gst", "GST paid"], ["tds", "TDS"], ["payout", "Sales payouts (TDS)"]];
   $("#main").innerHTML = head("Accounts & books", "Double-entry books — plan payments, commission and payouts post by themselves",
     `<button class="btn pink" onclick="acPartyForm()">＋ New vendor</button> <button class="btn ghost" onclick="AC.tab='pay';accounts()">＋ Payment / receipt</button> <input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
     `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${tabs.map(([k, l]) => `<button class="btn ${AC.tab === k ? "pink" : "ghost"}" onclick="AC.tab='${k}';accounts()">${l}</button>`).join("")}</div><div id="acBody"><div class="sub">Loading…</div></div>`;
   $("#acF").onchange = e => { AC.from = e.target.value; accounts(); };
   $("#acT").onchange = e => { AC.to = e.target.value; accounts(); };
-  try { await ({ reports: acReports, day: acDay, ledger: acLedger, parties: acParties, bill: acBill, pay: acPay, gst: acGst, tds: acTds, payout: acPayout })[AC.tab](); }
+  try { await ({ inv: acInvoices, reports: acReports, day: acDay, ledger: acLedger, parties: acParties, bill: acBill, pay: acPay, gst: acGst, tds: acTds, payout: acPayout })[AC.tab](); }
   catch (e) { $("#acBody").innerHTML = `<div class="soon err">${esc(e.message || e)}<br><span class="sub">Have you run update-31-admin-books.sql in Supabase?</span></div>`; }
 }
 
@@ -91,12 +91,13 @@ function acPartyForm(id) {
     <label>NAME</label><input class="in" id="pn" value="${esc(p.name || "")}" placeholder="e.g. GoDaddy India, Supabase, CA Sharma & Co">
     <label>GSTIN</label><input class="in" id="pg" value="${esc(p.gstin || "")}" maxlength="15">
     <label>PAN</label><input class="in" id="pp" value="${esc(p.pan || "")}" maxlength="10">
+    <label>ADDRESS</label><textarea class="in" id="pa" rows="2">${esc(p.addr || "")}</textarea>
     <label>STATE</label><input class="in" id="ps" value="${esc(p.state || "")}">
     <label>EMAIL / PHONE</label><input class="in" id="pe" value="${esc(p.email || "")}"><input class="in" id="ph" value="${esc(p.phone || "")}" style="margin-top:6px">
     <label>TDS SECTION / RATE % (if you deduct TDS for this vendor)</label><div style="display:flex;gap:6px"><input class="in" id="pts" value="${esc(p.tds_section || "")}" placeholder="194J / 194C / 194H"><input class="in" id="ptr" value="${p.tds_rate ?? ""}" inputmode="decimal" placeholder="10"></div>
     <div class="msg" id="pm"></div><button class="btn pink full" style="margin-top:14px" id="psv">Save</button>`;
   $("#psv").onclick = async () => {
-    const row = { name: $("#pn").value.trim(), gstin: $("#pg").value.trim().toUpperCase() || null, pan: $("#pp").value.trim().toUpperCase() || null, state: $("#ps").value.trim() || null,
+    const row = { name: $("#pn").value.trim(), gstin: $("#pg").value.trim().toUpperCase() || null, pan: $("#pp").value.trim().toUpperCase() || null, state: $("#ps").value.trim() || null, addr: $("#pa").value.trim() || null,
       email: $("#pe").value.trim() || null, phone: $("#ph").value.trim() || null, tds_section: $("#pts").value.trim() || null, tds_rate: $("#ptr").value ? Number($("#ptr").value) : null };
     if (!row.name) return $("#pm").textContent = "Enter a name";
     const { error } = id ? await db.from("parties").update(row).eq("id", id) : await db.from("parties").insert({ ...row, kind: "VENDOR" });
@@ -253,4 +254,112 @@ function acPayoutForm(id) {
     try { await rpc("pay_commissions_tds", { p_sales: id, p_ref: $("#or").value.trim(), p_date: $("#od").value, p_tds: tds() }); closeForm(); accounts(); }
     catch (e) { $("#om").textContent = e.message; }
   };
+}
+
+
+// ================= Sales invoices: plan / featured invoices (made when a UTR is approved) + your own invoices =================
+async function acInvoices() {
+  const [own, claims, shops, st] = await Promise.all([
+    q("admin_invoices", "*", x => x.gte("inv_date", AC.from).lte("inv_date", AC.to).order("inv_date", { ascending: false })).catch(() => null),
+    q("pay_claims", "*", x => x.eq("status", "APPROVED").gte("paid_on", AC.from).lte("paid_on", AC.to).order("paid_on", { ascending: false })),
+    q("shops", "id,name,addr,locality,city,state,pin,gstin"), q("settings", "*", x => x.eq("id", 1))]);
+  AC.st = st[0] || {}; AC.shops = shops; AC.own = own || []; AC.claims = claims;
+  const rows = [["Invoice no", "Date", "Billed to", "For", "Taxable", "CGST", "SGST", "IGST", "Total", "Status", "UTR", "UTR date"],
+    ...claims.map(c => { const sh = shops.find(x => x.id === c.shop) || {}; return [c.inv_no || "", c.paid_on, sh.name || "", c.purpose === "FEATURED" ? `Featured ${c.days}d` : `Plan ${c.months}m`, n2(c.taxable ?? c.amount), n2(c.cgst), n2(c.sgst), n2(c.igst), n2(c.amount), "Paid", c.utr, c.paid_on]; }),
+    ...AC.own.map(i => [i.inv_no, i.inv_date, i.bill_to, (i.lines || []).map(l => l.d).join("; "), n2(i.taxable), n2(i.cgst), n2(i.sgst), n2(i.igst), n2(i.total), i.paid ? "Paid" : "To collect", i.utr || "", i.utr_date || ""])]
+    ;
+  AC.dl = { inv: rows };
+  $("#acBody").innerHTML = `${own === null ? `<div class="soon err">Run update-33 in Supabase to make your own sales invoices.</div>` : ""}
+    <div class="box"><h3>Sales invoices <span>• plan &amp; featured invoices are made by themselves when you approve a UTR</span>
+      <button class="edit" onclick="acInvForm()">＋ New sales invoice</button> <button class="edit" onclick="csvDl('sales-invoices-${AC.from}_to_${AC.to}.csv',AC.dl.inv)">⬇ Excel</button></h3>
+    <table><thead><tr><th>INVOICE</th><th>DATE</th><th>BILLED TO</th><th>FOR</th><th style="text-align:right">TOTAL</th><th>STATUS</th><th></th></tr></thead><tbody>
+    ${AC.own.map(i => `<tr><td><b>${esc(i.inv_no)}</b></td><td>${i.inv_date}</td><td>${esc(i.bill_to)}</td><td class="sub">${esc((i.lines || []).map(l => l.d).join("; "))}</td>
+      <td style="text-align:right"><b>${inr2(i.total)}</b></td><td>${i.paid ? `<span class="pill ok">Paid</span><br><span class="sub">${esc(i.utr || "")} ${i.utr_date || ""}</span>` : `<span class="pill warn">To collect</span>`}</td>
+      <td style="white-space:nowrap"><button class="edit" onclick="acInvPrint('own','${i.id}')">Print / PDF</button>${i.paid ? "" : ` <button class="edit" onclick="acInvPaid('${i.id}')">Mark paid</button>`}</td></tr>`).join("")}
+    ${claims.map(c => { const sh = shops.find(x => x.id === c.shop) || {}; return `<tr><td><b>${esc(c.inv_no || "—")}</b></td><td>${c.paid_on}</td><td>${esc(sh.name || "")}</td>
+      <td class="sub">${c.purpose === "FEATURED" ? `Featured ${c.days} days` : `Seller plan ${c.months} month${c.months > 1 ? "s" : ""}`}</td><td style="text-align:right"><b>${inr2(c.amount)}</b></td>
+      <td><span class="pill ok">Paid</span><br><span class="sub">UTR ${esc(c.utr)}</span></td><td><button class="edit" onclick="acInvPrint('plan','${c.id}')">Print / PDF</button></td></tr>`; }).join("")}
+    </tbody></table>${claims.length + AC.own.length ? "" : '<div class="sub">No invoices in this period.</div>'}</div>`;
+}
+function acInvForm() {
+  const el = $("#panel"); el.classList.add("open"); document.body.classList.add("po");
+  const inc = AC.acc.filter(a => a.type === "INCOME");
+  el.innerHTML = `<h2><span>New sales invoice</span><button class="x" onclick="closeForm()">×</button></h2>
+    <label>BILL TO (party)</label><select class="in" id="iv"><option value="">— type a name below —</option>${AC.parties.map(p => `<option value="${p.id}">${esc(p.name)}${p.kind === "SELLER" ? " · seller" : p.kind === "SALES" ? " · sales" : ""}</option>`).join("")}</select>
+    <input class="in" id="ivn" placeholder="Or customer name" style="margin-top:6px"><input class="in" id="iva" placeholder="Address (optional)" style="margin-top:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>CUSTOMER GSTIN</label><input class="in" id="ivg" maxlength="15"></div><div><label>STATE (place of supply)</label><input class="in" id="ivs" placeholder="${esc(AC.st.biz_state || "")}"></div></div>
+    <label>INVOICE DATE</label><input class="in" type="date" id="ivd" value="${today()}">
+    <label>ITEMS / SERVICES</label><div id="ivl"></div><button class="edit" onclick="acInvLine()">＋ Add line</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>GST %</label><select class="in" id="ivr">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}" ${r === 18 && AC.st.gst_enabled ? "selected" : ""}>${r ? r + "%" : "Nil / 0%"}</option>`).join("")}</select></div>
+      <div><label>INCOME HEAD</label><select class="in" id="ivi">${inc.map(a => `<option value="${a.code}" ${a.code === "4300" ? "selected" : ""}>${a.code} · ${esc(a.name)}</option>`).join("")}</select></div></div>
+    <label>PAID?</label><select class="in" id="ivp"><option value="">Not yet — to collect</option><option value="1000">Received in Bank (UPI / transfer)</option><option value="1010">Received in Cash</option></select>
+    <div id="ivpw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR NO</label><input class="in" id="ivu"></div><div><label>UTR DATE</label><input class="in" type="date" id="ivud" value="${today()}"></div></div>
+    <div class="sub" id="ivsum" style="margin-top:10px"></div><div class="msg" id="ivm"></div><button class="btn pink full" id="ivsv" style="margin-top:12px">Make invoice</button>`;
+  acInvLine();
+  $("#iv").onchange = () => { const p = AC.parties.find(x => x.id === $("#iv").value); if (p) { $("#ivn").value = p.name; $("#iva").value = p.addr || ""; $("#ivg").value = p.gstin || ""; $("#ivs").value = p.state || ""; } };
+  $("#ivp").onchange = () => $("#ivpw").style.display = $("#ivp").value ? "grid" : "none";
+  $("#ivr").onchange = acInvSum;
+  $("#ivsv").onclick = async () => {
+    const lines = [...document.querySelectorAll("#ivl .ivrow")].map(r => ({ d: r.querySelector(".d").value.trim(), sac: r.querySelector(".s").value.trim(), q: +r.querySelector(".q").value || 1, r: +r.querySelector(".r").value || 0 })).filter(l => l.d && l.r > 0);
+    if (!lines.length) return $("#ivm").textContent = "Add at least one line with a rate";
+    if (!$("#iv").value && !$("#ivn").value.trim()) return $("#ivm").textContent = "Choose a party or type the customer's name";
+    $("#ivsv").disabled = true;
+    try {
+      const r = await rpc("admin_sales_invoice", { p_party: $("#iv").value || null, p_date: $("#ivd").value, p_lines: lines, p_gst_rate: +$("#ivr").value, p_income: $("#ivi").value,
+        p_paid_from: $("#ivp").value || null, p_utr: $("#ivp").value ? ($("#ivu").value.trim() || null) : null, p_utr_date: $("#ivp").value ? $("#ivud").value : null,
+        p_bill_to: $("#ivn").value.trim() || null, p_bill_addr: $("#iva").value.trim() || null, p_bill_gstin: $("#ivg").value.trim().toUpperCase() || null, p_state: $("#ivs").value.trim() || null });
+      closeForm(); AC.tab = "inv"; await accounts(); acInvPrint("own", r.id);
+    } catch (e) { $("#ivm").textContent = e.message; $("#ivsv").disabled = false; }
+  };
+}
+function acInvLine() {
+  const d = document.createElement("div"); d.className = "ivrow"; d.style.cssText = "display:grid;grid-template-columns:2fr 1fr .6fr 1fr;gap:6px;margin-bottom:6px";
+  d.innerHTML = `<input class="in d" placeholder="Description e.g. Banner ad 1 month"><input class="in s" placeholder="SAC" value="998365"><input class="in q" value="1" inputmode="decimal"><input class="in r" placeholder="Rate ₹" inputmode="decimal">`;
+  $("#ivl").appendChild(d); d.querySelectorAll("input").forEach(i => i.oninput = acInvSum);
+}
+function acInvSum() {
+  const t = [...document.querySelectorAll("#ivl .ivrow")].reduce((a, r) => a + (+r.querySelector(".q").value || 1) * (+r.querySelector(".r").value || 0), 0), g = Math.round(t * +$("#ivr").value) / 100;
+  $("#ivsum").innerHTML = `Taxable ${inr2(t)} + GST ${inr2(g)} = <b>${inr2(t + g)}</b>`;
+}
+function acInvPaid(id) {
+  const el = $("#panel"); el.classList.add("open"); document.body.classList.add("po");
+  const i = AC.own.find(x => x.id === id) || {};
+  el.innerHTML = `<h2><span>Payment for ${esc(i.inv_no)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">${esc(i.bill_to)} · ${inr2(i.total)}</div>
+    <label>RECEIVED IN</label><select class="in" id="pf"><option value="1000">Bank (UPI / transfer)</option><option value="1010">Cash</option></select>
+    <label>UTR NO</label><input class="in" id="pu"><label>UTR DATE</label><input class="in" type="date" id="pd" value="${today()}"><div class="msg" id="pmm"></div>
+    <button class="btn pink full" id="psv" style="margin-top:12px">Mark paid</button>`;
+  $("#psv").onclick = async () => { try { await rpc("admin_invoice_paid", { p_id: id, p_from: $("#pf").value, p_utr: $("#pu").value.trim() || null, p_date: $("#pd").value }); closeForm(); accounts(); } catch (e) { $("#pmm").textContent = e.message; } };
+}
+// printable invoice (Print → Save as PDF)
+async function acInvPrint(kind, id) {
+  const st = AC.st || {}; let inv;
+  if (kind === "own") {
+    const i = AC.own.find(x => x.id === id) || (await q("admin_invoices", "*", x => x.eq("id", id)))[0];
+    inv = { no: i.inv_no, date: i.inv_date, to: i.bill_to, addr: i.bill_addr || "", gstin: i.bill_gstin || "", pos: i.place_of_supply || "", lines: (i.lines || []).map(l => ({ d: l.d, sac: l.sac, q: l.q, r: l.r, amt: l.q * l.r })),
+      taxable: i.taxable, cgst: i.cgst, sgst: i.sgst, igst: i.igst, total: i.total, rate: i.gst_rate, paid: i.paid ? `Paid${i.utr ? " · UTR " + i.utr : ""}${i.utr_date ? " · " + i.utr_date : ""}` : "Payment due" };
+  } else {
+    const c = AC.claims.find(x => x.id === id), sh = AC.shops.find(x => x.id === c.shop) || {};
+    const tx = Number(c.taxable ?? c.amount), d = c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — ${c.months} month${c.months > 1 ? "s" : ""} listing & order tools`;
+    inv = { no: c.inv_no, date: c.paid_on, to: sh.name, addr: [sh.addr, sh.locality, sh.city, sh.state, sh.pin].filter(Boolean).join(", "), gstin: sh.gstin || "", pos: c.place_of_supply || sh.state || "",
+      lines: [{ d, sac: c.purpose === "FEATURED" ? "998365" : "998439", q: 1, r: tx, amt: tx }], taxable: tx, cgst: c.cgst, sgst: c.sgst, igst: c.igst, total: c.amount, rate: null, paid: `Paid · UTR ${c.utr} · ${c.paid_on}` };
+  }
+  const gst = Number(inv.cgst) + Number(inv.sgst) + Number(inv.igst) > 0;
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(inv.no)}</title><style>
+    body{font-family:Arial,sans-serif;color:#1D0F30;max-width:760px;margin:24px auto;padding:0 16px}.top{display:flex;justify-content:space-between;align-items:flex-start;border-top:6px solid #6A1BB0;padding-top:16px}
+    h1{margin:0;font-size:22px}.tag{background:#6A1BB0;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700}.muted{color:#6B6380;font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}th{background:#F4EDFC;text-align:left;padding:8px}td{padding:8px;border-bottom:1px solid #eee}.r{text-align:right}
+    .box{display:flex;gap:16px;margin-top:16px}.box div{flex:1;background:#FAF8FC;border-radius:10px;padding:10px;font-size:13px}.tot{margin-left:auto;width:300px;font-size:14px}.tot div{display:flex;justify-content:space-between;padding:4px 0}
+    .grand{font-weight:800;font-size:17px;border-top:2px solid #1D0F30;margin-top:6px;padding-top:8px}@media print{button{display:none}}</style></head><body>
+    <div class="top"><div><h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="muted">${esc(st.biz_addr || "")}<br>${esc(st.biz_email || "")}${st.biz_gstin ? `<br><b>GSTIN: ${esc(st.biz_gstin)}</b>` : ""}</div></div><div class="tag">${gst ? "TAX INVOICE" : "INVOICE"}</div></div>
+    <div class="box"><div><b>Invoice no</b><br>${esc(inv.no || "")}<br><b>Date</b><br>${esc(inv.date)}${gst ? `<br><b>Place of supply</b><br>${esc(inv.pos)}` : ""}</div>
+      <div><b>Billed to</b><br>${esc(inv.to)}<br><span class="muted">${esc(inv.addr)}</span>${inv.gstin ? `<br>GSTIN: ${esc(inv.gstin)}` : ""}</div></div>
+    <table><thead><tr><th>#</th><th>Description</th><th>SAC</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>
+      ${inv.lines.map((l, k) => `<tr><td>${k + 1}</td><td>${esc(l.d)}</td><td>${esc(l.sac || "")}</td><td class="r">${l.q}</td><td class="r">${n2(l.r)}</td><td class="r">${n2(l.amt)}</td></tr>`).join("")}</tbody></table>
+    <div class="tot"><div><span>Taxable value</span><span>₹${n2(inv.taxable)}</span></div>
+      ${Number(inv.cgst) > 0 ? `<div><span>CGST</span><span>₹${n2(inv.cgst)}</span></div><div><span>SGST</span><span>₹${n2(inv.sgst)}</span></div>` : ""}${Number(inv.igst) > 0 ? `<div><span>IGST</span><span>₹${n2(inv.igst)}</span></div>` : ""}
+      <div class="grand"><span>Total</span><span>₹${n2(inv.total)}</span></div><div class="muted">${esc(inv.paid)}</div></div>
+    ${gst ? "" : `<p class="muted">Supplier not registered under GST; no GST charged.</p>`}<p class="muted">Computer-generated invoice — no signature needed.</p>
+    <button onclick="print()" style="padding:10px 18px;border:0;border-radius:10px;background:#6A1BB0;color:#fff;font-weight:700">Print / Save as PDF</button></body></html>`);
+  w.document.close();
 }

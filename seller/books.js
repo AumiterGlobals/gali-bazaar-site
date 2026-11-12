@@ -116,9 +116,9 @@ function bkRows() {
     case "vendors": {
       const vs = BKD.vendors || [], ex = x.exps;
       const names = [...new Set([...vs.map(v => v.name), ...ex.map(e => e.vendor).filter(Boolean)])].sort();
-      return ["Vendors · all time", [["Vendor", "GSTIN", "Phone", "Bills", "Bill total", "Paid", "Still to pay"], ...names.map(n => {
+      return ["Vendors · all time", [["Vendor", "GSTIN", "Phone", "Address", "Bills", "Bill total", "Paid", "Still to pay"], ...names.map(n => {
         const v = vs.find(z => z.name === n) || {}, b = ex.filter(e => (e.vendor || "").toLowerCase() === n.toLowerCase()), tot = b.reduce((a, e) => a + Number(e.amount), 0), due = b.filter(e => e.paid === false).reduce((a, e) => a + Number(e.amount), 0);
-        return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", String(b.length), f2(tot), f2(tot - due), f2(due)]; })]];
+        return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", v.addr || "", String(b.length), f2(tot), f2(tot - due), f2(due)]; })]];
     }
     case "udhaar": return ["Udhaar (customers) · counter bills on credit", [["Bill", "Date", "Customer", "Mobile", "Bill total", "Collected / returned", "Still due"], ...BKD.ud.map(({ c, due }) => [c.bill_no || "", bkDay(c.created_at), c.cust_name, c.cust_phone || "", f2(c.total), f2(c.total - due), f2(Math.max(due, 0))])]];
     case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note"],
@@ -222,11 +222,11 @@ function bkVendor(fromExpense) {
   const back = fromExpense ? $("#xv")?.value : "";
   drawer(`<h2><span>New vendor</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <label>VENDOR NAME</label><input class="in" id="vn" value="${esc(back || "")}" placeholder="e.g. Sharma Wholesale"><label>GSTIN (optional)</label><input class="in" id="vg" maxlength="15">
-    <label>PHONE (optional)</label><input class="in" id="vp" inputmode="tel"><label>NOTE</label><input class="in" id="vx" placeholder="e.g. atta & dal supplier">
+    <label>PHONE (optional)</label><input class="in" id="vp" inputmode="tel"><label>ADDRESS (optional)</label><textarea class="in" id="va" rows="2"></textarea><label>NOTE</label><input class="in" id="vx" placeholder="e.g. atta & dal supplier">
     <div class="msg" id="vm"></div><button class="btn pink full" id="vsv" style="margin-top:12px">Save vendor</button>`);
   $("#vsv").onclick = async () => {
     const name = $("#vn").value.trim(); if (!name) return $("#vm").textContent = "Enter the vendor name";
-    const { error } = await db.from("shop_vendors").insert({ shop: S.id, name, gstin: $("#vg").value.trim().toUpperCase() || null, phone: $("#vp").value.trim() || null, note: $("#vx").value.trim() || null });
+    const { error } = await db.from("shop_vendors").insert({ shop: S.id, name, gstin: $("#vg").value.trim().toUpperCase() || null, phone: $("#vp").value.trim() || null, note: $("#vx").value.trim() || null, ...($("#va").value.trim() ? { addr: $("#va").value.trim() } : {}) });
     if (error) { $("#vm").className = "msg err"; return $("#vm").textContent = /duplicate|unique/i.test(error.message) ? "This vendor is already in your list" : niceErr(error); }
     closeDrawer(); toast("Vendor added"); if (fromExpense) { await books(); bkExpense(); $("#xv").value = name; } else { BKD.tab = "vendors"; books(); }
   };
