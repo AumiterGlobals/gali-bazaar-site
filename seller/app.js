@@ -306,7 +306,7 @@ function printBill(id) {
   w.document.write(`<html><head><title>${esc(o.bill_no || short(o))}</title><style>body{font-family:system-ui;padding:24px;max-width:640px}table{width:100%;border-collapse:collapse}td,th{padding:6px;border-bottom:1px solid #ddd;text-align:left}h2{margin:0}</style></head><body>
     <h2>${esc(S.name)}</h2><div>${esc([S.addr, S.locality, S.city].filter(Boolean).join(", "))}${S.gstin ? `<br>GSTIN ${esc(S.gstin)}` : ""}${S.fssai ? `<br>FSSAI ${esc(S.fssai)}` : ""}</div><hr>
     <div><b>Bill ${esc(o.bill_no || short(o))}</b> • ${dmyy(o.delivered_at || o.created_at)}<br>${esc(o.cust_name)} • ${esc(o.addr)}</div><br>
-    <table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>${(o.items || []).map(l => `<tr><td>${esc(l.n)} ${esc(l.u || "")}</td><td>${l.q}</td><td>${inr2(l.p)}</td><td>${inr2(l.p * l.q)}</td></tr>`).join("")}
+    <table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>${(o.items || []).map(l => `<tr><td>${esc(l.n)} ${esc(l.u || "")}${l.h && S.gst_billing ? ` <small>HSN ${esc(l.h)}</small>` : ""}</td><td>${l.q}</td><td>${inr2(l.p)}</td><td>${inr2(l.p * l.q)}</td></tr>`).join("")}
     ${Number(o.fee) ? `<tr><td>Delivery fee</td><td></td><td></td><td>${inr2(o.fee)}</td></tr>` : ""}<tr><td colspan=3><b>Total</b></td><td><b>${inr2(o.total)}</b></td></tr>
     ${(o.returned || []).length && o.status === "DELIVERED" ? `<tr><td colspan=3>Less: returned at the door${cn[0] ? ` (credit note ${esc(cn[0].cn_no || "")})` : ""}</td><td>− ${inr2(o.total - payable(o))}</td></tr><tr><td colspan=3><b>Paid</b></td><td><b>${inr2(payable(o))}</b></td></tr>` : ""}</table>
     <p style="font-size:12px;color:#666">Gali Bazaar is only a platform connecting customers and local shops.</p><script>print()<\/script></body></html>`);
@@ -390,7 +390,8 @@ function editItem(id) {
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
     <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
       <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
-      ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>` : ""}
+      ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
+        <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 1101">` : ""}
       <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${v.p}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
     <div class="msg" id="fe"></div>
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
@@ -434,6 +435,7 @@ async function saveItem() {
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0], images: imgs, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days };
     if (S.gst_billing && $("#fgst")) row.gst_rate = $("#fgst").value === "" ? null : +$("#fgst").value;
+    if (S.gst_billing && $("#fh")) row.hsn = $("#fh").value.replace(/\D/g, "") || null;
     const r = F_.id ? await db.from("items").update(row).eq("id", F_.id) : await db.from("items").insert(row);
     if (r.error) throw r.error;
     toast(F_.id ? "Item saved" : "Item added"); closeDrawer(); await loadAll(); history.replaceState({}, "", "/seller/catalog/"); page();
