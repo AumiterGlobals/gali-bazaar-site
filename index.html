@@ -104,6 +104,23 @@
       <div><b class="s-v">3</b><span>shop categories</span></div>
       <div><b class="s-p">Cash</b><span>pay at your door</span></div>
     </div>
+    <div id="joined" style="display:none;margin-top:18px;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid #F0E6D6;border-radius:18px;padding:12px 18px;width:fit-content;box-shadow:0 8px 24px rgba(29,15,48,.06)">
+      <span style="width:9px;height:9px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 4px #DCFCE7"></span>
+      <span><b id="jc" style="font-size:22px;color:#6D28D9">0</b> <span style="color:#6B6380">customers</span></span>
+      <span style="color:#D9CFE8">•</span>
+      <span><b id="js" style="font-size:22px;color:#EF287B">0</b> <span style="color:#6B6380">shops live</span></span>
+      <span style="color:#6B6380;font-size:13px">have joined Gali Bazaar</span>
+    </div>
+    <script>
+    // live counter — stays hidden until counting is switched on (after test data is cleared)
+    fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/rpc/public_counts", { method: "POST", headers: { apikey: "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1", "Content-Type": "application/json" }, body: "{}" })
+      .then(r => r.ok ? r.json() : null).then(d => {
+        if (!d || d.customers == null) return;
+        const box = document.getElementById("joined"); box.style.display = "flex";
+        const up = (el, n) => { const t0 = performance.now(); const f = t => { const k = Math.min(1, (t - t0) / 1200); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))).toLocaleString("en-IN"); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
+        up(document.getElementById("jc"), d.customers); up(document.getElementById("js"), d.sellers);
+      }).catch(() => {});
+    </script>
   </div>
   <div class="stage"><div class="ph p1"><div class="sc">
 <div class="hm-top"><div class="sb"><span>9:41</span><span class="r"><svg class="mi"><use href="#m-sig"/></svg><svg class="mi"><use href="#m-wifi"/></svg><svg class="mi" style="width:20px"><use href="#m-bat"/></svg>82%</span></div><div class="cam"></div>
