@@ -18,7 +18,7 @@ async function accounts() {
   AC.parties = await q("parties", "*", x => x.eq("active", true).order("name")).catch(() => []);
   const tabs = [["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Receipt / payment"], ["gst", "GST paid"], ["tds", "TDS"], ["payout", "Sales payouts (TDS)"]];
   $("#main").innerHTML = head("Accounts & books", "Double-entry books — plan payments, commission and payouts post by themselves",
-    `<input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
+    `<button class="btn pink" onclick="acPartyForm()">＋ New vendor</button> <button class="btn ghost" onclick="AC.tab='pay';accounts()">＋ Payment / receipt</button> <input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
     `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${tabs.map(([k, l]) => `<button class="btn ${AC.tab === k ? "pink" : "ghost"}" onclick="AC.tab='${k}';accounts()">${l}</button>`).join("")}</div><div id="acBody"><div class="sub">Loading…</div></div>`;
   $("#acF").onchange = e => { AC.from = e.target.value; accounts(); };
   $("#acT").onchange = e => { AC.to = e.target.value; accounts(); };
@@ -128,6 +128,7 @@ function acBill() {
       <div><label>GST %</label><select class="in" id="bg">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}" ${r === 18 ? "selected" : ""}>${r === 0 ? "Nil / 0" : r}%</option>`).join("")}</select></div></div>
     <label><input type="checkbox" id="btd"> Deduct TDS</label><div id="btw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>TDS %</label><input class="in" id="btr" inputmode="decimal" value="10"></div><div><label>TDS ₹</label><input class="in" id="bta" inputmode="decimal"></div></div>
     <label>PAID?</label><select class="in" id="bp"><option value="">Not yet — pay later</option>${AC.acc.filter(a => ["1000", "1010"].includes(a.code)).map(a => `<option value="${a.code}">Paid now from ${esc(a.name)}</option>`).join("")}</select>
+    <div id="bpw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="bu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="bud" value="${today()}"></div></div>
     <label>NOTE</label><input class="in" id="bx" placeholder="e.g. galibazaar.site renewal 1 year">
     <div class="sub" id="bsum" style="margin-top:10px"></div><div class="msg" id="bm"></div><button class="btn pink full" id="bsv" style="margin-top:12px">Save bill</button></div>`;
   const calc = () => {
@@ -142,13 +143,15 @@ function acBill() {
   ["#bt", "#bg", "#btr"].forEach(s => $(s).oninput = calc); $("#bg").onchange = calc; $("#bv").onchange = pick;
   $("#bta").oninput = () => { $("#bta").dataset.own = "1"; calc(); };
   $("#btd").onchange = () => { $("#btw").style.display = $("#btd").checked ? "grid" : "none"; calc(); };
+  $("#bp").onchange = () => $("#bpw").style.display = $("#bp").value ? "grid" : "none";
   pick();
   $("#bsv").onclick = async () => {
     const { t, g, tds } = calc(); if (!t) return $("#bm").textContent = "Enter the taxable value";
     $("#bsv").disabled = true;
     try {
       await rpc("admin_vendor_bill", { p_party: $("#bv").value, p_date: $("#bd").value, p_bill_no: $("#bn").value.trim() || null, p_head: $("#bh").value,
-        p_taxable: t, p_gst: g, p_tds: tds, p_paid_from: $("#bp").value || null, p_pay_date: null, p_narr: $("#bx").value.trim() || null, p_attachment: null });
+        p_taxable: t, p_gst: g, p_tds: tds, p_paid_from: $("#bp").value || null, p_pay_date: $("#bp").value ? $("#bud").value : null, p_narr: $("#bx").value.trim() || null, p_attachment: null,
+        p_utr: $("#bp").value ? ($("#bu").value.trim() || null) : null });
       AC.tab = "parties"; accounts();
     } catch (e) { $("#bm").textContent = e.message; $("#bsv").disabled = false; }
   };
@@ -160,9 +163,9 @@ function acPay() {
     <div style="display:flex;gap:6px"><button class="btn pink" id="yk1">Paid to</button><button class="btn ghost" id="yk2">Received from</button></div>
     <label>PARTY (optional)</label><select class="in" id="yv"><option value="">— none —</option>${AC.parties.map(p => `<option value="${p.id}">${esc(p.name)} · ${p.kind === "SELLER" ? "seller" : p.kind === "SALES" ? "sales team" : "vendor"}</option>`).join("")}</select>
     <label id="yal">AGAINST (WHAT IS THIS FOR)</label><select class="in" id="yg">${AC.acc.filter(a => !["1000", "1010", "1020"].includes(a.code)).map(a => `<option value="${a.code}">${a.code} · ${esc(a.name)}</option>`).join("")}</select>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ya" inputmode="decimal"></div><div><label>DATE</label><input class="in" type="date" id="yd" value="${today()}"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>AMOUNT ₹</label><input class="in" id="ya" inputmode="decimal"></div><div><label>UTR / PAYMENT DATE</label><input class="in" type="date" id="yd" value="${today()}"></div></div>
     <label id="yml">PAID FROM</label><select class="in" id="yf">${money.map(a => `<option value="${a.code}">${esc(a.name)}</option>`).join("")}</select>
-    <label>UTR / CHEQUE / REF</label><input class="in" id="yr"><label>NOTE</label><input class="in" id="yx">
+    <label>UTR / CHEQUE NO</label><input class="in" id="yr" placeholder="12-digit UTR"><label>NOTE</label><input class="in" id="yx">
     <div class="msg" id="ym"></div><button class="btn pink full" id="ysv" style="margin-top:12px">Save</button></div>`;
   let kind = "PAYMENT";
   const set = k => { kind = k; $("#yk1").className = "btn " + (k === "PAYMENT" ? "pink" : "ghost"); $("#yk2").className = "btn " + (k === "RECEIPT" ? "pink" : "ghost");
@@ -240,7 +243,7 @@ function acPayoutForm(id) {
     <div class="sub">Commission due ${inr2(v.due)} · FY commission ${inr2(v.fy_credited)}</div>
     <label>TDS</label><select class="in" id="ot"><option value="auto">Suggested — ${inr2(v.tds)} (@${v.rate}%)</option><option value="own">Own amount</option><option value="none">No TDS</option></select>
     <input class="in" id="oa" inputmode="decimal" style="display:none;margin-top:6px" placeholder="TDS ₹">
-    <label>UTR / REF</label><input class="in" id="or"><label>DATE</label><input class="in" type="date" id="od" value="${today()}">
+    <label>UTR NO</label><input class="in" id="or" placeholder="12-digit UTR"><label>UTR DATE</label><input class="in" type="date" id="od" value="${today()}">
     <div class="sub" id="os" style="margin-top:10px"></div><div class="msg" id="om"></div><button class="btn pink full" id="osv" style="margin-top:12px">Record payout</button>`;
   const tds = () => $("#ot").value === "none" ? 0 : $("#ot").value === "own" ? Number($("#oa").value || 0) : Number(v.tds || 0);
   const sum = () => { $("#oa").style.display = $("#ot").value === "own" ? "block" : "none"; $("#os").innerHTML = `Transfer <b>${inr2(Number(v.due) - tds())}</b> · TDS ${inr2(tds())} goes to TDS payable`; };

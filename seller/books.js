@@ -68,7 +68,7 @@ function bkTrial(es, to) {
 async function books() {
   BKD.from = BKD.from || `${fyStart().getFullYear()}-04-01`; BKD.to = BKD.to || todayStr();
   $("#main").innerHTML = head("Books & expenses", "Made automatically from your bills, counter sales, credit notes, payments and expenses",
-    `<button class="btn pink" onclick="bkExpense()">＋ Expense / vendor bill</button><button class="btn ghost" onclick="bkOwner()">Owner money</button>`) +
+    `<button class="btn pink" onclick="bkExpense()">＋ Expense / vendor bill</button><button class="btn ghost" onclick="bkVendor()">＋ New vendor</button><button class="btn ghost" onclick="bkOwner()">Owner money</button>`) +
     `<div class="bar2"><label style="margin:0">FROM</label><input class="in" type="date" id="kf" value="${BKD.from}" style="width:auto"><label style="margin:0">TO</label><input class="in" type="date" id="kt" value="${BKD.to}" style="width:auto"></div><div id="kb"><div class="sub">Loading…</div></div>`;
   $("#kf").onchange = e => { BKD.from = e.target.value; books(); }; $("#kt").onchange = e => { BKD.to = e.target.value; books(); };
   const t = BKD.to + "T23:59:59";
@@ -79,13 +79,15 @@ async function books() {
     db.from("shop_expenses").select("*").eq("shop", S.id).lte("on_date", BKD.to).order("on_date").limit(5000),
     db.from("shop_receipts").select("*").eq("shop", S.id).lte("on_date", BKD.to).limit(5000),
     db.from("pay_claims").select("*").eq("shop", S.id).eq("status", "APPROVED")]);
+  const vq = await db.from("shop_vendors").select("*").eq("shop", S.id).order("name");
+  BKD.vendors = vq.error ? null : vq.data || [];
   const x = { orders: o.data || [], counter: cs.data || [], cns: cn.data || [], exps: ex.data || [], recs: rc.error ? [] : rc.data || [], claims: cl.data || [] };
   BKD.x = x; const es = BKD.es = bkBuild(x), f = BKD.from, to = BKD.to;
   const pl = bkNet(es, f, to), profit = -Object.entries(pl).filter(([a]) => bkNom(a)).reduce((s, [, v]) => s + v, 0);
   const ud = x.counter.filter(c => c.pay_mode === "CREDIT").map(c => ({ c, due: r2(c.total - x.recs.filter(r => r.sale_id === c.id).reduce((a, r) => a + Number(r.amount), 0) - x.cns.filter(n => n.sale_id === c.id && n.kind !== "REPLACEMENT").reduce((a, n) => a + Number(n.amount), 0)) }));
   BKD.ud = ud;
   const unpaid = x.exps.filter(e => e.paid === false);
-  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["day", "Day book"]];
+  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["vendors", "Vendors"], ["day", "Day book"]];
   $("#kb").innerHTML = `${rc.error ? `<div class="soon err">Run update-30 (books) in Supabase to save udhaar collections and owner money.</div>` : ""}
     <div class="kpis k4" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>Net profit</span><b style="color:${profit >= 0 ? "#15803D" : "#BE185D"}">${inr2(profit)}</b></div>
       <div class="kpi"><span>Udhaar to collect</span><b>${inr2(ud.reduce((a, u) => a + Math.max(u.due, 0), 0))}</b></div><div class="kpi"><span>Bills to pay</span><b class="pk">${inr2(unpaid.reduce((a, e) => a + Number(e.amount), 0))}</b></div></div>
@@ -110,10 +112,17 @@ function bkRows() {
           const cl = e.lines.filter(l => l.a === BK.CASH), bl = e.lines.filter(l => l.a === BK.BANK), s = (L, k) => L.reduce((a, l) => a + (l[k] || 0), 0);
           c += s(cl, "dr") - s(cl, "cr"); b += s(bl, "dr") - s(bl, "cr");
           return [e.date, e.type, e.ref, e.text, s(cl, "dr") ? f2(s(cl, "dr")) : "", s(cl, "cr") ? f2(s(cl, "cr")) : "", f2(c), s(bl, "dr") ? f2(s(bl, "dr")) : "", s(bl, "cr") ? f2(s(bl, "cr")) : "", f2(b)]; })]]; }
+    case "vendors": {
+      const vs = BKD.vendors || [], ex = x.exps;
+      const names = [...new Set([...vs.map(v => v.name), ...ex.map(e => e.vendor).filter(Boolean)])].sort();
+      return ["Vendors · all time", [["Vendor", "GSTIN", "Phone", "Bills", "Bill total", "Paid", "Still to pay"], ...names.map(n => {
+        const v = vs.find(z => z.name === n) || {}, b = ex.filter(e => (e.vendor || "").toLowerCase() === n.toLowerCase()), tot = b.reduce((a, e) => a + Number(e.amount), 0), due = b.filter(e => e.paid === false).reduce((a, e) => a + Number(e.amount), 0);
+        return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", String(b.length), f2(tot), f2(tot - due), f2(due)]; })]];
+    }
     case "udhaar": return ["Udhaar (customers) · counter bills on credit", [["Bill", "Date", "Customer", "Mobile", "Bill total", "Collected / returned", "Still due"], ...BKD.ud.map(({ c, due }) => [c.bill_no || "", bkDay(c.created_at), c.cust_name, c.cust_phone || "", f2(c.total), f2(c.total - due), f2(Math.max(due, 0))])]];
-    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "Note"],
+    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note"],
       ...x.exps.filter(e => e.on_date >= f && e.on_date <= t).map(e => [e.on_date, e.head, e.vendor || "", e.vendor_gstin || "", e.bill_no || "", f2(e.amount - (e.gst || 0)), e.gst_rate ?? "", f2(e.gst || 0), f2(e.amount),
-        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.note || ""])]];
+        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.paid_ref || "", e.note || ""])]];
     default: return [`Day book · ${f} to ${t}`, [["Date", "Type", "Ref", "Details", "Account", "Debit", "Credit"], ...es.filter(e => e.date >= f && e.date <= t).flatMap(e => e.lines.map((l, i) => [i ? "" : e.date, i ? "" : e.type, i ? "" : e.ref, i ? "" : e.text, l.a, l.dr ? f2(l.dr) : "", l.cr ? f2(l.cr) : ""]))]];
   }
 }
@@ -137,17 +146,21 @@ function bkExpense() {
   const gstOn = !!(S.gst_billing && S.gstin), heads = ["Stock purchase", "Rent", "Electricity", "Salary", "Transport", "Packaging", "Repairs", "Phone / internet", "Other"];
   drawer(`<h2><span>Expense / vendor bill</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <label>WHAT FOR?</label><select class="in" id="xh">${heads.map(h => `<option>${h}</option>`).join("")}</select><input class="in" id="xo" placeholder="Expense name (for Other)" style="display:none;margin-top:6px">
-    <label>VENDOR / PAID TO</label><input class="in" id="xv" placeholder="e.g. Sharma Wholesale">
+    <label>VENDOR / PAID TO <a class="edit" onclick="bkVendor(true)">＋ New vendor</a></label><input class="in" id="xv" list="xvl" placeholder="Pick or type — e.g. Sharma Wholesale">
+    <datalist id="xvl">${(BKD.vendors || []).map(v => `<option value="${esc(v.name)}">`).join("")}</datalist>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>INVOICE NO</label><input class="in" id="xn"></div><div><label>INVOICE DATE</label><input class="in" type="date" id="xd" value="${todayStr()}"></div></div>
     ${gstOn ? `<label>VENDOR GSTIN</label><input class="in" id="xg" maxlength="15">` : ""}
     <label>BILL TOTAL ₹ (incl. GST)</label><input class="in" id="xa" inputmode="decimal">
     ${gstOn ? `<label>GST ON THIS BILL (input credit)</label><select class="in" id="xr">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}">${r ? r + "%" : "Nil / 0%"}</option>`).join("")}</select><div class="sub" id="xs"></div>` : ""}
     <label>PAID?</label><select class="in" id="xp"><option value="Cash">Paid now — Cash</option><option value="UPI">Paid now — UPI</option><option value="Bank">Paid now — Bank</option><option value="">Pay later</option></select>
+    <div id="xuw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="xu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="xud" value="${todayStr()}"></div></div>
     <label>NOTE</label><input class="in" id="xx"><label>BILL PHOTO (optional)</label><input type="file" accept="image/*" id="xf" class="in">
     <div class="msg" id="xm"></div><button class="btn pink full" id="xsv" style="margin-top:12px">Save</button>`);
   $("#xh").onchange = () => $("#xo").style.display = $("#xh").value === "Other" ? "block" : "none";
   const calc = () => { if (!gstOn) return 0; const a = +$("#xa").value || 0, r = +$("#xr").value; const g = r2(a * r / (100 + r)); $("#xs").textContent = r && a ? `Taxable ${inr2(a - g)} + GST ${inr2(g)}` : ""; return g; };
   if (gstOn) { $("#xa").oninput = calc; $("#xr").onchange = calc; }
+  $("#xp").onchange = () => $("#xuw").style.display = ["UPI", "Bank"].includes($("#xp").value) ? "grid" : "none";
+  $("#xv").onchange = () => { const v = (BKD.vendors || []).find(z => z.name.toLowerCase() === $("#xv").value.trim().toLowerCase()); if (v && gstOn && v.gstin && !$("#xg").value) $("#xg").value = v.gstin; };
   $("#xsv").onclick = async () => {
     const a = +$("#xa").value || 0, head = $("#xh").value === "Other" ? $("#xo").value.trim() : $("#xh").value, m = $("#xm");
     if (!a || !head) { m.className = "msg err"; return m.textContent = "Enter what for and the amount"; }
@@ -159,8 +172,11 @@ function bkExpense() {
       const pm = $("#xp").value, later = !pm;
       const row = { shop: S.id, on_date: $("#xd").value, head, amount: a, mode: pm || "Cash", note: $("#xx").value.trim() || null, bill_url: url, vendor: $("#xv").value.trim() || null,
         vendor_gstin: gstOn ? ($("#xg").value.trim().toUpperCase() || null) : null, bill_no: $("#xn").value.trim() || null, gst_rate: gstOn ? +$("#xr").value : null, gst: calc(),
-        paid: !later, paid_on: later ? null : $("#xd").value, paid_mode: later ? null : pm };
+        paid: !later, paid_on: later ? null : (["UPI", "Bank"].includes(pm) ? $("#xud").value : $("#xd").value), paid_mode: later ? null : pm,
+        ...(["UPI", "Bank"].includes(pm) && $("#xu").value.trim() ? { paid_ref: $("#xu").value.trim() } : {}) };
       const { error } = await db.from("shop_expenses").insert(row); if (error) throw error;
+      if (row.vendor && BKD.vendors && !BKD.vendors.some(v => v.name.toLowerCase() === row.vendor.toLowerCase()))
+        await db.from("shop_vendors").insert({ shop: S.id, name: row.vendor, gstin: row.vendor_gstin });
       closeDrawer(); toast("Saved"); BKD.tab = "vend"; books();
     } catch (e) { m.className = "msg err"; m.textContent = niceErr(e); $("#xsv").disabled = false; }
   };
@@ -182,22 +198,38 @@ function bkCollect(id) {
   const u = BKD.ud.find(x => x.c.id === id); if (!u) return;
   drawer(`<h2><span>Collect udhaar</span><button class="x" onclick="closeDrawer()">×</button></h2><div class="sub">${esc(u.c.bill_no)} · ${esc(u.c.cust_name)} · due ${inr2(u.due)}</div>
     <label>AMOUNT RECEIVED ₹</label><input class="in" id="ca" value="${u.due}"><label>MODE</label><select class="in" id="cm"><option>Cash</option><option>UPI</option></select>
+    <label>UTR NO (for UPI)</label><input class="in" id="cu"><label>DATE RECEIVED</label><input class="in" type="date" id="cd" value="${todayStr()}">
     <div class="msg" id="cmg"></div><button class="btn pink full" id="csv" style="margin-top:12px">Save</button>`);
   $("#csv").onclick = async () => {
     const a = +$("#ca").value || 0; if (!a) return;
-    const { error } = await db.from("shop_receipts").insert({ shop: S.id, kind: "UDHAAR", sale_id: id, on_date: todayStr(), amount: a, mode: $("#cm").value });
+    const { error } = await db.from("shop_receipts").insert({ shop: S.id, kind: "UDHAAR", sale_id: id, on_date: $("#cd").value, amount: a, mode: $("#cm").value, ...($("#cu").value.trim() ? { ref: $("#cu").value.trim() } : {}) });
     if (error) { $("#cmg").className = "msg err"; return $("#cmg").textContent = niceErr(error); }
     closeDrawer(); toast(`Payment recorded against ${u.c.bill_no}`); books();
   };
 }
 function bkPay(id) {
   drawer(`<h2><span>Pay vendor bill</span><button class="x" onclick="closeDrawer()">×</button></h2>
-    <label>PAID BY</label><select class="in" id="pm2"><option>Cash</option><option>UPI</option><option>Bank</option></select><label>PAID ON</label><input class="in" type="date" id="pd2" value="${todayStr()}">
+    <label>PAID BY</label><select class="in" id="pm2"><option>Cash</option><option>UPI</option><option>Bank</option></select>
+    <label>UTR / CHEQUE NO (UPI / Bank)</label><input class="in" id="pu2"><label>UTR / PAYMENT DATE</label><input class="in" type="date" id="pd2" value="${todayStr()}">
     <div class="msg" id="pmg"></div><button class="btn pink full" id="psv2" style="margin-top:12px">Mark paid</button>`);
   $("#psv2").onclick = async () => {
-    const { error } = await db.from("shop_expenses").update({ paid: true, paid_on: $("#pd2").value, paid_mode: $("#pm2").value }).eq("id", id);
+    const { error } = await db.from("shop_expenses").update({ paid: true, paid_on: $("#pd2").value, paid_mode: $("#pm2").value, ...($("#pu2").value.trim() ? { paid_ref: $("#pu2").value.trim() } : {}) }).eq("id", id);
     if (error) return $("#pmg").textContent = niceErr(error);
     closeDrawer(); books();
   };
 }
 async function bkDel(id) { if (!confirm("Delete this expense?")) return; const { error } = await db.from("shop_expenses").delete().eq("id", id); if (error) return toast(niceErr(error)); books(); }
+
+function bkVendor(fromExpense) {
+  const back = fromExpense ? $("#xv")?.value : "";
+  drawer(`<h2><span>New vendor</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <label>VENDOR NAME</label><input class="in" id="vn" value="${esc(back || "")}" placeholder="e.g. Sharma Wholesale"><label>GSTIN (optional)</label><input class="in" id="vg" maxlength="15">
+    <label>PHONE (optional)</label><input class="in" id="vp" inputmode="tel"><label>NOTE</label><input class="in" id="vx" placeholder="e.g. atta & dal supplier">
+    <div class="msg" id="vm"></div><button class="btn pink full" id="vsv" style="margin-top:12px">Save vendor</button>`);
+  $("#vsv").onclick = async () => {
+    const name = $("#vn").value.trim(); if (!name) return $("#vm").textContent = "Enter the vendor name";
+    const { error } = await db.from("shop_vendors").insert({ shop: S.id, name, gstin: $("#vg").value.trim().toUpperCase() || null, phone: $("#vp").value.trim() || null, note: $("#vx").value.trim() || null });
+    if (error) { $("#vm").className = "msg err"; return $("#vm").textContent = /duplicate|unique/i.test(error.message) ? "This vendor is already in your list" : niceErr(error); }
+    closeDrawer(); toast("Vendor added"); if (fromExpense) { await books(); bkExpense(); $("#xv").value = name; } else { BKD.tab = "vendors"; books(); }
+  };
+}
