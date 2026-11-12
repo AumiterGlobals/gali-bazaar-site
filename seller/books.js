@@ -1,7 +1,7 @@
 /* Seller panel · Books & expenses — same books as the app (Accounts → Books):
    P&L, trial balance, balance sheet, cash & bank book, udhaar, vendor bills (GST input, pay later), day book, CA downloads. */
 const BK = { CASH: "Cash in hand", BANK: "UPI / Bank", DEBT: "Customers (udhaar)", INGST: "GST input credit", CGST: "Output CGST", SGST: "Output SGST",
-  VEND: "Vendors (bills to pay)", CAP: "Owner's capital", DRAW: "Owner's drawings", SALES: "Sales", DEL: "Delivery charges", RET: "Sales returns (credit notes)", PLAN: "Gali Bazaar plan", EARLIER: "Profit of earlier years" };
+  VEND: "Vendors (bills to pay)", CAP: "Owner's capital", DRAW: "Owner's drawings", SALES: "Sales", DEL: "Delivery charges", RET: "Sales returns (credit notes)", PLAN: "Gali Bazaar subscription", EARLIER: "Profit of earlier years" };
 const bkType = a => [BK.CASH, BK.BANK, BK.DEBT, BK.INGST].includes(a) ? "ASSET" : [BK.CGST, BK.SGST, BK.VEND].includes(a) ? "LIABILITY" : [BK.CAP, BK.DRAW, BK.EARLIER].includes(a) ? "EQUITY" : [BK.SALES, BK.DEL, BK.RET].includes(a) ? "INCOME" : "EXPENSE";
 const bkNom = a => ["INCOME", "EXPENSE"].includes(bkType(a));
 const dupMsg = e => { const m = niceErr(e); return /no_dup_bill/.test(m) ? "This vendor invoice is already entered" : /no_dup_utr/.test(m) ? "This UTR is already entered" : m; };
@@ -144,7 +144,7 @@ function bkShow() {
 function bkDl() { const [title, rows] = BKD.cur; csvDownload(`${title.split(" ·")[0].toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${BKD.from}_to_${BKD.to}.csv`, [[S.name + " — " + title], ...rows]); }
 
 function bkExpense() {
-  const gstOn = !!(S.gst_billing && S.gstin), heads = ["Stock purchase", "Rent", "Electricity", "Salary", "Transport", "Packaging", "Repairs", "Phone / internet", "Other"];
+  const gstOn = !!(S.gst_billing && S.gstin), heads = ["Stock purchase", "Rent", "Electricity", "Salary", "Transport", "Packaging", "Repairs", "Phone / internet", "Subscription / software", "Other"];
   drawer(`<h2><span>Expense / vendor bill</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <label>WHAT FOR?</label><select class="in" id="xh">${heads.map(h => `<option>${h}</option>`).join("")}</select><input class="in" id="xo" placeholder="Expense name (for Other)" style="display:none;margin-top:6px">
     <label>VENDOR / PAID TO <a class="edit" onclick="bkVendor(true)">＋ New vendor</a></label><input class="in" id="xv" list="xvl" placeholder="Pick or type — e.g. Sharma Wholesale">

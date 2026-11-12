@@ -137,11 +137,17 @@ function refreshChrome() {
   $$("#snav a").forEach(a => a.onclick = e => { e.preventDefault(); menu(false); go(a.dataset.k); });
 }
 function menu(o) { $(".side").classList.toggle("open", o); $("#scrim").classList.toggle("open", o); }
+// is the shop visible to customers? KYC approved + plan/trial running (+ not on hold)
+function shopStatusPill() {
+  const t = todayStr(), on = S.kyc === "APPROVED" && S.sub_until && S.sub_until >= t && !S.quality_hold;
+  const why = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC being checked" : "KYC not done") : !S.sub_until || S.sub_until < t ? "plan ended" : S.quality_hold ? "on hold" : "";
+  return `<span class="pill ${on ? "ok" : "bad"}" style="margin-left:6px" title="Customers ${on ? "can" : "can't"} see your shop">${on ? "● Shop live on app" : "● Not live — " + why}</span>`;
+}
 function topRight(extra = "") {
   return `${extra}<button class="btn" style="background:${S.closed ? "#F0EEF4" : "#E6F8EE"};color:${S.closed ? "#6B6380" : "#15803D"};padding:9px 14px" onclick="toggleOpen()" title="Tap to ${S.closed ? "open" : "close"} the shop">● ${S.closed ? "Shop closed" : "Shop open"}</button>
     <div style="position:relative"><button class="btn ghost" style="padding:9px 12px" onclick="bell(event)">🔔${counts().neworders + counts().comp ? `<span class="badge" style="position:absolute;top:-6px;right:-6px">${counts().neworders + counts().comp}</span>` : ""}</button><div id="bellbox"></div></div>`;
 }
-function head(t, sub, extra = "") { return `<div class="top"><div><h1>${t}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div><div class="sp"></div><span class="live" id="livepill">Live</span><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${topRight(extra)}</div></div>`; }
+function head(t, sub, extra = "") { return `<div class="top"><div><h1>${t}</h1>${sub ? `<div class="sub">${sub}</div>` : ""}</div><div class="sp"></div><span class="live" id="livepill" title="Data updates by itself — this is not your shop's status">Synced</span>${shopStatusPill()}<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${topRight(extra)}</div></div>`; }
 async function toggleOpen() {
   const to = !S.closed;
   if (to && !confirm("Close the shop now? Customers can't order until you open it again.")) return;

@@ -51,7 +51,7 @@ function liveSync(db, name, tables, onChange) {
   let wasDown = false;
   ch.subscribe(st => {
     const el = document.getElementById("livepill");
-    if (el) { el.className = "live" + (st === "SUBSCRIBED" ? "" : " off"); el.textContent = st === "SUBSCRIBED" ? "Live" : "Reconnecting…"; }
+    if (el) { el.className = "live" + (st === "SUBSCRIBED" ? "" : " off"); el.textContent = st === "SUBSCRIBED" ? "Synced" : "Reconnecting…"; el.title = "Data updates by itself — this is not your shop's status"; }
     if (st === "SUBSCRIBED") { if (wasDown) fire(); wasDown = false; } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") wasDown = true;
   });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fire(); });
