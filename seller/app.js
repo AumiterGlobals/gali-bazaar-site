@@ -363,8 +363,8 @@ async function squeeze(img, max, maxKb, q = .74) {
 async function uploadPhoto(file, k) {
   const img = await loadImg(file), name = `${me.id}/items/${Date.now()}_${k}_${Math.random().toString(36).slice(2, 6)}`;
   const [big, th] = await Promise.all([squeeze(img, 900, 75), squeeze(img, 320, 22, .65)]);
-  await db.storage.from("public").upload(name + "_t.webp", th, { upsert: true, contentType: "image/webp" }).catch(() => {});
-  const { error } = await db.storage.from("public").upload(name + ".webp", big, { upsert: true, contentType: "image/webp" });
+  await db.storage.from("public").upload(name + "_t.webp", th, { upsert: false, contentType: "image/webp" }).catch(() => {});
+  const { error } = await db.storage.from("public").upload(name + ".webp", big, { upsert: false, contentType: "image/webp" });
   if (error) throw error;
   return db.storage.from("public").getPublicUrl(name + ".webp").data.publicUrl;
 }
