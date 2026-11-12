@@ -5,186 +5,216 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Renew your shop plan · Gali Bazaar</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#FFC93C">
+<meta name="theme-color" content="#FFE9AD">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
-body{min-height:100vh}
 .page{min-height:100vh}
-.who{background:var(--night);color:#fff;border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:600;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-main{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
-.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:40px;align-items:start}
-.rtag{display:inline-block;background:#FDE7EE;color:var(--pink);font-weight:600;font-size:12.5px;padding:5px 10px;border-radius:8px}
-h1{font-size:clamp(32px,4.4vw,52px);letter-spacing:-1.8px;line-height:1.05;margin:14px 0 12px}
-h1 .z{background:linear-gradient(90deg,#FF9F1A,#FF6A1A 45%,#F0306F);-webkit-background-clip:text;background-clip:text;color:transparent}
-.muted{color:var(--muted);font-size:15px}
-.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:26px 0 16px}
-.pl{position:relative;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:18px;font:inherit;color:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s,background .15s}
-.pl:hover{transform:translateY(-2px);box-shadow:0 10px 24px #1B103514}
-.pl h4{margin:0;font-size:14px;font-weight:600}
-.pl b{display:block;font-size:30px;font-weight:800;letter-spacing:-.5px;margin:12px 0 2px}
-.pl .pm{font-size:12.5px;color:var(--muted)}
-.pl .sv{display:block;font-size:12.5px;font-weight:700;color:var(--green);margin:10px 0 12px}
-.pl .rd{width:18px;height:18px;border-radius:50%;border:2px solid #CFC6E3;display:grid;place-items:center}
-.pl.on{background:var(--night);color:#fff;border-color:var(--night);box-shadow:0 18px 36px #1B103540}
-.pl.on .pm{color:#C9C1E2}.pl.on .sv{color:#4ADE80}
-.pl.on .rd{border-color:var(--yellow)}.pl.on .rd:after{content:"";width:8px;height:8px;border-radius:50%;background:var(--yellow)}
-.pl .bv{position:absolute;top:-11px;left:16px;background:var(--yellow);color:var(--night);font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;letter-spacing:.4px}
-.perks{display:flex;gap:22px;flex-wrap:wrap;font-size:13.5px;color:#4E4766}
-.perks span:before{content:"✓ ";color:var(--green);font-weight:800}
-h3{font-size:18px;margin:40px 0 14px}
+.who{background:#1A1130;color:#fff!important;border-radius:10px;padding:11px 18px;font-weight:600;font-size:14px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{max-width:1480px;margin:0 auto;padding:18px 72px 70px}
+.grid{display:grid;grid-template-columns:1fr 500px;gap:36px;align-items:start}
+.rtag{display:inline-block;background:#FFE3EE;color:#EF287B;font-weight:600;font-size:12.5px;padding:5px 10px;border-radius:7px}
+h1{font-size:49px;letter-spacing:-2px;line-height:1.02;margin:14px 0 14px;font-weight:700}
+h1 .z{color:#FF7A12}
+h1 .a{color:#F23B6C}
+.lead{color:var(--muted);font-size:15.5px}
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:26px 0 22px}
+.pl{position:relative;text-align:left;background:#fff;border:1.5px solid #ECE4EF;border-radius:20px;padding:22px 18px 18px;font:inherit;color:inherit;cursor:pointer;transition:transform .15s}
+.pl:hover{transform:translateY(-2px)}
+.pl h4{margin:0;font-size:13.5px;font-weight:600}
+.pl b{display:block;font-size:30px;font-weight:700;letter-spacing:-.6px;margin:14px 0 4px}
+.pl .pm{display:block;font-size:12.5px;color:var(--muted)}
+.pl .sv{display:block;font-size:12.5px;font-weight:600;color:#12A866;margin:14px 0 14px}
+.pl .rd{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1.5px solid #B9B3C6}
+.pl.on{background:#1D0F30;color:#fff;border-color:#1D0F30;box-shadow:0 18px 34px #1D0F3040}
+.pl.on .pm{color:#BDB4D6}.pl.on .sv{color:#4ADE80}
+.pl.on .rd{border:2px solid #FFC21A}.pl.on .rd:after{content:"";width:8px;height:8px;border-radius:50%;background:#FFC21A}
+.pl .bv{position:absolute;top:-11px;left:18px;background:#FFC21A;color:#1A1130;font-size:10px;font-weight:700;padding:4px 9px;border-radius:6px}
+.perks{display:flex;gap:24px;flex-wrap:wrap;font-size:13.5px;color:#3F3854}
+.perks span{display:inline-flex;align-items:center;gap:7px}
+.perks .ic{width:16px;height:16px;color:#12A866;stroke-width:2.5}
+h3{font-size:18px;margin:44px 0 16px;font-weight:600}
 .after{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.af{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px}
-.af .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:#fff;flex:none}
-.af small{display:block;color:var(--pink);font-weight:700;font-size:10.5px;letter-spacing:.6px}
-.af b{display:block;font-size:15px}
+.af{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid #F0E8EE;border-radius:18px;padding:18px}
+.af .ai{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;color:#fff;flex:none}
+.af small{display:block;color:#EF287B;font-weight:600;font-size:10.5px;letter-spacing:.3px}
+.af b{display:block;font-size:15px;font-weight:600}
 .af span{font-size:12.5px;color:var(--muted)}
-.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 20px 50px #1B10350f}
-.card h2{font-size:17px;margin:0 0 14px;letter-spacing:0;font-weight:700}
-.shop{display:flex;gap:12px;align-items:center;background:#F6F3FB;border-radius:16px;padding:12px}
-.shop .av{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#FFC93C,#FF8A1F);display:grid;place-items:center;font-size:22px;flex:none}
-.shop b{display:block;font-size:15.5px}
-.shop small{color:var(--muted);font-size:12.5px}
-.st{display:inline-block;margin-top:4px;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px}
-.st.ok{background:var(--greensoft);color:var(--green)}.st.off{background:#FDE7EE;color:#C21752}.st.warn{background:#FFF4CC;color:#7a5800}
-.ln{display:flex;justify-content:space-between;font-size:14px;color:#4E4766;padding:7px 0}
-.ln .g{color:var(--green);font-weight:700}
-.tot{display:flex;justify-content:space-between;font-size:21px;font-weight:800;border-top:1px solid var(--line);margin-top:8px;padding-top:16px}
-.pay{width:100%;justify-content:center;background:var(--pgrad);color:#fff;border-radius:16px;padding:16px;font-size:16px;margin-top:16px;box-shadow:0 12px 26px #F0306F40}
-.pay:disabled{opacity:.6;cursor:default;transform:none}
-.meth{display:flex;justify-content:center;gap:6px;margin-top:12px}
-.meth span{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600}
-.fine{text-align:center;color:var(--muted);font-size:12px;margin-top:10px}
-.note{padding:12px 14px;border-radius:14px;font-size:13.5px;line-height:1.5;margin-top:12px}
+.card{background:#fff;border:1px solid #F0E8EE;border-radius:24px;padding:24px;box-shadow:0 20px 50px #1A113010}
+.card h2{font-size:16px;margin:0 0 14px;letter-spacing:0;font-weight:600}
+.shop{display:flex;gap:12px;align-items:center;background:#F5F1FA;border-radius:16px;padding:12px 14px}
+.shop .av{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#FFC93C,#FF8A00);display:grid;place-items:center;font-size:21px;flex:none}
+.shop b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shop>div:nth-child(2){min-width:0}
+.shop small{color:var(--muted);font-size:11.5px}
+.shop .chg{margin-left:auto;color:#EF287B;font-weight:600;font-size:13px;cursor:pointer;background:none;border:0;font-family:inherit}
+.ln{display:flex;justify-content:space-between;font-size:14px;color:#5E5873;padding:8px 0}
+.ln .g{color:#12A866;font-weight:600}
+.tot{display:flex;justify-content:space-between;font-size:20px;font-weight:700;border-top:1px dashed #E8E0EC;margin-top:8px;padding-top:16px}
+.pay{display:flex;width:100%;justify-content:center;align-items:center;gap:10px;background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff;border:0;border-radius:14px;padding:16px;font:inherit;font-weight:600;font-size:16px;margin-top:18px;cursor:pointer;text-decoration:none}
+.pay .ic{width:18px;height:18px}
+.meth{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.meth span{border:1px solid #ECE4EF;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:500}
+.fine{text-align:center;color:var(--muted);font-size:11.5px;margin-top:10px}
+.note{padding:11px 13px;border-radius:12px;font-size:13px;line-height:1.5;margin-top:10px}
 .note.err{background:#FDE7EE;color:#B0144F}.note.warn{background:#FFF4CC;color:#6b4e00}
-/* checkout */
-.back{display:inline-flex;align-items:center;gap:10px;font-size:22px;font-weight:700;background:none;border:0;font-family:inherit;color:inherit;cursor:pointer;padding:0;margin-bottom:18px}
-.back i{font-style:normal;width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid var(--line);display:grid;place-items:center;font-size:16px}
-.co{max-width:560px;margin:0 auto;display:grid;gap:16px}
-.upi{border:2px solid var(--violet);background:#FBF8FF;border-radius:18px;padding:16px}
-.upi .uh{display:flex;align-items:center;gap:12px;font-weight:700}
-.upi .uh i{font-style:normal;width:36px;height:36px;border-radius:10px;background:#EFE6FF;display:grid;place-items:center}
-.upi .uh small{display:block;font-weight:400;color:var(--muted);font-size:12px}
-#qr{display:flex;justify-content:center;background:#fff;border-radius:16px;padding:14px;margin:14px 0 8px}
-code{background:#EFE6FF;padding:2px 8px;border-radius:7px;font-weight:600}
-label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:12px}
-input{width:100%;padding:14px;border:1.5px solid var(--line);border-radius:14px;font:inherit;font-size:16px;margin-top:6px;background:#fff}
-input:focus{outline:none;border-color:var(--violet)}
-.openapp{width:100%;justify-content:center;background:var(--night);color:#fff;border-radius:14px;padding:13px;margin-top:12px}
-/* success */
-.done{max-width:480px;margin:10px auto;text-align:center}
-.tick{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle,#22C55E 0 55%,#D8F5E4 56%);display:grid;place-items:center;margin:10px auto 18px;color:#fff;font-size:44px;font-weight:800;box-shadow:0 14px 34px #17A55B40}
-.done h2{font-size:28px;margin:0 0 8px}
-.pill{display:inline-block;background:#FFF4CC;color:#7a5800;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
-.rec{background:#fff;border:1px solid var(--line);border-radius:20px;padding:6px 18px;margin:20px 0 14px;text-align:left}
-.rec div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--muted)}
-.rec div:last-child{border:0}.rec b{color:var(--ink)}
-.conf{position:absolute;width:8px;height:14px;border-radius:3px;opacity:.9}
-/* mobile */
+.co{max-width:520px;margin:0 auto}
+.back{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:600;background:none;border:0;font-family:inherit;color:inherit;cursor:pointer;padding:0;margin:4px 0 18px}
+.back i{font-style:normal;width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid #ECE4EF;display:grid;place-items:center}
+.paywith{font-size:15px;font-weight:600;margin:22px 0 10px}
+.opt{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid #8B5CF6;border-radius:16px;padding:14px;box-shadow:0 0 0 4px #EDE4FF}
+.opt .oi{width:40px;height:40px;border-radius:11px;background:#F1EAFE;display:grid;place-items:center;color:#7C3AED}
+.opt b{display:block;font-size:14.5px;font-weight:600}.opt small{color:var(--muted);font-size:12px}
+.opt .rd{margin-left:auto;width:20px;height:20px;border-radius:50%;border:2px solid #7C3AED;display:grid;place-items:center}
+.opt .rd:after{content:"";width:9px;height:9px;border-radius:50%;background:#7C3AED}
+.upibox{background:#F5F1FA;border-radius:16px;padding:12px;margin-top:10px}
+#qr{display:flex;justify-content:center;background:#fff;border-radius:14px;padding:14px;margin-bottom:8px}
+.upiid{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.upiid code{background:#fff;padding:2px 8px;border-radius:6px;font-weight:600;color:var(--ink)}
+.utr{display:flex;gap:8px}
+.utr input{flex:1;min-width:0;padding:13px 14px;border:1px solid #E6DEEC;border-radius:12px;font:inherit;font-size:15px;font-weight:500;background:#fff}
+.utr input:focus{outline:none;border-color:#8B5CF6}
+.utr button{background:#1D0F30;color:#fff;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
+.utr button:disabled{opacity:.6}
+.paid{display:block;font-size:12px;color:var(--muted);margin-top:8px}
+.done{max-width:430px;margin:20px auto;text-align:center;position:relative}
+.tick{width:110px;height:110px;border-radius:50%;background:#D7F5E6;display:grid;place-items:center;margin:20px auto 22px}
+.tick div{width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,#22C55E,#12A866);display:grid;place-items:center;color:#fff;box-shadow:0 10px 24px #12A86655}
+.tick .ic{width:40px;height:40px;stroke-width:3}
+.done h2{font-size:26px;margin:0 0 12px;letter-spacing:-.5px}
+.okpill{display:inline-flex;align-items:center;gap:7px;background:#E3F8EC;color:#0F8A50;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.okpill:before{content:"";width:7px;height:7px;border-radius:50%;background:#12A866}
+.rec{background:#fff;border:1px solid #F0E8EE;border-radius:18px;padding:4px 16px;margin:22px 0 14px;text-align:left}
+.rec div{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #F2EDF3;font-size:13.5px;color:var(--muted)}
+.rec div:last-child{border:0}.rec b{color:var(--ink);font-weight:600}
+.mailnote{display:flex;justify-content:center;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:28px}
+.mailnote .ic{width:15px;height:15px;color:#7C3AED}
+.bigbtn{display:flex;justify-content:center;align-items:center;gap:10px;width:100%;padding:16px;border-radius:14px;font-weight:600;font-size:15px;text-decoration:none;border:0;cursor:pointer;font-family:inherit}
+.bigbtn.dark{background:#1D0F30;color:#fff}.bigbtn.white{background:#fff;color:var(--ink);border:1px solid #ECE4EF;margin-top:10px}
+.bigbtn .ic{width:18px;height:18px}
+.conf{position:absolute;width:7px;height:13px;border-radius:3px}
 .mbar{display:none}
-@media (max-width:900px){
-  .grid{grid-template-columns:1fr;gap:20px}
-  .plans{grid-template-columns:1fr;gap:10px;margin-top:20px}
-  .pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 14px;padding:16px 18px}
-  .pl .rd{grid-row:span 2;order:-1}
-  .pl h4{font-size:16px;font-weight:700}
-  .pl b{margin:0;font-size:22px;grid-column:3;grid-row:1;text-align:right}
-  .pl .pm{grid-column:2;grid-row:2}
-  .pl .sv{grid-column:3;grid-row:2;margin:0;text-align:right}
-  .pl .bv{left:auto;right:16px}
-  .after{grid-template-columns:1fr}
-  .side{display:none}
-  .who{display:none}
-  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));gap:14px;align-items:center;box-shadow:0 -10px 30px #1B103514}
-  .mbar small{display:block;font-size:12px;color:var(--muted)}
-  .mbar b{font-size:22px}.mbar s{color:#A9A3BC;font-size:13px;margin-left:4px}
-  .mbar .btn{flex:1;justify-content:center;background:var(--pgrad);color:#fff;border-radius:16px;padding:15px}
-  main{padding-bottom:120px}
+@media print{nav,.bigbtn,.mbar,.conf{display:none!important}}
+@media (max-width:1100px){main{padding:18px 28px 60px}.grid{grid-template-columns:1fr}.plans{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){
+  main{padding:8px 18px 130px}
+  nav .who{display:none}
+  .grid{gap:0}
+  .rtag{font-size:11px}
+  h1{font-size:28px;letter-spacing:-1px;margin:10px 0 8px}
+  h1 .a,h1 .sp{display:none}
+  .lead{font-size:12.5px}
+  .lead .long{display:none}.lead .short{display:inline!important}
+  .plans{grid-template-columns:1fr;gap:10px;margin:14px 0 14px}
+  .pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:14px;padding:16px;border-radius:18px}
+  .pl .rd{grid-row:1/3;grid-column:1}
+  .pl h4{grid-column:2;grid-row:1;font-size:15px}
+  .pl .pm{grid-column:2;grid-row:2;font-size:12px}
+  .pl b{grid-column:3;grid-row:1;margin:0;font-size:22px;text-align:right}
+  .pl .sv{grid-column:3;grid-row:2;margin:0;font-size:11px;text-align:right}
+  .pl .bv{left:auto;right:14px}
+  .perks{flex-direction:column;gap:8px;font-size:12px}
+  .side,h3,.after{display:none}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-radius:22px 22px 0 0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));gap:14px;align-items:center;box-shadow:0 -10px 30px #1A113014}
+  .mbar small{display:block;font-size:11.5px;color:var(--muted)}
+  .mbar b{font-size:21px;font-weight:700}.mbar s{color:#A9A3BC;font-size:11.5px;margin-left:4px}
+  .mbar button{flex:1;display:flex;justify-content:center;align-items:center;gap:8px;background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff;border:0;border-radius:16px;padding:16px;font:inherit;font-weight:600;font-size:15.5px}
 }
 </style>
 </head>
 <body>
-<div class="top-bg page">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.8-1.6l9.9-10.2a.5.5 0 0 1 .9.5l-1.9 6A1 1 0 0 0 13 10h7a1 1 0 0 1 .8 1.6l-9.9 10.2a.5.5 0 0 1-.9-.5l1.9-6A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 4.4-4.4A2 2 0 0 1 7.8 2h8.4a2 2 0 0 1 1.4.6L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-2-.8 2.7 2.7 0 0 1-4 0 2.7 2.7 0 0 1-4 0 2.7 2.7 0 0 1-4 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</defs></svg>
+
+<div class="page">
 <nav id="nav"><div class="wrap">
   <a class="logo" href="/"><span class="g">गली</span> Bazaar<span class="dot">.</span></a>
   <div class="links">
-    <a class="hide" href="/#shops">For shops</a>
-    <a class="hide" href="/#pricing">Pricing</a>
-    <a class="hide" href="/#faq">Help</a>
+    <a href="/#shops">For shops</a>
+    <a href="/#shops">Pricing</a>
+    <a href="mailto:support@galibazaar.site">Help</a>
     <span class="who" id="who" style="display:none"></span>
   </div>
+  <button class="menu-btn" aria-label="Menu" onclick="document.getElementById('mmenu').classList.toggle('open')"><svg class="ic" style="width:24px;height:24px"><use href="#i-menu"/></svg></button>
+  <div class="mmenu" id="mmenu" onclick="this.classList.remove('open')"><a href="/#shops">For shops</a><a href="/#shops">Pricing</a><a href="mailto:support@galibazaar.site">Help</a></div>
 </div></nav>
 
 <main id="main">
-  <!-- step 1: choose plan -->
   <div id="vPlans">
     <div class="grid">
       <div>
         <span class="rtag" id="rtag">Renewal</span>
-        <h1 id="h1">Keep your shop live.<br><span class="z">Zero commission. Always.</span></h1>
-        <div class="muted" id="lead">Pick a plan. The longer you go, the more you save.</div>
-        <div class="plans" id="plans"><div class="muted">Loading your shop…</div></div>
-        <div class="perks" id="perks"><span>0% commission on orders</span><span>Unlimited items &amp; bulk upload</span><span>Shop goes live after payment</span></div>
+        <h1 id="h1">Keep your shop live.<br><span class="z">Zero commission.</span><span class="sp"> </span><span class="a">Always.</span></h1>
+        <div class="lead" id="lead"><span class="long">Pick a plan — the longer you go, the more you save.</span><span class="short" style="display:none">The longer you go, the more you save.</span></div>
+        <div class="plans" id="plans"><div class="lead">Loading your shop…</div></div>
+        <div class="perks" id="perks">
+          <span><svg class="ic"><use href="#i-check"/></svg>0% commission on every order</span>
+          <span><svg class="ic"><use href="#i-check"/></svg>Unlimited items &amp; bulk upload</span>
+          <span><svg class="ic"><use href="#i-check"/></svg>Shop goes live after payment</span>
+        </div>
         <h3>What happens after you pay</h3>
         <div class="after">
-          <div class="af"><div class="ic" style="background:var(--vgrad)">₹</div><div><small>STEP 1</small><b>Payment checked</b><span>Usually within a few hours</span></div></div>
-          <div class="af"><div class="ic" style="background:linear-gradient(135deg,#FFB000,#FF7A1A)">✉</div><div><small>STEP 2</small><b>Invoice ready</b><span>In your app under Shop &amp; KYC</span></div></div>
-          <div class="af"><div class="ic" style="background:linear-gradient(135deg,#22C55E,#17A55B)">⚡</div><div><small>STEP 3</small><b>Shop goes Active</b><span>Visible to customers again</span></div></div>
+          <div class="af"><div class="ai" style="background:#7C3AED"><svg class="ic"><use href="#i-wallet"/></svg></div><div><small>STEP 1</small><b>Payment verified</b><span>Checked within a few hours</span></div></div>
+          <div class="af"><div class="ai" style="background:#FFA41B"><svg class="ic"><use href="#i-mail"/></svg></div><div><small>STEP 2</small><b>Invoice in your app</b><span>In Account → Accounts &amp; bills</span></div></div>
+          <div class="af"><div class="ai" style="background:#12A866"><svg class="ic"><use href="#i-zap"/></svg></div><div><small>STEP 3</small><b>Shop goes Active</b><span>Visible to customers again</span></div></div>
         </div>
       </div>
-      <div class="side" style="position:sticky;top:90px">
+      <div class="side" style="position:sticky;top:96px">
         <div class="card">
           <h2>Order summary</h2>
           <div id="shopBox"></div>
           <div id="lines" style="margin-top:12px"></div>
           <div class="tot"><span>Total</span><span id="tot">—</span></div>
-          <button class="btn pay goPay" id="payD">Pay securely</button>
+          <button class="pay goPay" id="payD"><svg class="ic"><use href="#i-shield"/></svg><span>Pay securely</span></button>
           <div class="meth"><span>UPI</span><span>Any UPI app</span><span>QR code</span></div>
-          <div class="fine">Invoice appears in your app after we check the payment</div>
+          <div class="fine">Pay by UPI · Invoice appears in your app after we check the payment</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- step 2: checkout -->
   <div id="vCheckout" style="display:none">
     <div class="co">
-      <button class="back" id="back"><i>‹</i>Checkout</button>
-      <div class="card">
+      <button class="back" id="back"><i><svg class="ic" style="width:18px;height:18px"><use href="#i-left"/></svg></i>Checkout</button>
+      <div class="card" style="padding:18px">
         <div id="shopBox2"></div>
-        <div id="lines2" style="margin-top:12px"></div>
+        <div id="lines2" style="margin-top:10px"></div>
         <div class="tot"><span>Total</span><span id="tot2">—</span></div>
       </div>
-      <div class="card">
-        <h2>Pay with</h2>
-        <div class="upi">
-          <div class="uh"><i>⚡</i><div>UPI<small>Any UPI app: GPay, PhonePe, Paytm, BHIM</small></div></div>
-          <a class="btn openapp" id="upiLink" href="#">Open my UPI app</a>
-          <div id="qr"></div>
-          <div class="fine" style="margin-top:0">Scan with any UPI app · UPI ID <code id="upi">—</code></div>
-        </div>
-        <label for="utr">After paying, enter the UTR / UPI reference number (12 digits)</label>
-        <input id="utr" inputmode="numeric" placeholder="e.g. 432156789012" autocomplete="off">
-        <label for="date">Paid on</label>
-        <input id="date" type="date">
-        <button class="btn pay" id="send">Confirm my payment</button>
+      <div class="paywith">Pay with</div>
+      <div class="opt"><div class="oi"><svg class="ic"><use href="#i-zap"/></svg></div><div><b>UPI</b><small>Any UPI app: GPay, PhonePe, Paytm, BHIM</small></div><span class="rd"></span></div>
+      <div class="upibox">
+        <div id="qr"></div>
+        <div class="upiid">Scan with any UPI app · UPI ID <code id="upi">—</code></div>
+        <div class="utr"><input id="utr" inputmode="numeric" placeholder="UTR / UPI reference no." autocomplete="off"><button id="send">Verify</button></div>
+        <span class="paid">After paying, copy the 12-digit UTR from your UPI app and tap Verify. Paid on <input id="date" type="date" style="border:0;background:none;font:inherit;color:inherit"></span>
         <div id="msg"></div>
-        <div class="fine">🔒 Your payment goes straight to Gali Bazaar's UPI account</div>
       </div>
+      <a class="pay" id="upiLink" href="#"><svg class="ic"><use href="#i-shield"/></svg><span id="upiLabel">Pay securely</span></a>
+      <div class="fine">Pay in your UPI app, then enter the UTR above</div>
     </div>
   </div>
 
-  <!-- step 3: success -->
-  <div id="vDone" style="display:none;position:relative"></div>
+  <div id="vDone" style="display:none"></div>
 </main>
 </div>
 
 <div class="mbar" id="mbar" style="display:none">
   <div><small id="mLabel">Total</small><b id="mTot">—</b><s id="mFull"></s></div>
-  <button class="btn goPay">Continue ›</button>
+  <button class="goPay">Continue <svg class="ic" style="width:18px;height:18px"><use href="#i-right"/></svg></button>
 </div>
 
 <script>
@@ -202,8 +232,9 @@ const rpc = async (fn, body) => {
   return j;
 };
 const isPhone = /Android|iPhone|iPad/i.test(navigator.userAgent);
+let ready = false;
 const show = v => { ["vPlans", "vCheckout", "vDone"].forEach(x => $(x).style.display = x === v ? "" : "none");
-  $("mbar").style.display = v === "vPlans" ? "" : "none"; scrollTo({ top: 0, behavior: "smooth" }); };
+  $("mbar").style.display = v === "vPlans" && ready ? "" : "none"; scrollTo({ top: 0, behavior: "smooth" }); };
 addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY > 10), { passive: true });
 
 (async () => {
@@ -213,28 +244,27 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   let info = null;
   try { info = shop ? await rpc("pay_info", { p_shop: shop }) : null } catch (e) { info = null }
   if (!info) {
-    $("rtag").textContent = "Shop plan renewal";
-    $("plans").outerHTML = `<div class="card" style="margin:26px 0 16px;max-width:620px"><h2>Open the link from your email</h2>
-      <div class="muted" style="line-height:1.6">Renewal works from your shop's personal link. In the Gali Bazaar app, open <b>Shop &amp; KYC</b> and tap
-      <b>Send renewal link to my email</b>, then open the link in that email.</div>
-      <a class="btn dark" style="margin-top:16px" href="/#pricing">See plan prices</a></div>`;
-    document.querySelector(".side").style.display = "none";
+    let st = null;
+    try { st = (await (await fetch(`${SUPABASE_URL}/rest/v1/settings?id=eq.1&select=plan_price,plan_discounts`, { headers: { apikey: KEY } })).json())[0] } catch (_) {}
+    const price = st?.plan_price || 99, disc = st?.plan_discounts || { 1: 0, 3: 10, 6: 15, 12: 20 };
+    $("rtag").textContent = "Plans for shops";
+    $("plans").innerHTML = [1, 3, 6, 12].map(m => { const d = +(disc[m] || 0), p = Math.round(price * m * (100 - d) / 100);
+      return `<div class="pl ${m === 12 ? "on" : ""}">${m === 12 ? '<span class="bv">BEST VALUE</span>' : ""}<h4>${m === 1 ? "1 month" : m + " months"}</h4><b>${inr(p)}</b>
+        <span class="pm">${inr(Math.round(p / m))} / month</span><span class="sv">${d ? "Save " + d + "%" : "Standard"}</span><span class="rd"></span></div>`; }).join("");
+    document.querySelector(".side").style.display = "block";
+    document.querySelector(".side").innerHTML = `<div class="card"><h2>Renew your shop</h2>
+      <div class="lead" style="font-size:14px;line-height:1.6">Renewal works from your shop's personal link. In the Gali Bazaar app, open <b>Account</b> and tap
+      <b>Send renewal link to my email</b>, then open the link in that email.</div></div>`;
     return;
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const live = info.sub_until && info.sub_until >= todayStr;
-  const stCls = !info.sub_until ? "warn" : live ? "ok" : "off";
-  const stTxt = !info.sub_until ? "No plan yet" : live ? "Active till " + info.sub_until : "Ended " + info.sub_until + " · shop offline";
-  const shopHtml = `<div class="shop"><div class="av">🛒</div><div><b>${esc(info.name)}</b><small>${esc(info.city || "")}</small><br><span class="st ${stCls}">● ${esc(stTxt)}</span></div></div>
-    ${info.pending ? '<div class="note warn">A payment you sent earlier is being checked. You don\'t need to pay again.</div>' : ""}`;
-  $("shopBox").innerHTML = shopHtml; $("shopBox2").innerHTML = shopHtml;
+  const sid = "ID GB-" + shop.slice(0, 6).toUpperCase();
   $("rtag").textContent = "Renewal for " + info.name;
   $("who").textContent = info.name; $("who").style.display = "";
-  $("mbar").style.display = "";
   $("date").value = todayStr; $("date").max = todayStr;
   const upi = info.upi || ""; $("upi").textContent = upi || "—";
-
   const disc = info.discounts || { "1": 0, "3": 10, "6": 15, "12": 20 };
   const planAmt = m => Math.round(info.price * m * (100 - (disc[m] || 0)) / 100);
   let months = [1, 3, 6, 12].includes(+qp.get("months")) ? +qp.get("months") : 12;
@@ -244,51 +274,55 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   if (featured) {
     $("h1").innerHTML = 'Be the #1 shop<br><span class="z">in your area.</span>';
     $("lead").textContent = "Your shop shows at the top of every customer's home, marked Sponsored.";
-    $("perks").innerHTML = "<span>Top of home screen</span><span>Only in your delivery areas</span><span>Starts after payment check</span>";
+    $("perks").innerHTML = '<span><svg class="ic"><use href="#i-check"/></svg>Top of the home screen</span><span><svg class="ic"><use href="#i-check"/></svg>Only in your delivery areas</span>';
     $("plans").style.gridTemplateColumns = "repeat(2,1fr)";
   }
+
+  const shopBox = (plan) => `<div class="shop"><div class="av">🛒</div><div><b>${esc(info.name)}</b><small>${plan ? esc(plan) : esc(info.city || "")} • ${sid}</small></div>
+      ${plan ? '<button class="chg" onclick="document.getElementById(\'back\').click()">Change</button>' : ""}</div>
+      ${info.pending ? '<div class="note warn">A payment you sent earlier is being checked. You don\'t need to pay again.</div>' : ""}
+      `;
 
   const draw = () => {
     let full, lines;
     if (featured) {
-      $("plans").innerHTML = [7, 30].map(d => {
-        const p = d === 7 ? info.feat_week : info.feat_month;
+      $("plans").innerHTML = [7, 30].map(d => { const p = d === 7 ? info.feat_week : info.feat_month;
         return `<button class="pl ${d === days ? "on" : ""}" data-d="${d}"><h4>${d === 7 ? "1 week" : "1 month"}</h4><b>${inr(p)}</b>
-          <span class="pm">Top spot for ${d} days</span><span class="sv">⭐ Sponsored</span><span class="rd"></span></button>`;
-      }).join("");
+          <span class="pm">Top spot for ${d} days</span><span class="sv">Sponsored</span><span class="rd"></span></button>`; }).join("");
       document.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { days = +b.dataset.d; draw(); });
       amt = full = days === 7 ? info.feat_week : info.feat_month;
       till = new Date(); till.setDate(till.getDate() + days);
-      label = `Top spot · ${days === 7 ? "1 week" : "1 month"}`;
-      lines = `<div class="ln"><span>${label}</span><span>${inr(amt)}</span></div>`;
+      label = days === 7 ? "1 week" : "1 month";
+      lines = `<div class="ln"><span>Top spot · ${label}</span><span>${inr(amt)}</span></div>`;
       note = `GaliBazaar TOP ${shop.slice(0, 8).toUpperCase()}`;
     } else {
-      $("plans").innerHTML = [1, 3, 6, 12].map(m => {
-        const p = planAmt(m), d = disc[m] || 0;
+      $("plans").innerHTML = [1, 3, 6, 12].map(m => { const p = planAmt(m), d = disc[m] || 0;
         return `<button class="pl ${m === months ? "on" : ""}" data-m="${m}">${m === 12 ? '<span class="bv">BEST VALUE</span>' : ""}
-          <h4>${m === 1 ? "1 month" : m + " months"}</h4><b>${inr(p)}</b>
-          <span class="pm">${inr(Math.round(p / m))} / month</span><span class="sv">${d ? "Save " + d + "%" : "Standard"}</span><span class="rd"></span></button>`;
-      }).join("");
+          <h4>${m === 1 ? "1 month" : m + " months"}</h4><b>${inr(p)}</b><span class="pm">${inr(Math.round(p / m))} / month</span>
+          <span class="sv">${d ? "Save " + d + "%" : "Standard"}</span><span class="rd"></span></button>`; }).join("");
       document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { months = +b.dataset.m; draw(); });
       full = info.price * months; amt = planAmt(months);
       till = live ? new Date(info.sub_until) : new Date(); till.setMonth(till.getMonth() + months);
-      label = `${months === 1 ? "1 month" : months + " months"} plan`;
-      lines = `<div class="ln"><span>${months} × ${inr(info.price)}</span><span>${inr(full)}</span></div>
-        ${full > amt ? `<div class="ln"><span>${months === 12 ? "Yearly" : months + "-month"} discount (${disc[months]}%)</span><span class="g">− ${inr(full - amt)}</span></div>` : ""}
-        <div class="ln"><span>Valid till</span><span>${fmt(till)}</span></div>`;
+      label = months === 1 ? "1 month" : months + " months";
+      lines = `<div class="ln"><span>${months} months × ${inr(info.price)}</span><span>${inr(full)}</span></div>
+        ${full > amt ? `<div class="ln"><span>${months === 12 ? "Yearly" : months + "-month"} discount (${disc[months]}%)</span><span class="g">– ${inr(full - amt)}</span></div>` : ""}`;
       note = `GaliBazaar ${shop.slice(0, 8).toUpperCase()} ${months}M`;
     }
+    $("shopBox").innerHTML = shopBox(null);
+    $("shopBox2").innerHTML = shopBox(featured ? "Top spot · " + label : (months === 1 ? "1-month" : months + "-month") + " plan");
     $("lines").innerHTML = lines; $("lines2").innerHTML = lines;
     $("tot").textContent = inr(amt); $("tot2").textContent = inr(amt);
-    $("payD").textContent = `🔒 Pay ${inr(amt)} securely`;
-    $("send").textContent = `Confirm payment of ${inr(amt)}`;
+    $("payD").querySelector("span").textContent = `Pay ${inr(amt)} securely`;
+    $("upiLabel").textContent = isPhone ? `Pay ${inr(amt)} securely` : `Pay ${inr(amt)} · scan the QR`;
     $("mTot").textContent = inr(amt); $("mFull").textContent = full > amt ? inr(full) : "";
-    $("mLabel").textContent = "Total · " + (featured ? (days === 7 ? "1 week" : "1 month") : (months === 1 ? "1 month" : months + " months"));
+    $("mLabel").textContent = "Total • " + label;
     const uri = "upi://pay?pa=" + encodeURIComponent(upi) + "&pn=" + encodeURIComponent(info.biz || "Gali Bazaar") + "&am=" + amt + "&cu=INR&tn=" + encodeURIComponent(note);
-    $("upiLink").href = uri; $("upiLink").style.display = isPhone && upi ? "" : "none";
-    $("qr").innerHTML = ""; if (upi && window.QRCode) new QRCode($("qr"), { text: uri, width: 190, height: 190 });
+    $("upiLink").href = isPhone && upi ? uri : "#qr";
+    $("qr").innerHTML = ""; if (upi && window.QRCode) new QRCode($("qr"), { text: uri, width: 180, height: 180 });
   };
   draw();
+  ready = true;
+  show("vPlans");
 
   document.querySelectorAll(".goPay").forEach(b => b.onclick = () => {
     show("vCheckout");
@@ -297,30 +331,30 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   $("back").onclick = () => show("vPlans");
 
   $("send").onclick = async () => {
-    $("msg").innerHTML = ""; const b = $("send"); b.disabled = true; b.textContent = "Confirming…";
+    $("msg").innerHTML = ""; const b = $("send"); b.disabled = true; b.textContent = "…";
     try {
       await rpc("submit_utr", { p_shop: shop, p_utr: $("utr").value, p_months: months, p_paid_on: $("date").value,
         p_purpose: featured ? "FEATURED" : "PLAN", p_days: featured ? days : null });
-      const colors = ["#FFC93C", "#F0306F", "#8B5CF6", "#17A55B"];
-      const conf = Array.from({ length: 14 }, (_, i) => `<span class="conf" style="background:${colors[i % 4]};left:${8 + Math.random() * 84}%;top:${Math.random() * 120}px;transform:rotate(${Math.random() * 90 - 45}deg)"></span>`).join("");
-      $("vDone").innerHTML = conf + `<div class="done">
-        <div class="tick">✓</div>
+      const colors = ["#FFC21A", "#EF287B", "#8B5CF6", "#12A866"];
+      const conf = Array.from({ length: 10 }, (_, i) => `<span class="conf" style="background:${colors[i % 4]};left:${i % 2 ? 72 + Math.random() * 22 : 4 + Math.random() * 22}%;top:${10 + Math.random() * 120}px;transform:rotate(${Math.random() * 90 - 45}deg)"></span>`).join("");
+      $("vDone").innerHTML = `<div class="done">${conf}
+        <div class="tick"><div><svg class="ic"><use href="#i-check"/></svg></div></div>
         <h2>Payment received</h2>
-        <span class="pill">● ${esc(info.name)} will be Active after we check it</span>
+        <span class="okpill">${esc(info.name)} will be Active after the check</span>
         <div class="rec">
           <div><span>${featured ? "Top spot" : "Plan"}</span><b>${esc(label)}</b></div>
           <div><span>Amount paid</span><b>${inr(amt)}</b></div>
           <div><span>Valid till</span><b>${fmt(till)}</b></div>
-          <div><span>UTR / reference</span><b>${esc($("utr").value.trim())}</b></div>
+          <div><span>UTR</span><b>${esc($("utr").value.trim())}</b></div>
         </div>
-        <div class="muted" style="font-size:13.5px;margin-bottom:18px">✉ The invoice will be in your app under Shop &amp; KYC once your shop is Active (usually within a few hours).</div>
-        <a class="btn dark" style="width:100%;justify-content:center;padding:15px" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Get the seller app</a>
-        <a class="btn white" style="width:100%;justify-content:center;padding:15px;margin-top:10px" href="/">Back to Gali Bazaar</a></div>`;
+        <div class="mailnote"><svg class="ic"><use href="#i-mail"/></svg>Invoice will be in your app under Account → Accounts &amp; bills</div>
+        <a class="bigbtn dark" href="intent://#Intent;package=com.galibazaar.app;end"><svg class="ic"><use href="#i-store"/></svg>Open seller app</a>
+        <button class="bigbtn white" onclick="print()"><svg class="ic"><use href="#i-upload"/></svg>Download receipt</button></div>`;
       show("vDone");
     } catch (e) {
       $("msg").innerHTML = `<div class="note err">${esc(e.message)}</div>`;
-      b.disabled = false; b.textContent = `Confirm payment of ${inr(amt)}`;
     }
+    b.disabled = false; b.textContent = "Verify";
   };
 })();
 </script>

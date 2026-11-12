@@ -6,231 +6,145 @@
 <title>Gali Bazaar — Your neighbourhood shops, now on your phone</title>
 <meta name="description" content="Order groceries, chaat and stationery from the shops in your own gali. Pick a delivery slot, pay cash at your door.">
 <meta property="og:title" content="Gali Bazaar — Your neighbourhood shops, now on your phone">
-<meta property="og:description" content="Order from the shops in your own gali. Slot delivery, pay at your door.">
-<meta name="theme-color" content="#FFC93C">
+<meta property="og:description" content="Order groceries, chaat and stationery from the shops in your own gali.">
+<meta property="og:image" content="https://galibazaar.site/img/hero-phones.png">
+<meta name="theme-color" content="#FFE9AD">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <linearGradient id="gp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00D7FE"/><stop offset=".5" stop-color="#FFCE00"/><stop offset="1" stop-color="#FF3A44"/></linearGradient>
     <symbol id="play" viewBox="0 0 18 20"><path d="M1 1.2v17.6c0 .7.8 1.1 1.4.7l15-8.8c.6-.4.6-1.2 0-1.5L2.4.4C1.8 0 1 .5 1 1.2z" fill="url(#gp)"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 4.4-4.4A2 2 0 0 1 7.8 2h8.4a2 2 0 0 1 1.4.6L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-2-.8 2.7 2.7 0 0 1-4 0 2.7 2.7 0 0 1-4 0 2.7 2.7 0 0 1-4 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.8-1.6l9.9-10.2a.5.5 0 0 1 .9.5l-1.9 6A1 1 0 0 0 13 10h7a1 1 0 0 1 .8 1.6l-9.9 10.2a.5.5 0 0 1-.9-.5l1.9-6A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
   </defs>
 </svg>
 
-<div class="top-bg">
+<div class="page">
 <nav id="nav"><div class="wrap">
   <a class="logo" href="/"><span class="g">गली</span> Bazaar<span class="dot">.</span></a>
   <div class="links">
-    <a class="hide" href="#how">Features</a>
-    <a class="hide" href="#shops">For shops</a>
-    <a class="hide" href="#pricing">Pricing</a>
-    <a class="hide" href="#faq">Help</a>
-    <a class="btn dark" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg>Download</a>
+    <a href="#how">Features</a>
+    <a href="#shops">For shops</a>
+    <a href="#shops">Pricing</a>
+    <a href="mailto:support@galibazaar.site">Help</a>
+    <a class="dlnav" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg>Download</a>
+  </div>
+  <button class="menu-btn" aria-label="Menu" onclick="document.getElementById('mmenu').classList.toggle('open')"><svg class="ic" style="width:24px;height:24px"><use href="#i-menu"/></svg></button>
+  <div class="mmenu" id="mmenu" onclick="this.classList.remove('open')">
+    <a href="#how">Features</a><a href="#shops">For shops</a><a href="#shops">Pricing</a><a href="mailto:support@galibazaar.site">Help</a>
+    <a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download the app</a>
   </div>
 </div></nav>
 
 <header class="hero"><div class="wrap grid">
   <div>
-    <span class="live"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> Now on Android · early access</span>
+    <span class="live"><svg class="ic"><use href="#i-pin"/></svg>Now live across India</span>
     <h1>Your neighbourhood shops, <span class="o">now on your</span> <span class="p">phone.</span></h1>
-    <p class="lead">Order groceries, chaat and stationery from the shops in your own gali. Pick a delivery slot, pay cash at your door.</p>
+    <p class="lead"><span class="full">Order groceries, chaat and stationery from the shops in your own gali. Pick a delivery slot, pay cash at your door.</span><span class="short" style="display:none">Groceries, chaat &amp; stationery from your own gali. Pay cash at your door.</span></p>
     <div class="cta">
-      <a class="btn dark" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg><span class="two"><small>Free on Android</small><b>Download the app</b></span></a>
-      <a class="btn white" href="#shops"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C3BE4" stroke-width="2"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v1a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0V9M5 13v7h14v-7"/></svg>Sell on Gali Bazaar</a>
+      <a class="btn btn-dl" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg><span class="t"><small>Free on Android</small><b>Download the app</b></span></a>
+      <a class="btn btn-out hero-sell" href="#shops"><svg class="ic"><use href="#i-store"/></svg>Sell on Gali Bazaar</a>
     </div>
     <div class="stats">
-      <div><b class="g">0%</b><span>commission for shops</span></div>
-      <div><b>3</b><span>shop categories</span></div>
-      <div><b class="pk">₹0</b><span>app fee for customers</span></div>
+      <div><b class="s-g">0%</b><span>commission for shops</span></div>
+      <div><b class="s-v">3</b><span>shop categories</span></div>
+      <div><b class="s-p">₹0</b><span>free delivery offers</span></div>
     </div>
   </div>
-
-  <div class="stage">
-    <div class="phone p1"><div class="scr"><div class="notch"></div>
-      <div class="hd"><div class="sb"><span>9:41</span><span>●●●</span></div>
-        <small>Delivering to</small><b>📍 Gali No. 3, Laxmi Nagar ▾</b>
-        <div class="srch">🔍 Search "atta"…</div></div>
-      <div class="bento">
-        <div class="offer"><small>TODAY'S OFFER</small><b>Free delivery above ₹199</b><i>Order now</i><div style="font-size:30px;text-align:right;margin-top:6px">🛵</div></div>
-        <div class="mtile"><span>Grocery<small>local shops</small></span>🥬</div>
-        <div class="mtile"><span>Food Corner<small>chaat & snacks</small></span>🥟</div>
-      </div>
-      <div class="chips"><span class="on">✏️ Stationery</span><span>🍬 Sweets</span><span>🥤 Drinks</span></div>
-      <div class="sec">Shops on your street <em>See all</em></div>
-      <div class="shopc"><div class="av" style="background:#FFF1C9">🛒</div><div><b>Sharma Kirana Store</b><small>Atta, dal, milk, spices</small><div class="meta"><span>0.3 km</span><span>20 min</span><span class="o">Open</span></div></div></div>
-      <div class="shopc"><div class="av" style="background:#FFE1EA">🥟</div><div><b>Raju Chaat Corner</b><small>Chaat, samosa, lassi</small><div class="meta"><span>0.6 km</span><span>25 min</span><span class="o">Open</span></div></div></div>
-      <div class="navp"><span class="on">⌂ Home</span><span>▦</span><span>▤</span><span>◯</span></div>
-    </div></div>
-    <div class="phone p2"><div class="scr"><div class="notch"></div>
-      <div class="cover">🛒</div>
-      <div class="scard"><span class="rt">4.8★</span><b>Sharma Kirana Store</b><br><small style="color:var(--muted)">Block C, Laxmi Nagar · 0.3 km</small>
-        <div class="kv"><div>Next slot<b>5–7 PM</b></div><div>Payment<b>Cash</b></div><div>Minimum<b>₹99</b></div></div></div>
-      <div class="chips" style="margin:10px 0"><span class="on">Atta & Rice</span><span>Dal</span><span>Milk & Bread</span></div>
-      <div class="pgrid">
-        <div class="pc"><div class="im">🌾</div><b>Aashirvaad Atta</b><small style="color:var(--muted)">5 kg</small><div class="r"><b>₹245</b><span class="add">ADD</span></div></div>
-        <div class="pc"><div class="im" style="background:#EAF3FF"><i>7% OFF</i>🥛</div><b>Amul Toned Milk</b><small style="color:var(--muted)">500 ml</small><div class="r"><b>₹28</b><span class="add">ADD</span></div></div>
-      </div>
-      <div class="cartbar"><span>3 items · ₹325</span><span>Cart ›</span></div>
-    </div></div>
-    <div class="badge"><div class="ck">✓</div><div>Order delivered<small>Evening slot · paid in cash</small></div></div>
-  </div>
+  <img class="hero-img" src="/img/hero-phones.png" width="573" height="580" alt="Gali Bazaar app: home screen and a shop page">
 </div></header>
-</div>
 
-<section style="padding-top:30px"><div class="wrap center">
-  <span class="tag" style="background:#EFE6FF;color:var(--violet)">What you can order</span>
-  <h2 style="margin-top:14px">Everything your gali sells</h2>
-  <p class="sub">The same shops you already trust, now a tap away.</p>
-  <div class="cats" style="text-align:left">
-    <div class="cat c1"><h3>Grocery</h3><p>Atta, dal, milk, spices &amp; daily needs</p><span class="e">🛒</span></div>
-    <div class="cat c2"><h3>Food Corner</h3><p>Chaat, samosa, sweets &amp; snacks</p><span class="e">🍢</span></div>
-    <div class="cat c3"><h3>Stationery</h3><p>Notebooks, pens, art &amp; office</p><span class="e">✏️</span></div>
+<section id="categories" style="padding-top:20px"><div class="wrap">
+  <div class="cats-h">
+    <span class="tag" style="background:#EFE3FF;color:#6E2FC9">What you can order</span>
+    <h2>Everything your gali sells</h2>
+  </div>
+  <div class="cats">
+    <div class="cat c1"><h3>Grocery</h3><p>Atta, dal, milk, spices &amp; daily needs</p><img src="/img/cat-grocery.png" alt=""></div>
+    <div class="cat c2"><h3>Food Corner</h3><p>Chaat, samosa, sweets &amp; snacks</p><img src="/img/cat-food.png" alt=""></div>
+    <div class="cat c3"><h3>Stationery</h3><p>Notebooks, pens, art &amp; office</p><img src="/img/cat-stationery.png" alt=""></div>
   </div>
 </div></section>
 
-<section id="how" style="padding-top:20px"><div class="wrap how">
+<section id="how"><div class="wrap how">
   <div>
-    <span class="tag" style="background:#FDE7EE;color:var(--pink)">How it works</span>
-    <h2 style="margin-top:14px">Three taps from<br>your gali to your door</h2>
-    <p class="sub">No wallet, no surprise fees. You see everything before you order.</p>
+    <span class="tag" style="background:#FFE3EE;color:#EF287B">How it works</span>
+    <h2>Three taps from<br>your gali to your door</h2>
     <div class="steps">
-      <div class="st"><div class="ic" style="background:var(--vgrad)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><div><small>STEP 1</small><b>Set your gali</b><span>We show shops that deliver to your block</span></div></div>
-      <div class="st"><div class="ic" style="background:var(--pgrad)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div><div><small>STEP 2</small><b>Order in a tap</b><span>Pick items and your delivery slot</span></div></div>
-      <div class="st"><div class="ic" style="background:linear-gradient(135deg,#22C55E,#17A55B)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/></svg></div><div><small>STEP 3</small><b>Pay cash at door</b><span>Call your delivery partner anytime</span></div></div>
+      <div class="st"><div class="si" style="background:#8938F7"><svg class="ic"><use href="#i-pin"/></svg></div><div><small style="color:#8938F7">STEP 1</small><b>Set your gali</b><span>We show shops that deliver to your block</span></div></div>
+      <div class="st"><div class="si" style="background:#EF287B"><svg class="ic"><use href="#i-bag"/></svg></div><div><small style="color:#EF287B">STEP 2</small><b>Order in a tap</b><span>Pick items and your delivery slot</span></div></div>
+      <div class="st"><div class="si" style="background:#12BA6D"><svg class="ic"><use href="#i-wallet"/></svg></div><div><small style="color:#12BA6D">STEP 3</small><b>Pay cash at door</b><span>Call your delivery partner anytime</span></div></div>
     </div>
   </div>
-  <div class="duo">
-    <div class="phone a"><div class="scr"><div class="notch"></div><div class="sb"><span>9:41</span><span>●●●</span></div>
-      <div style="padding:10px 12px"><b style="font-size:12px">‹ Your cart</b><br><small style="color:var(--muted);font-size:8px;margin-left:10px">from Sharma Kirana Store</small></div>
-      <div class="row"><div class="e">🌾</div><div><b>Aashirvaad Atta</b><small>5 kg</small></div><div class="q"><span>− 1 +</span>₹245</div></div>
-      <div class="row"><div class="e">🍪</div><div><b>Parle-G Biscuits</b><small>800 g</small></div><div class="q"><span>− 1 +</span>₹60</div></div>
-      <div class="row"><div class="e">🧂</div><div><b>Tata Salt</b><small>1 kg</small></div><div class="q"><span>− 1 +</span>₹20</div></div>
-      <div class="sec" style="font-size:9.5px">Delivery time <em style="color:var(--muted)">Today</em></div>
-      <div class="slots"><span>Morning<b>8–10</b></span><span>Afternoon<b>12–2</b></span><span class="on">Evening<b>5–7</b></span></div>
-      <div class="bill"><div><span>Items</span><span>₹325</span></div><div><span>Delivery</span><span style="color:var(--green)">Free</span></div><div><b>Total</b><b>₹325</b></div><div class="cod">💵 Cash on delivery — pay on arrival</div></div>
-      <div class="slide"><i>›</i>Slide to place order</div>
-    </div></div>
-    <div class="phone b"><div class="scr"><div class="notch"></div><div class="sb"><span>9:41</span><span>●●●</span></div>
-      <div style="padding:10px 12px;display:flex;justify-content:space-between"><b style="font-size:11px">‹ Order #GB2481</b><span style="background:var(--night);color:#fff;border-radius:5px;padding:1px 5px;font-size:7.5px;font-weight:700">LIVE</span></div>
-      <div class="map"><svg viewBox="0 0 230 250"><path d="M40 210 C70 170 90 120 120 110 S170 80 190 40" stroke="#8B5CF6" stroke-width="3" fill="none" stroke-dasharray="5 6"/><circle cx="40" cy="210" r="10" fill="#6C3BE4"/><circle cx="120" cy="110" r="11" fill="#F0306F"/><text x="113" y="114" font-size="10">🛵</text><rect x="178" y="28" width="22" height="22" rx="6" fill="#fff"/><text x="182" y="44" font-size="12">🏪</text></svg></div>
-      <div class="sheet"><small style="color:var(--muted);font-size:8px">Arriving in</small><div class="big">12 mins</div>
-        <div class="bars"><span class="d"></span><span class="d"></span><span class="d"></span><span></span></div>
-        <div class="partner"><div class="av">R</div><div><b style="font-size:9.5px">Ramesh Kumar</b><br><small style="color:var(--green);font-size:7.5px">✓ KYC verified partner</small></div><div class="call">📞</div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:8.5px;color:var(--muted)"><span>Pay in cash</span><b style="color:var(--ink)">₹325</b></div>
-      </div>
-    </div></div>
-  </div>
+  <img class="how-img" src="/img/how-phones.png" width="487" height="540" alt="Cart with delivery slot, and live order tracking">
 </div></section>
 
-<section id="shops" style="padding-top:20px"><div class="wrap">
+<section id="shops" style="padding-top:10px"><div class="wrap">
   <div class="sellers">
     <div>
-      <span class="tag" style="background:#FFC93C;color:var(--night)">For shop owners</span>
-      <h2 style="margin-top:16px">Take your dukaan online.<br><span><span class="pp">₹99</span>/month. 0% commission.</span></h2>
-      <p class="sub">Start with a <span class="td">14</span>-day free trial. No commission on any order, ever.</p>
+      <span class="tag">For shop owners</span>
+      <h2>Take your dukaan online.<br><span><span class="pp">₹99</span>/month<span class="sep" style="display:none"> •</span><span class="stop">.</span> 0% commission.</span></h2>
+      <p class="sub"><span class="long">Start with a <span class="td">14</span>-day free trial. No commission on any order — ever.</span><span class="short" style="display:none"><span class="td">14</span>-day free trial. No commission — ever.</span></p>
       <div class="feats">
-        <div class="feat"><div class="ic">⚡</div><div><b>0% commission</b><span>Keep 100% of every order</span></div></div>
-        <div class="feat"><div class="ic">⬆</div><div><b>Bulk upload</b><span>Hundreds of items at once from a sheet</span></div></div>
-        <div class="feat"><div class="ic">◷</div><div><b>Your slots</b><span>Choose timings &amp; areas you serve</span></div></div>
-        <div class="feat"><div class="ic">🛡</div><div><b>Simple KYC</b><span>Aadhaar + PAN, done once</span></div></div>
+        <div class="feat"><div class="fi"><svg class="ic"><use href="#i-zap"/></svg></div><div><b>0% commission</b><span>Keep 100% of every order</span></div></div>
+        <div class="feat"><div class="fi"><svg class="ic"><use href="#i-upload"/></svg></div><div><b>Bulk upload</b><span>500 items at once from a sheet</span></div></div>
+        <div class="feat"><div class="fi"><svg class="ic"><use href="#i-clock"/></svg></div><div><b>Your slots</b><span>Choose timings &amp; areas you serve</span></div></div>
+        <div class="feat"><div class="fi"><svg class="ic"><use href="#i-shield"/></svg></div><div><b>Auto KYC</b><span>Aadhaar + PAN verified in minutes</span></div></div>
       </div>
       <div class="cta">
-        <a class="btn white" style="border:0" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg><span class="two"><small>Free on Android</small><b>Download the app</b></span></a>
-        <a class="btn line" href="#pricing">See pricing →</a>
+        <a class="btn btn-dl light" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="play"><use href="#play"/></svg><span class="t"><small>Free on Android</small><b>Download the app</b></span></a>
+        <a class="btn btn-line" href="/pay/">See pricing →</a>
       </div>
+      <a class="btn-trial" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Start free trial</a>
     </div>
-    <div class="phone dashp"><div class="scr"><div class="notch"></div><div class="sb"><span>9:41</span><span>●●●</span></div>
-      <div class="dh"><div><small>Hello, Sharma ji 👋</small><b>Sharma Kirana Store</b></div><span class="act">● Active</span></div>
-      <div class="sale"><small>Today's sales</small><b>₹4,860</b><i>↑ 18% vs yesterday</i><svg viewBox="0 0 100 24" style="width:60%;float:right;margin-top:-14px"><path d="M0 22 L20 16 L35 19 L55 9 L70 12 L100 2" stroke="#1B1035" stroke-width="2" fill="none"/></svg></div>
-      <div class="two2"><div>New orders<b>7</b><span style="color:var(--yellow)">3 awaiting reply</span></div><div>Delivered<b>23</b><span style="color:#4ADE80">Today</span></div></div>
-      <div style="padding:10px 12px 0;font-weight:700;font-size:10px">Quick actions</div>
-      <div class="qa"><div><span style="background:var(--vgrad)">+</span>Add item</div><div><span style="background:var(--pgrad)">⬆</span>Bulk upload</div><div><span style="background:#FF9F1A">◷</span>Slot</div><div><span style="background:#17A55B">👥</span>Staff</div></div>
-      <div class="plan"><span style="font-size:14px">✉️</span><div><b>Plan ends in 9 days</b>Renewal link comes to your email</div><i>Send link</i></div>
-      <div class="navp"><span class="on">⌂ Dashboard</span><span>☰</span><span>▦</span><span>◯</span></div>
-    </div></div>
+    <img class="seller-img" src="/img/seller-phone.png" width="270" height="546" alt="Seller dashboard in the Gali Bazaar app">
   </div>
 </div></section>
-
-<section id="pricing" style="padding-top:20px"><div class="wrap">
-  <span class="tag" style="background:#E5F7EE;color:var(--green)">Pricing for shops</span>
-  <h2 style="margin-top:14px">One small plan. No commission.</h2>
-  <p class="sub">Customers always use Gali Bazaar for free. Shops pay one flat plan, and the first <span class="td">14</span> days are free.</p>
-  <div class="prices" id="prices"></div>
-  <p class="pnote">Already selling? Your plan is renewed from a secure link we email you. In the app, open <b>Shop &amp; KYC</b> and tap <b>Send renewal link to my email</b>.</p>
-</div></section>
-
-<section id="install" style="padding-top:20px"><div class="wrap" style="max-width:980px">
-  <span class="tag" style="background:#FFF1C9;color:#7a5800">Install</span>
-  <h2 style="margin-top:14px">Install the app in 1 minute</h2>
-  <p class="sub">Until the Play Store listing is live, install it directly from here. It's the same app, and updates come to you inside the app.</p>
-  <div class="isteps">
-    <div class="is"><div class="n">1</div><h3>Download</h3><p>Tap <a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk" style="color:var(--violet);font-weight:600">Download the app</a>. Open this page in Chrome for the smoothest download.</p></div>
-    <div class="is"><div class="n">2</div><h3>Allow once</h3><p>Open the downloaded <b>gali-bazaar.apk</b>. If Android asks, tap <b>Settings → Allow from this source</b>, then go back.</p></div>
-    <div class="is"><div class="n">3</div><h3>Install &amp; sign in</h3><p>Tap <b>Install</b>, open Gali Bazaar and sign in with Google. Choose Customer or Seller.</p></div>
-  </div>
-  <p style="color:var(--muted);font-size:14px;margin-top:16px">Got the app on WhatsApp as a “.bin” file? Rename it to <b>.apk</b> in your file manager, or just download it from this page instead.</p>
-</div></section>
-
-<section id="faq" style="padding-top:10px"><div class="wrap" style="max-width:860px">
-  <span class="tag" style="background:#EFE6FF;color:var(--violet)">Help</span>
-  <h2 style="margin-top:14px">Questions</h2>
-  <p class="sub">Quick answers. Still stuck? Email <a href="mailto:support@galibazaar.site" style="color:var(--violet);font-weight:600">support@galibazaar.site</a></p>
-  <div class="faq">
-    <details><summary>Is the app on Google Play?</summary><p>The Play Store listing is coming soon. Until then, <a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">download the Android app here</a>. It's the same app and updates will come to you.</p></details>
-    <details><summary>Is there a delivery charge?</summary><p>Each shop sets its own delivery charge and "free above" amount. You see it clearly before you place the order.</p></details>
-    <details><summary>How do I pay?</summary><p>Cash or UPI at your door, after checking your items. You never pay inside the app.</p></details>
-    <details><summary>What if an item is bad?</summary><p>Return it at the door and don't pay for it. If you find a problem later, open the order and tap "Report a problem". The shop has to reply within 48 hours.</p></details>
-    <details><summary>I'm a shop owner. What do I need?</summary><p>A smartphone, your PAN and Aadhaar for KYC, and the list of colonies you deliver to. You can be live the same day.</p></details>
-    <details><summary>My shop plan has ended. How do I renew?</summary><p>In the app, open Shop &amp; KYC and tap "Send renewal link to my email". The link brings you to our secure renewal page.</p></details>
-  </div>
-</div></section>
+</div>
 
 <footer><div class="wrap">
+  <hr>
   <div class="cols">
     <div>
       <a class="logo" href="/"><span class="g">गली</span> Bazaar<span class="dot">.</span></a>
       <p class="tagline">Mohalle ki dukaan, ab aapke phone par.</p>
       <div class="disc">Gali Bazaar is only a platform connecting customers and local shops. We are not responsible for transactions, payment scams or product quality.<br><span class="hi">गली Bazaar सिर्फ़ ग्राहकों और लोकल दुकानों को जोड़ने वाला प्लेटफ़ॉर्म है। लेन-देन, पेमेंट धोखाधड़ी या सामान की क्वालिटी की ज़िम्मेदारी हमारी नहीं है।</span></div>
     </div>
-    <div><h5>App</h5><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download</a><a href="#how">Features</a><a href="#install">Install help</a></div>
-    <div><h5>Shops</h5><a href="#shops">Sell with us</a><a href="#pricing">Pricing</a><a href="#pricing">Renew plan</a></div>
-    <div><h5>Company</h5><a href="#faq">Help</a><a href="/legal/#terms">Terms</a><a href="/legal/#privacy">Privacy</a><a href="/legal/#delete-account">Delete account</a><a href="mailto:support@galibazaar.site">support@galibazaar.site</a></div>
+    <div><h5>App</h5><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download</a><a href="#how">Features</a><a href="#categories">Categories</a></div>
+    <div><h5>Shops</h5><a href="#shops">Sell with us</a><a href="/pay/">Pricing</a><a href="/pay/">Renew plan</a></div>
+    <div><h5>Company</h5><a href="mailto:support@galibazaar.site">Help</a><a href="/legal/#terms">Terms</a><a href="/legal/#privacy">Privacy</a><a href="mailto:support@galibazaar.site">support@galibazaar.site</a></div>
   </div>
-  <div class="copy">© 2026 Gali Bazaar. Made in India.</div>
 </div></footer>
 
 <div class="sticky">
-  <div class="ic">गली</div>
-  <div><b>Gali Bazaar app</b><br><small>Free · Android</small></div>
-  <a class="btn" href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Install</a>
+  <div class="si">🛒</div>
+  <div><b class="hi">गली Bazaar</b><small>Free • Android</small></div>
+  <a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk"><svg class="ic" style="width:17px;height:17px"><use href="#i-upload"/></svg>Install</a>
 </div>
 
 <script>
 if (/^#(privacy|terms|delete-account|contact)$/.test(location.hash)) location.replace("/legal/" + location.hash);
 const nav = document.getElementById("nav");
 addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 10), { passive: true });
-
-// live plan price & trial days from the admin settings (falls back to defaults)
-const inr = n => "₹" + Number(n).toLocaleString("en-IN");
-function drawPrices(price, disc, trial) {
-  document.querySelectorAll(".pp").forEach(e => e.textContent = inr(price));
-  document.querySelectorAll(".td").forEach(e => e.textContent = trial);
-  document.getElementById("prices").innerHTML = [1, 3, 6, 12].map(m => {
-    const d = +(disc[m] || 0), amt = Math.round(price * m * (100 - d) / 100);
-    return `<div class="pr ${m === 12 ? "best" : ""}">${m === 12 ? '<span class="bv">BEST VALUE</span>' : ""}
-      <h4>${m === 1 ? "1 month" : m + " months"}</h4><b>${inr(amt)}</b>
-      <span>${inr(Math.round(amt / m))} / month${d ? ` · <span class="sv">save ${d}%</span>` : ""}</span></div>`;
-  }).join("");
-}
-drawPrices(99, { 1: 0, 3: 10, 6: 15, 12: 20 }, 14);
-fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=plan_price,plan_discounts,trial_days", {
+// plan price & trial days come from the admin settings
+fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=plan_price,trial_days", {
   headers: { apikey: "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1" }
 }).then(r => r.json()).then(j => {
-  const s = j && j[0]; if (s && s.plan_price) drawPrices(s.plan_price, s.plan_discounts || {}, s.trial_days || 14);
+  const s = j && j[0]; if (!s) return;
+  if (s.plan_price) document.querySelectorAll(".pp").forEach(e => e.textContent = "₹" + Number(s.plan_price).toLocaleString("en-IN"));
+  if (s.trial_days) document.querySelectorAll(".td").forEach(e => e.textContent = s.trial_days);
 }).catch(() => {});
 </script>
 </body>
