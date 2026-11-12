@@ -1,83 +1,134 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>गली Bazaar — Seller plan payment</title>
-<!-- Free hosting: GitHub Pages / Netlify / Cloudflare Pages. Fill SUPABASE_URL and ANON_KEY below. -->
+<title>Gali Bazaar — Renew your shop plan</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fff;color:#1c1c1c}
-  header{background:linear-gradient(135deg,#FFD447,#FFB443 55%,#FF8F3C);padding:28px 20px 22px;border-radius:0 0 26px 26px}
-  h1{margin:0;font-size:28px}h1 span{color:#4B1C7A}
-  main{max-width:460px;margin:0 auto;padding:18px;display:flex;flex-direction:column;gap:14px}
-  .card{border:1px solid #eee;border-radius:18px;padding:16px;box-shadow:0 6px 18px #0000000d}
-  .amt{font-size:34px;font-weight:800}
-  .btn{display:block;text-align:center;background:#4B1C7A;color:#fff;text-decoration:none;padding:14px;border-radius:999px;font-weight:700}
-  #qr{display:flex;justify-content:center;padding:8px}
-  .muted{color:#6b7a80;font-size:14px}
-  code{background:#f3eef9;padding:2px 6px;border-radius:6px}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#F4F1FA;color:#1c1c1c}
+  header{background:#FFD447;padding:26px 20px 22px;border-radius:0 0 26px 26px;text-align:center}
+  .logo{font-size:34px;font-weight:900;letter-spacing:-1px}.logo .g{color:#4B1C7A}.logo .d{color:#D6336C}
+  .tag{color:#4B1C7A;font-weight:600;font-size:14px;margin-top:2px}
+  main{max-width:480px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .card{background:#fff;border:1px solid #ECE8F3;border-radius:20px;padding:16px;box-shadow:0 6px 18px #0000000d}
+  h2{font-size:17px;margin:0 0 10px}
+  .muted{color:#6B6880;font-size:13.5px}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .plan{border:2px solid #ECE8F3;background:#fff;border-radius:16px;padding:12px;text-align:left;font:inherit;cursor:pointer}
+  .plan.on{border-color:#4B1C7A;background:#F1EAF8}
+  .plan b{display:block}.off{color:#1B8A5A;font-size:12px;font-weight:700}
+  .amt{font-size:36px;font-weight:900;margin-top:10px}
+  .btn{display:block;width:100%;text-align:center;background:#4B1C7A;color:#fff;text-decoration:none;padding:14px;border-radius:999px;font-weight:800;border:0;font-size:16px;cursor:pointer}
+  .btn.rose{background:#D6336C}
+  #qr{display:flex;justify-content:center;padding:10px}
+  code{background:#F1EAF8;padding:2px 6px;border-radius:6px}
+  input{width:100%;padding:13px;border:1.5px solid #E4E0EE;border-radius:14px;font-size:16px;margin:6px 0 10px}
+  .note{padding:12px;border-radius:14px;font-size:14px}
+  .ok{background:#E6F6EC;color:#155c3b}.err{background:#FCE8EF;color:#B0144F}.warn{background:#FFF4CC;color:#6b4e00}
+  .step{display:inline-block;background:#4B1C7A;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px;margin-right:6px}
 </style>
 </head>
 <body>
-<header><h1>गली <span>Bazaar</span></h1><div>Seller plan payment</div></header>
+<header>
+  <div class="logo"><span class="g">गली</span> bazaar<span class="d">.</span></div>
+  <div class="tag">Your neighbourhood shops, now on your phone</div>
+</header>
 <main>
-  <div class="card">
-    <div class="muted" id="shop">Loading…</div>
-    <div id="plans" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"></div>
-    <div class="amt" id="amt">₹99</div>
-    <div class="muted" id="what">1 mahina dukaan live</div>
+  <div class="card" id="shopCard"><div class="muted">Loading…</div></div>
+
+  <div class="card" id="pickCard" style="display:none">
+    <h2><span class="step">1</span>Choose your plan</h2>
+    <div class="plans" id="plans"></div>
+    <div class="amt" id="amt"></div>
+    <div class="muted" id="what"></div>
   </div>
-  <div class="card">
-    <a class="btn" id="pay" href="#">UPI app se pay karo</a>
+
+  <div class="card" id="payCard" style="display:none">
+    <h2><span class="step">2</span>Pay by UPI</h2>
+    <a class="btn" id="pay" href="#">Pay with any UPI app</a>
     <div id="qr"></div>
-    <div class="muted" style="text-align:center">Ya QR scan karo · UPI ID: <code id="upi">—</code></div>
+    <div class="muted" style="text-align:center">or scan the QR · UPI ID: <code id="upi">—</code></div>
   </div>
+
+  <div class="card" id="utrCard" style="display:none">
+    <h2><span class="step">3</span>Enter the payment reference</h2>
+    <div class="muted">After paying, copy the <b>UTR / UPI reference number</b> (12 digits) from your UPI app.</div>
+    <input id="utr" inputmode="text" placeholder="UTR / reference number, e.g. 432156789012" autocomplete="off">
+    <input id="date" type="date">
+    <button class="btn rose" id="send">Submit payment</button>
+    <div id="msg" style="margin-top:10px"></div>
+  </div>
+
   <div class="card muted">
-    Payment ke baad <b>UTR / reference no.</b> (12 ank) note karo, phir गली Bazaar app → <b>Shop &amp; KYC</b> → “Payment details bhejo” mein bharo.
-    Check hote hi dukaan live ho jayegi aur invoice app mein mil jayega.
+    Once we check your payment (usually within 24 hours) your shop goes live again on the Gali Bazaar app and the invoice appears in the app under <b>Shop &amp; KYC</b>.
+    Need help? Reply to the email you got from us.
   </div>
 </main>
 <script>
 const SUPABASE_URL = "https://airbbnopqgubftqjzkjr.supabase.co";
-const ANON_KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
+const KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
+const H = { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" };
+const $ = id => document.getElementById(id);
+const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+const rpc = async (fn, body) => {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: H, body: JSON.stringify(body) });
+  const t = await r.text(); let j = null; try { j = JSON.parse(t) } catch (_) {}
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || t || "Something went wrong");
+  return j;
+};
 (async () => {
-  const shopId = new URLSearchParams(location.search).get("shop") || "";
-  const h = { apikey: ANON_KEY, Authorization: "Bearer " + ANON_KEY };
-  const st = (await (await fetch(SUPABASE_URL + "/rest/v1/settings?select=plan_price,plan_discounts,upi_id,biz_name,feat_week_price,feat_month_price&id=eq.1", { headers: h })).json())[0] || {};
   const qp = new URLSearchParams(location.search);
-  if (qp.get("purpose") === "featured") {
-    const days = qp.get("days") === "7" ? 7 : 30, amt = days === 7 ? (st.feat_week_price || 49) : (st.feat_month_price || 149), upiF = st.upi_id || "";
-    document.getElementById("plans").innerHTML = "";
-    document.getElementById("amt").textContent = "₹" + amt;
-    document.getElementById("what").textContent = "⭐ Top dukaan (Sponsored) — " + days + " din";
-    document.getElementById("upi").textContent = upiF || "—";
-    document.getElementById("shop").textContent = "Shop ID: " + shopId.slice(0, 8).toUpperCase();
-    const uriF = "upi://pay?pa=" + encodeURIComponent(upiF) + "&pn=" + encodeURIComponent(st.biz_name || "Gali Bazaar") + "&am=" + amt + "&cu=INR&tn=" + encodeURIComponent("GaliBazaar TOP " + shopId.slice(0, 8).toUpperCase());
-    document.getElementById("pay").href = uriF;
-    if (upiF) new QRCode(document.getElementById("qr"), { text: uriF, width: 200, height: 200 });
-    return;
-  }
-  const price = st.plan_price || 99, disc = st.plan_discounts || { "1": 0, "3": 10, "6": 15, "12": 20 }, upi = st.upi_id || "";
-  const amountFor = m => Math.round(price * m * (100 - (disc[m] || 0)) / 100);
-  let months = [1, 3, 6, 12].includes(+new URLSearchParams(location.search).get("months")) ? +new URLSearchParams(location.search).get("months") : 1;
-  document.getElementById("upi").textContent = upi || "—";
-  document.getElementById("shop").textContent = "Shop ID: " + shopId.slice(0, 8).toUpperCase();
+  const shop = qp.get("shop") || "";
+  const featured = qp.get("purpose") === "featured";
+  let info;
+  try { info = shop ? await rpc("pay_info", { p_shop: shop }) : null } catch (e) { info = null }
+  if (!info) { $("shopCard").innerHTML = '<div class="note err">This link is not valid. Please use the link from your Gali Bazaar email.</div>'; return; }
+  const today = new Date().toISOString().slice(0, 10);
+  const live = info.sub_until && info.sub_until >= today;
+  $("shopCard").innerHTML = `<div class="muted">Shop</div><div style="font-size:20px;font-weight:800">${info.name}</div>
+    <div class="muted">${info.city || ""}</div>
+    <div class="note ${live ? "ok" : "warn"}" style="margin-top:10px">${!info.sub_until ? "No plan yet." : live ? "Plan active till <b>" + info.sub_until + "</b>." : "Plan ended on <b>" + info.sub_until + "</b> — your shop is offline."}</div>
+    ${info.pending ? '<div class="note warn" style="margin-top:8px">A payment you sent earlier is being checked.</div>' : ""}`;
+  ["pickCard", "payCard", "utrCard"].forEach(i => $(i).style.display = "block");
+  $("date").value = today; $("date").max = today;
+  const upi = info.upi || ""; $("upi").textContent = upi || "—";
+  const disc = info.discounts || { "1": 0, "3": 10, "6": 15, "12": 20 };
+  const plan = m => Math.round(info.price * m * (100 - (disc[m] || 0)) / 100);
+  let months = [1, 3, 6, 12].includes(+qp.get("months")) ? +qp.get("months") : 1;
+  let days = qp.get("days") === "7" ? 7 : 30;
   const draw = () => {
-    const amt = amountFor(months);
-    document.getElementById("plans").innerHTML = [1, 3, 6, 12].map(m =>
-      `<button data-m="${m}" style="border:2px solid ${m === months ? "#4B1C7A" : "#eee"};background:${m === months ? "#F1EAF8" : "#fff"};border-radius:14px;padding:10px;text-align:left;font:inherit">
-        <b>${m === 1 ? "1 mahina" : m + " mahine"}</b>${disc[m] ? ` <span style="color:#0A6A19;font-size:12px">${disc[m]}% off</span>` : ""}<br>₹${amountFor(m)}</button>`).join("");
-    document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { months = +b.dataset.m; draw(); });
-    document.getElementById("amt").textContent = "₹" + amt;
-    document.getElementById("what").textContent = (months === 1 ? "1 mahina" : months + " mahine") + " dukaan live" + (disc[months] ? ` · ₹${price * months - amt} bachat` : "");
-    const note = "GaliBazaar " + shopId.slice(0, 8).toUpperCase() + " " + months + "M";
-    const uri = "upi://pay?pa=" + encodeURIComponent(upi) + "&pn=" + encodeURIComponent(st.biz_name || "Gali Bazaar") + "&am=" + amt + "&cu=INR&tn=" + encodeURIComponent(note);
-    document.getElementById("pay").href = uri;
-    const q = document.getElementById("qr"); q.innerHTML = "";
-    if (upi) new QRCode(q, { text: uri, width: 200, height: 200 });
+    let amt, what, note;
+    if (featured) {
+      $("plans").innerHTML = [7, 30].map(d => `<button class="plan ${d === days ? "on" : ""}" data-d="${d}"><b>⭐ Top for ${d === 7 ? "1 week" : "1 month"}</b>${inr(d === 7 ? info.feat_week : info.feat_month)}</button>`).join("");
+      document.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { days = +b.dataset.d; draw(); });
+      amt = days === 7 ? info.feat_week : info.feat_month;
+      what = `Your shop shows at the top (Sponsored) for ${days} days`;
+      note = `GaliBazaar TOP ${shop.slice(0, 8).toUpperCase()}`;
+    } else {
+      $("plans").innerHTML = [1, 3, 6, 12].map(m => `<button class="plan ${m === months ? "on" : ""}" data-m="${m}"><b>${m === 1 ? "1 month" : m + " months"}</b>${inr(plan(m))}${disc[m] ? ` <span class="off">${disc[m]}% off</span>` : ""}</button>`).join("");
+      document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { months = +b.dataset.m; draw(); });
+      amt = plan(months);
+      what = (months === 1 ? "1 month" : months + " months") + " on Gali Bazaar" + (disc[months] ? ` · you save ${inr(info.price * months - amt)}` : "");
+      note = `GaliBazaar ${shop.slice(0, 8).toUpperCase()} ${months}M`;
+    }
+    $("amt").textContent = inr(amt); $("what").textContent = what;
+    const uri = "upi://pay?pa=" + encodeURIComponent(upi) + "&pn=" + encodeURIComponent(info.biz || "Gali Bazaar") + "&am=" + amt + "&cu=INR&tn=" + encodeURIComponent(note);
+    $("pay").href = uri;
+    $("qr").innerHTML = ""; if (upi) new QRCode($("qr"), { text: uri, width: 210, height: 210 });
   };
   draw();
+  $("send").onclick = async () => {
+    $("msg").innerHTML = ""; $("send").disabled = true; $("send").textContent = "Submitting…";
+    try {
+      await rpc("submit_utr", { p_shop: shop, p_utr: $("utr").value, p_months: months, p_paid_on: $("date").value,
+        p_purpose: featured ? "FEATURED" : "PLAN", p_days: featured ? days : null });
+      $("msg").innerHTML = '<div class="note ok">✓ Thank you! We received your payment details. Your shop will be live as soon as we check it (usually within 24 hours).</div>';
+      $("utr").value = "";
+    } catch (e) { $("msg").innerHTML = `<div class="note err">${e.message}</div>`; }
+    $("send").disabled = false; $("send").textContent = "Submit payment";
+  };
 })();
 </script>
 </body>
