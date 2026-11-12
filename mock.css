@@ -177,3 +177,6 @@
   .stage .done{display:none}
   .duo{display:none}
 }
+
+.mlogo{font-weight:700;font-size:13.5px;color:#1C1C1C;margin-bottom:4px}.mlogo span{font-family:"Baloo 2","Noto Sans Devanagari",sans-serif;font-weight:800;color:#6C1CB4;margin-right:3px;font-size:1.1em}
+.mlogo.wb{display:inline-block;background:#fff;border-radius:7px;padding:1px 6px;margin-bottom:6px}
