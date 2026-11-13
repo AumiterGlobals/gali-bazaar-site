@@ -23,14 +23,7 @@
 <script>document.addEventListener('click',function(){var s=document.getElementById('signin');if(s)s.classList.remove('open')});</script>
 <style id="mobile-tidy">
 /* phone: sticky top bar with section menu + compact sections so the page is short */
-.secbar{display:none}
 @media(max-width:640px){
-  #nav{position:sticky;top:0;z-index:60;background:#fff;box-shadow:0 1px 0 #F1EAF2}
-  .secbar{display:flex;gap:6px;overflow-x:auto;padding:6px 14px 8px;scrollbar-width:none}
-  .secbar::-webkit-scrollbar{display:none}
-  .secbar a{flex:none;font:600 12.5px Poppins,system-ui,sans-serif;color:#1D0F30;background:#F6F1FB;border:1px solid #EDE4F6;border-radius:30px;padding:6px 12px;text-decoration:none}
-  .secbar a.on{background:#1D0F30;color:#fff;border-color:#1D0F30}
-  section,header.hero{scroll-margin-top:110px}
   section{padding:22px 0}
   .hero h1{font-size:30px!important;line-height:1.12!important}
   .hero .lead{font-size:14px!important}
@@ -124,7 +117,7 @@
   </div>
   <div class="mright"><button class="menu-btn" aria-label="Menu" onclick="document.getElementById('mmenu').classList.toggle('open')"><svg class="ic" style="width:24px;height:24px"><use href="#i-menu"/></svg></button></div>
   <div class="mmenu" id="mmenu" onclick="this.classList.remove('open')"><a href="/">Home</a><a href="/for-shops/">For shops</a><a href="/pricing/">Pricing</a><a href="/help/">Help</a><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Download APK</a><a href="#" onclick="soon(event)">Google Play (coming soon)</a><div class="mhead">SIGN IN</div><a href="/sales/login/">Sales team</a><a href="/seller/login/">Seller</a><a href="/admin/">Admin</a></div>
-</div><div class="secbar" id="secbar"><a href="#top" class="on">Home</a><a href="#categories">What you can order</a><a href="#how">How it works</a><a href="#trust">Why trust us</a></div></nav>
+</div></nav>
 
 <header class="hero" id="top"><div class="wrap grid">
   <div>
@@ -377,12 +370,5 @@ fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=
 }).catch(() => {});
 </script>
 <script src="/cats.js" defer></script>
-<script>
-(function(){const bar=document.getElementById('secbar');if(!bar)return;const links=[...bar.querySelectorAll('a[href^="#"]')];
-const ids=links.map(a=>a.getAttribute('href').slice(1));
-let busy=false;function upd(){busy=false;let cur='top';ids.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<140)cur=id});
-links.forEach(a=>{const on=a.getAttribute('href')==='#'+cur;if(on!==a.classList.contains('on')){a.classList.toggle('on',on);if(on)bar.scrollLeft=Math.max(0,a.offsetLeft-16)}})}
-addEventListener('scroll',()=>{if(!busy){busy=true;requestAnimationFrame(upd)}},{passive:true});})();
-</script>
 </body>
 </html>
