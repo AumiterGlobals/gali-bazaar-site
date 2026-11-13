@@ -357,6 +357,20 @@ async function spManage(id) {
   const when = s => s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "—";
   el.innerHTML = `<h2><span>${esc(p.name)}</span><button class="x" onclick="closeForm()" aria-label="Close">×</button></h2>
     <div class="sub">${esc(p.email || "")} • code ${esc(p.code)}</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn pink" style="flex:1;padding:11px 8px" onclick="spInviteWa('${p.id}')">Invite on WhatsApp</button>
+      <button class="btn ghost" style="flex:1;padding:11px 8px" onclick="spInviteMail('${p.id}')">Email invite</button></div>
+    <div class="msg" id="imsg"></div>
+    <h3 style="margin:16px 0 0">Details</h3>
+    <label>NAME</label><input class="in" id="en" value="${esc(p.name)}">
+    <label>PHONE</label><input class="in" id="ep" inputmode="tel" value="${esc(p.phone || "")}">
+    <label>EMAIL (THEIR LOGIN)</label><input class="in" id="ee" type="email" value="${esc(p.email || "")}">
+    <label>UPI FOR PAYOUTS</label><input class="in" id="eu" value="${esc(p.upi || "")}">
+    <label>COMMISSION %</label><input class="in" id="ec" type="number" min="0" max="100" value="${p.commission_pct}">
+    <label>PAN (FOR TDS)</label><input class="in" id="ex" value="${esc(p.pan || "")}" style="text-transform:uppercase">
+    <div class="sub" style="font-size:11.5px">Changing the email stops the old login — send the invite again after saving.</div>
+    <div class="msg" id="emsg"></div>
+    <button class="btn dark full" onclick="spSave('${p.id}')">Save details</button>
     <div style="background:#F6F2FB;border-radius:16px;padding:12px 14px;margin:14px 0">
       <div class="sub" style="font-size:11px;letter-spacing:.6px;font-weight:600;margin:0 0 6px">LOGIN</div>
       <div style="display:flex;justify-content:space-between;padding:3px 0"><span class="sub" style="margin:0">Username</span><b>${esc(p.username || "not created")}</b></div>
@@ -374,7 +388,8 @@ async function spManage(id) {
       <button class="btn ghost" style="flex:1;padding:11px 8px;color:${p.login_blocked ? "#15803D" : "#BE185D"}" onclick="spBlock('${p.id}',${!p.login_blocked})">${p.login_blocked ? "Unblock login" : "Block login"}</button></div>
     <div class="sub" style="font-size:11.5px;margin-top:10px">The admin never sees the current password — only sets a new one. Every reset is logged.</div>
     ${(log || []).length ? `<h3 style="margin:18px 0 6px;font-size:14px">Login history</h3>${log.map(l => `<div class="sub" style="font-size:12px;margin:3px 0">${when(l.at)} · <b>${esc(l.action)}</b>${l.note ? " · " + esc(l.note) : ""}</div>`).join("")}` : ""}
-    <div style="border-top:1px solid #F0EAF7;margin-top:18px;padding-top:12px">${p.active === false ? `<button class="mini" onclick="spSet('${p.id}',true)">Restore to sales team</button>` : `<button class="mini" style="color:#BE185D" onclick="spSet('${p.id}',false)">Remove from sales team</button>`}</div>`;
+    <div style="border-top:1px solid #F0EAF7;margin-top:18px;padding-top:12px;display:flex;gap:14px;flex-wrap:wrap">${p.active === false ? `<button class="mini" onclick="spSet('${p.id}',true)">Restore to sales team</button>` : `<button class="mini" style="color:#BE185D" onclick="spSet('${p.id}',false)">Remove from sales team</button>`}
+      <button class="mini" style="color:#BE185D" onclick="spDelete('${p.id}')">Delete</button></div>`;
 }
 async function spLoginSave(id) {
   const m = $("#lmsg"), un = $("#lu").value.trim(), pw = $("#lp").value.trim();
@@ -412,6 +427,39 @@ async function spAddSave() {
   if (!v("#an") || !v("#ap") || !/^\S+@\S+\.\S+$/.test(v("#ae"))) { m.className = "msg err"; m.textContent = "Fill name, phone and a valid email"; return; }
   const { error } = await db.rpc("add_sales_person", { p_name: v("#an"), p_phone: v("#ap"), p_email: v("#ae").toLowerCase(), p_upi: v("#au"), p_pct: Number(v("#ac") || 20) });
   if (error) { m.className = "msg err"; m.textContent = error.message; return; }
+  const fresh = await q("sales_people", "*", x => x.order("created_at")); SP = fresh;
+  const added = fresh.find(x => (x.email || "").toLowerCase() === v("#ae").toLowerCase());
+  if (added) { spManage(added.id); setTimeout(() => spInviteMail(added.id), 300); } else { closeForm(); go(page); }
+}
+function spInviteText(p) {
+  return `Hello ${p.name}! You're now on the Gali Bazaar sales team 🎉\n\nYour code: *${p.code}* (${p.commission_pct}% commission on every plan payment from shops that join with it)\n\nSet up your login (one time):\n1. Open https://galibazaar.site/sales/setup/\n2. Enter ${p.email || "your email"} → Send code\n3. Type the code from your email → Verify\n4. Choose a username and password → Create & sign in\n\nAfter that, sign in at https://galibazaar.site/sales/login/\nAsk every shop to enter your code ${p.code} when they register.`;
+}
+function spInviteWa(id) {
+  const p = SP.find(x => x.id === id); if (!p) return;
+  const ph = String(p.phone || "").replace(/\D/g, "").slice(-10);
+  window.open((ph ? `https://wa.me/91${ph}?text=` : "https://wa.me/?text=") + encodeURIComponent(spInviteText(p)), "_blank");
+}
+async function spInviteMail(id) {
+  const p = SP.find(x => x.id === id), m = $("#imsg"); if (!p || !m) return;
+  if (!p.email) { m.className = "msg err"; m.textContent = "Add an email first"; return; }
+  m.className = "msg"; m.textContent = "Sending…";
+  const { data, error } = await db.functions.invoke("push", { body: { action: "sales_invite", sales_id: id } });
+  if (error || !data?.ok) { m.className = "msg err"; m.textContent = "Email not sent: " + (data?.error || error?.message || "try WhatsApp"); return; }
+  m.className = "msg ok"; m.textContent = `✓ Invite emailed to ${p.email}`;
+}
+async function spSave(id) {
+  const m = $("#emsg"), v = k => $(k).value.trim();
+  const { error } = await db.rpc("admin_save_sales", { p_id: id, p_name: v("#en"), p_phone: v("#ep"), p_email: v("#ee").toLowerCase(), p_upi: v("#eu"), p_pct: Number(v("#ec") || 0), p_pan: v("#ex").toUpperCase() });
+  if (error) { m.className = "msg err"; m.textContent = /function|schema cache/.test(error.message) ? "Run update-42-admin-sales.sql in Supabase first." : error.message.replace(/^.*exception:\s*/i, ""); return; }
+  m.className = "msg ok"; m.textContent = "✓ Saved";
+  const fresh = await q("sales_people", "*", x => x.order("created_at")); SP = fresh;
+}
+async function spDelete(id) {
+  const p = SP.find(x => x.id === id);
+  if (!confirm(`Delete ${p?.name || "this person"}? Their code stops working. Shops they brought and commission already earned stay in the books.`)) return;
+  const { data, error } = await db.rpc("admin_delete_sales", { p_id: id });
+  if (error) return alert(/function|schema cache/.test(error.message) ? "Run update-42-admin-sales.sql in Supabase first." : error.message);
+  alert(data === "deleted" ? "Deleted" : "Removed from the team · history kept");
   closeForm(); go(page);
 }
 async function spSet(id, on) {
