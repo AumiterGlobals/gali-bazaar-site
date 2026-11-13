@@ -30,6 +30,7 @@
   .secbar::-webkit-scrollbar{display:none}
   .secbar a{flex:none;font:600 12.5px Poppins,system-ui,sans-serif;color:#1D0F30;background:#F6F1FB;border:1px solid #EDE4F6;border-radius:30px;padding:6px 12px;text-decoration:none}
   .secbar a.on{background:#1D0F30;color:#fff;border-color:#1D0F30}
+  html,body{overscroll-behavior-y:none}
   section,header.hero{scroll-margin-top:110px}
   section{padding:22px 0}
   .hero h1{font-size:30px!important;line-height:1.12!important}
@@ -379,7 +380,7 @@ fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=
 (function(){const bar=document.getElementById('secbar');if(!bar)return;const links=[...bar.querySelectorAll('a[href^="#"]')];
 const ids=links.map(a=>a.getAttribute('href').slice(1));
 addEventListener('scroll',()=>{let cur='top';ids.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<140)cur=id});
-links.forEach(a=>{const on=a.getAttribute('href')==='#'+cur;if(on!==a.classList.contains('on')){a.classList.toggle('on',on);if(on)a.scrollIntoView({inline:'center',block:'nearest'})}})},{passive:true});})();
+links.forEach(a=>{const on=a.getAttribute('href')==='#'+cur;if(on!==a.classList.contains('on')){a.classList.toggle('on',on);if(on)bar.scrollTo({left:a.offsetLeft-bar.clientWidth/2+a.offsetWidth/2,behavior:'smooth'})}})},{passive:true});})();
 </script>
 </body>
 </html>
