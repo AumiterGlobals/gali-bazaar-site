@@ -386,8 +386,10 @@ function editItem(id) {
     <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• ${NEED() === 1 ? "required" : "both required"}</span><span class="sp" style="flex:1"></span><a href="/help/seller-guide/#photos-en" target="_blank" style="font-size:12.5px;margin-right:10px;color:#7C3AED;font-weight:600">Photo guidelines</a><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
     <div id="phs" style="display:grid;grid-template-columns:repeat(${NEED() === 1 ? 2 : 3},1fr);gap:10px;margin-top:8px"></div>
     <label>ITEM NAME</label><input class="in" id="fn" value="${esc(i?.name || "")}" placeholder="e.g. Aashirvaad Whole Wheat Atta" autocomplete="off"><div id="msug"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CATEGORY</label><input class="in" id="fg" list="grps" value="${esc(i?.grp || "")}" placeholder="Atta &amp; Rice"><datalist id="grps">${groups.map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
-      <div><label>UNIT</label><input class="in" id="fu" value="${esc(i?.unit || "")}" placeholder="5 kg"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CATEGORY</label><input class="in" id="fg" list="grps" value="${esc(i?.grp || "")}" placeholder="Atta &amp; Rice"><datalist id="grps">${[...new Set([...(CATM[S.type] || Object.values(CATM).flat()), ...groups])].map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
+      <div><label>QTY &amp; UNIT</label><div style="display:flex;gap:6px"><input class="in" id="fq" inputmode="decimal" style="flex:1;min-width:0" value="${esc(splitUnit(i?.unit)[0])}" placeholder="10">
+        <select class="in" id="fuu" style="flex:1;min-width:0">${(() => { const cu = splitUnit(i?.unit)[1] || "kg"; return [...new Set([...UNITS, cu])].map(u => `<option ${u === cu ? "selected" : ""}>${esc(u)}</option>`).join(""); })()}</select></div>
+        <input type="hidden" id="fu" value="${esc(i?.unit || "")}"></div>
       <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${i?.mrp ?? ""}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${i ? i.price : ""}"></div></div>
     <div id="off"></div>
     ${S.type === "grocery" ? `<label>MANUFACTURER / BRAND OWNER (on the pack)</label><input class="in" id="fmk" value="${esc(i?.maker || "")}">
@@ -406,6 +408,8 @@ function editItem(id) {
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
     ${i ? `<button class="btn ghost full" style="margin-top:8px;color:#BE185D" onclick="delItem('${i.id}')">Delete item</button>` : ""}`);
   drawPhotos(); paintPol();
+  const syncU = () => { const q = $("#fq").value.trim(); $("#fu").value = q ? q + " " + $("#fuu").value : ($("#fu").value && !splitUnit($("#fu").value)[0] ? $("#fu").value : ""); };
+  $("#fq").addEventListener("input", syncU); $("#fuu").addEventListener("change", syncU);
   // suggestions from the Gali Bazaar item list (new items): pick → name, pack, group, HSN, photos, pack details
   if (!i) { let tmr = null; $("#fn").addEventListener("input", () => { clearTimeout(tmr); const q = $("#fn").value.trim(); if (q.length < 3) { $("#msug").innerHTML = ""; return; }
     tmr = setTimeout(async () => {
@@ -428,7 +432,7 @@ function editItem(id) {
 }
 function useMaster(k) {
   const c = (window._ms || [])[k]; if (!c) return;
-  $("#fn").value = c.name; $("#fu").value = c.unit || ""; if (c.grp) $("#fg").value = c.grp;
+  $("#fn").value = c.name; $("#fu").value = c.unit || ""; { const [q, u] = splitUnit(c.unit); $("#fq").value = q; if (u) { if (![...$("#fuu").options].some(o => o.value === u)) $("#fuu").add(new Option(u)); $("#fuu").value = u; } } if (c.grp) $("#fg").value = c.grp;
   if (S.gst_billing && $("#fh") && c.hsn) { $("#fh").value = c.hsn; if (c.gst_rate != null) $("#fgst").value = String(c.gst_rate); }
   if ($("#fmk") && c.maker) $("#fmk").value = c.maker; if ($("#ffs") && c.fssai) $("#ffs").value = c.fssai; if ($("#fin") && c.ingredients) $("#fin").value = c.ingredients;
   (c.images || []).slice(0, NEED()).forEach((u, j) => F_.ph[j] = u);
@@ -437,6 +441,13 @@ function useMaster(k) {
 function paintPol() { $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
 // photos needed: grocery = front + back label, fruits & veg = 2, food / sweets / stationery = 1
+// category master per shop type + unit master (same lists as the app)
+const CATM = { grocery: ["Atta & flours", "Rice", "Dal & pulses", "Oil & ghee", "Sugar, salt & jaggery", "Masala & spices", "Dairy", "Eggs & bread", "Tea & coffee", "Health drinks", "Breakfast", "Noodles & pasta", "Biscuits", "Snacks & namkeen", "Chocolates & sweets", "Sauces & spreads", "Pickles", "Dry fruits", "Cold drinks & juices", "Instant food", "Baby care", "Personal care", "Detergent & cleaning", "Household", "Puja"],
+  fruitveg: ["Fruits", "Vegetables", "Leafy greens", "Herbs & seasoning", "Exotic", "Cut & sprouts"], sweets: ["Mithai", "Bengali sweets", "Dry fruit sweets", "Namkeen", "Bakery", "Cakes", "Gift boxes"],
+  food: ["Chaat", "Snacks", "Main course", "Roti & paratha", "Rice & biryani", "Thali", "Chinese", "South Indian", "Rolls & momos", "Pizza & burger", "Drinks", "Desserts"],
+  stationery: ["Notebooks & registers", "Pens & pencils", "Art & craft", "Paper & files", "Office supplies", "Exam essentials", "School bags & boxes", "Gifts & toys"] };
+const UNITS = ["kg", "g", "L", "ml", "pc", "pack", "packet", "dozen", "box", "bottle", "jar", "pouch", "bunch", "plate", "pair", "set", "ream", "m"];
+const splitUnit = u => { const m = String(u || "").match(/^\s*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z].*)?$/); return m ? [m[1], (m[2] || "").trim()] : ["", String(u || "").trim()]; };
 const NEED = () => S.type === "grocery" ? 3 : S.type === "fruitveg" ? 2 : 1;
 const PHL = () => S.type === "grocery" ? ["1. Front", "2. Maker / FSSAI", "3. Ingredients"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
 const normN = s => String(s || "").trim().replace(/\s+/g, " ").toLowerCase(), normU = s => String(s || "").replace(/\s+/g, "").toLowerCase();
