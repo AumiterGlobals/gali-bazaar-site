@@ -185,7 +185,7 @@ function dash() {
   const cashO = D.orders.filter(o => o.status === "DELIVERED" && o.pay_mode === "CASH" && o.delivered_by && o.delivered_by !== "Shop" && !o.cash_settled_at && o.rider);
   const cash = cashO.reduce((a, o) => a + payable(o), 0), who = [...new Set(cashO.map(o => D.riders.find(r => r.id === o.rider)?.name).filter(Boolean))];
   const back = D.orders.filter(o => comingBack(o) && !o.return_checked_at), backV = back.reduce((a, o) => a + backItems(o).reduce((x, l) => x + l.p * l.q, 0), 0);
-  const miss = D.items.filter(i => photos(i).length < 3).length, oos = D.items.filter(i => !i.in_stock).length, liveI = D.items.filter(i => photos(i).length >= 3 && i.in_stock).length;
+  const miss = D.items.filter(i => photos(i).length < 2).length, oos = D.items.filter(i => !i.in_stock).length, liveI = D.items.filter(i => photos(i).length >= 2 && i.in_stock).length;
   const dl = daysLeft(), paid = D.orders.length >= 0 && S.trial_used;
   const plan = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC under verification" : "Finish KYC in the app") : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`;
   const fest = D.festivals.find(f => f.active !== false && (new Date(f.day) - new Date(t)) / 864e5 <= 7);
@@ -322,9 +322,9 @@ function printBill(id) {
 // ================= Catalog =================
 function catalog() {
   const groups = [...new Set(D.items.map(i => (i.grp || "").trim()).filter(Boolean))].sort().slice(0, 8);
-  const liveN = D.items.filter(i => photos(i).length >= 3 && i.in_stock).length;
-  const F = [["all", `All ${D.items.length}`], ["missing", `Missing photos ${D.items.filter(i => photos(i).length < 3).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
-  $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, "Every item needs 3 photos: F = front (name &amp; brand), E = expiry, I = ingredients",
+  const liveN = D.items.filter(i => photos(i).length >= 2 && i.in_stock).length;
+  const F = [["all", `All ${D.items.length}`], ["missing", `Missing photos ${D.items.filter(i => photos(i).length < 2).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
+  $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, "Every item needs 2 photos: F = front (name &amp; brand), B = back label (ingredients)",
       `<button class="btn ghost" onclick="go('catalog/bulk')">⇪ Bulk upload</button><button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
     <div class="bar2"><div class="fchips">${F.map(([k, l]) => `<button class="fchip ${catF === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div><div class="sp"></div>
       <input class="search" id="q" placeholder="🔍 Search items" value="${esc(catQ)}"></div>
@@ -335,9 +335,9 @@ function catalog() {
 }
 function drawCat() {
   const q = catQ.toLowerCase().trim();
-  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && photos(i).length < 3) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
+  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && photos(i).length < 2) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
-  const fei = i => { const p = photos(i); return ["F", "E", "I"].map((l, k) => `<span class="pill ${p[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
+  const fei = i => { const p = photos(i), q = [p[0], p.length >= 3 ? p[2] : p[1]]; return ["F", "B"].map((l, k) => `<span class="pill ${q[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
     <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
@@ -380,7 +380,7 @@ function editItem(id) {
   const i = id ? D.items.find(x => x.id === id) : null;
   if (!id && route() !== "catalog/new" && route().startsWith("catalog")) history.replaceState({}, "", "/seller/catalog/new/");
   const p = i ? photos(i) : [];
-  F_ = { id, ph: [p[0] || null, p[1] || null, p[2] || null], pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
+  F_ = { id, ph: [p[0] || null, (p.length >= 3 ? p[2] : p[1]) || null], pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
   const groups = [...new Set(D.items.map(x => (x.grp || "").trim()).filter(Boolean))].sort();
   drawer(`<h2><span>${i ? "Edit item" : "Add item"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• all 3 required</span><span class="sp" style="flex:1"></span><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
@@ -416,7 +416,7 @@ function editItem(id) {
 }
 function paintPol() { $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
-const PH = ["1. Front", "2. Expiry", "3. Ingredients"];
+const PH = ["1. Front", "2. Back label"];
 function drawPhotos() {
   const n = F_.ph.filter(Boolean).length;
   $("#phc").textContent = `${n} of 3`;
@@ -428,22 +428,22 @@ function drawPhotos() {
     const k = +d.dataset.k, pick = f => { if (!f || !/^image\//.test(f.type)) return; F_.ph[k] = { file: f, url: URL.createObjectURL(f) }; drawPhotos(); };
     d.onclick = () => { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.onchange = () => pick(inp.files[0]); inp.click(); };
     d.ondragover = e => { e.preventDefault(); d.style.background = "#F3EDFF"; }; d.ondragleave = () => { d.style.background = ""; drawPhotos(); };
-    d.ondrop = e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type)); fs.forEach((f, j) => { if (k + j < 3) F_.ph[k + j] = { file: f, url: URL.createObjectURL(f) }; }); drawPhotos(); };
+    d.ondrop = e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type)); fs.forEach((f, j) => { if (k + j < 2) F_.ph[k + j] = { file: f, url: URL.createObjectURL(f) }; }); drawPhotos(); };
   });
-  const miss = F_.ph.map((v, k) => v ? null : ["front", "expiry", "ingredients"][k]).filter(Boolean), b = $("#fsave");
+  const miss = F_.ph.map((v, k) => v ? null : ["front", "back label"][k]).filter(Boolean), b = $("#fsave");
   if (b) { b.disabled = miss.length > 0; b.textContent = miss.length ? `Add ${miss.join(" & ")} photo to save` : "Save item"; b.style.opacity = miss.length ? .5 : 1; }
 }
 async function saveItem() {
   const e = $("#fe"), name = $("#fn").value.trim(), grp = $("#fg").value.trim(), desc = $("#fx").value.trim();
   const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
   const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(30, +$("#fd").value || 0));
-  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? "Add all 3 photos: front, expiry date and ingredients label"
+  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? "Add both photos: front and the back label"
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0" : null;
   if (err) { e.className = "msg err"; e.textContent = err; return; }
   const b = $("#fsave"); b.disabled = true; b.textContent = "Saving…";
   try {
     const imgs = [];
-    for (let k = 0; k < 3; k++) { const v = F_.ph[k]; imgs.push(typeof v === "string" ? v : await uploadPhoto(v.file, k)); }
+    for (let k = 0; k < 2; k++) { const v = F_.ph[k]; imgs.push(typeof v === "string" ? v : await uploadPhoto(v.file, k)); }
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0], images: imgs, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days };
     if (S.gst_billing && $("#fgst")) row.gst_rate = $("#fgst").value === "" ? null : +$("#fgst").value;
@@ -489,7 +489,7 @@ function bulk() {
         <div class="box"><h3>2. Upload the filled file</h3>
           <div id="fdrop" style="border:1.5px dashed #16A34A;border-radius:16px;padding:22px;text-align:center;cursor:pointer;background:#F7FFF9">${BU.file ? `📊<br><b>${esc(BU.file)}</b><div class="sub">${BU.rows.length} rows read • Drop another file to replace</div>` : `📊<br><b>Drop your .xlsx or .csv here</b><div class="sub">or click to browse</div>`}</div></div>
         <div class="box" style="border:2px solid #8B5CF6"><h3>3. Add photos in bulk</h3>
-          <div class="sub">Drop a folder of photos named like <code>atta-front.jpg</code>, <code>atta-expiry.jpg</code>, <code>atta-ingredients.jpg</code> — we match them to items by name. Or add them item by item later.</div>
+          <div class="sub">Drop a folder of photos named like <code>atta-front.jpg</code> and <code>atta-back.jpg</code> — we match them to items by name. Or add them item by item later.</div>
           <div id="pdrop" style="border:1.5px dashed #C4B5FD;border-radius:16px;padding:20px;text-align:center;cursor:pointer;margin-top:10px;color:#7C3AED;font-weight:600">⇪ Drop photos folder <div class="sub" style="font-weight:400">or click to choose a folder</div></div>
           <div class="msg" id="pm"></div></div>
       </div>
@@ -546,7 +546,7 @@ function parseCsv(t) {
   if (cur || row.length) { row.push(cur); out.push(row); }
   return out;
 }
-function photoKeyFor(name) { const s = slug(name), p = BU.photos; return ["front", "expiry", "ingredients"].map(k => p[s + "-" + k] || null); }
+function photoKeyFor(name) { const s = slug(name), p = BU.photos; return ["front", "back"].map(k => p[s + "-" + k] || null); }
 function drawPreview() {
   const rows = BU.rows;
   if (!rows.length) { $("#bprev").innerHTML = `<div class="sub" style="padding:18px 0">Upload your filled template to see every row checked before anything is saved.</div>`; $("#bsum").innerHTML = ""; return; }
@@ -569,7 +569,7 @@ async function doBulk() {
       const chunk = [];
       for (const r of ready.slice(i, i + 50)) {
         const ph = photoKeyFor(r.item.name), row = { ...r.item };
-        if (ph.every(Boolean)) { const urls = []; for (let k = 0; k < 3; k++) urls.push(await uploadPhoto(ph[k], k)); row.images = urls; row.img_url = urls[0]; }
+        if (ph.every(Boolean)) { const urls = []; for (let k = 0; k < 2; k++) urls.push(await uploadPhoto(ph[k], k)); row.images = urls; row.img_url = urls[0]; }
         chunk.push(row);
       }
       b.textContent = `Uploading ${Math.min(i + 50, ready.length)} / ${ready.length}…`;
@@ -590,18 +590,18 @@ async function filesFromDrop(dt) {
 async function bulkPhotos(files) {
   const m = $("#pm"), map = {};
   files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)).forEach(f => {
-    const base = f.name.replace(/\.[^.]+$/, ""), mm = base.match(/^(.*?)[-_ ](front|expiry|exp|ingredients|ingredient|ing)$/i);
-    if (!mm) return; const k = /^f/i.test(mm[2]) ? "front" : /^e/i.test(mm[2]) ? "expiry" : "ingredients"; map[slug(mm[1]) + "-" + k] = f;
+    const base = f.name.replace(/\.[^.]+$/, ""), mm = base.match(/^(.*?)[-_ ](front|back|label|ingredients|ingredient|ing)$/i);
+    if (!mm) return; const k = /^f/i.test(mm[2]) ? "front" : "back"; map[slug(mm[1]) + "-" + k] = f;
   });
   BU.photos = { ...BU.photos, ...map };
   const n = Object.keys(map).length;
-  if (!n) { m.className = "msg err"; m.textContent = "No photos named like item-front / item-expiry / item-ingredients found."; return; }
+  if (!n) { m.className = "msg err"; m.textContent = "No photos named like item-front / item-back found."; return; }
   // photos for items that are already in the catalogue → attach right away
-  const existing = D.items.filter(i => ["front", "expiry", "ingredients"].every(k => map[slug(i.name) + "-" + k]));
+  const existing = D.items.filter(i => ["front", "back"].every(k => map[slug(i.name) + "-" + k]));
   m.className = "msg ok"; m.textContent = `${n} photos matched${existing.length ? ` • updating ${existing.length} existing item${existing.length === 1 ? "" : "s"}…` : ""}`;
   drawPreview();
   for (const i of existing) {
-    try { const urls = []; for (let k = 0; k < 3; k++) urls.push(await uploadPhoto(map[slug(i.name) + "-" + ["front", "expiry", "ingredients"][k]], k));
+    try { const urls = []; for (let k = 0; k < 2; k++) urls.push(await uploadPhoto(map[slug(i.name) + "-" + ["front", "back"][k]], k));
       await db.from("items").update({ images: urls, img_url: urls[0] }).eq("id", i.id); } catch (e) { toast(niceErr(e)); }
   }
   if (existing.length) { m.textContent = `${n} photos matched • ${existing.length} existing item${existing.length === 1 ? "" : "s"} updated`; await loadAll(); }
