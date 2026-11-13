@@ -25,12 +25,11 @@
 /* phone: sticky top bar with section menu + compact sections so the page is short */
 .secbar{display:none}
 @media(max-width:640px){
-  #nav{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);box-shadow:0 1px 0 #F1EAF2}
+  #nav{position:sticky;top:0;z-index:60;background:#fff;box-shadow:0 1px 0 #F1EAF2}
   .secbar{display:flex;gap:6px;overflow-x:auto;padding:6px 14px 8px;scrollbar-width:none}
   .secbar::-webkit-scrollbar{display:none}
   .secbar a{flex:none;font:600 12.5px Poppins,system-ui,sans-serif;color:#1D0F30;background:#F6F1FB;border:1px solid #EDE4F6;border-radius:30px;padding:6px 12px;text-decoration:none}
   .secbar a.on{background:#1D0F30;color:#fff;border-color:#1D0F30}
-  html,body{overscroll-behavior-y:none}
   section,header.hero{scroll-margin-top:110px}
   section{padding:22px 0}
   .hero h1{font-size:30px!important;line-height:1.12!important}
@@ -381,8 +380,9 @@ fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=
 <script>
 (function(){const bar=document.getElementById('secbar');if(!bar)return;const links=[...bar.querySelectorAll('a[href^="#"]')];
 const ids=links.map(a=>a.getAttribute('href').slice(1));
-addEventListener('scroll',()=>{let cur='top';ids.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<140)cur=id});
-links.forEach(a=>{const on=a.getAttribute('href')==='#'+cur;if(on!==a.classList.contains('on')){a.classList.toggle('on',on);if(on)bar.scrollTo({left:a.offsetLeft-bar.clientWidth/2+a.offsetWidth/2,behavior:'smooth'})}})},{passive:true});})();
+let busy=false;function upd(){busy=false;let cur='top';ids.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<140)cur=id});
+links.forEach(a=>{const on=a.getAttribute('href')==='#'+cur;if(on!==a.classList.contains('on')){a.classList.toggle('on',on);if(on)bar.scrollLeft=Math.max(0,a.offsetLeft-16)}})}
+addEventListener('scroll',()=>{if(!busy){busy=true;requestAnimationFrame(upd)}},{passive:true});})();
 </script>
 </body>
 </html>
