@@ -572,7 +572,7 @@ async function upload(inp) {
   keepTyped();
   const { data: { user } } = await db.auth.getUser();
   const path = `${user.id}/categories/${Date.now()}.${(file.name.split(".").pop() || "png").toLowerCase()}`;
-  const { error } = await db.storage.from("public").upload(path, file, { upsert: true, contentType: file.type });
+  const { error } = await db.storage.from("public").upload(path, file, { upsert: false, contentType: file.type });
   if (error) return alert(error.message);
   form.icon = `${SB}/storage/v1/object/public/public/${path}`; renderForm();
 }
