@@ -729,26 +729,102 @@ async function saveSlots() {
 // ================= Bills & GST =================
 async function bills() {
   const to = todayStr(), from = (() => { const d = new Date(); d.setDate(1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`; })();
-  $("#main").innerHTML = head("Bills & GST", "Bills are made automatically on delivery") + `
+  $("#main").innerHTML = head("Bills & GST", "Sales invoices (app orders + counter bills) and credit notes — downloads for your CA") + `
     <div class="bar2"><label style="margin:0">FROM</label><input class="in" type="date" id="bf" value="${from}" style="width:auto"><label style="margin:0">TO</label><input class="in" type="date" id="bt" value="${to}" style="width:auto">
-      <button class="btn ghost" id="bgo" style="padding:9px 14px">Show</button><div class="sp"></div><button class="btn ghost" id="bx" style="padding:9px 14px">⇩ Export CSV</button></div><div id="bb"><div class="sub">Loading…</div></div>`;
+      <button class="btn ghost" id="bgo" style="padding:9px 14px">Show</button></div><div id="bb"><div class="sub">Loading…</div></div>`;
   let rows = [], notes = [];
+  const gstOn = !!(S.gst_billing && S.gstin);
+  const lineTax = l => l.g > 0 ? l.p * l.q * l.g / (100 + l.g) : 0;
   const run = async () => {
     const f = $("#bf").value, t = $("#bt").value;
-    const [o, c] = await Promise.all([db.from("orders").select("id,short_id,bill_no,cust_name,items,fee,total,returned,status,created_at,delivered_at,pay_mode").eq("shop", S.id).eq("status", "DELIVERED").gte("created_at", f).lte("created_at", t + "T23:59:59").order("created_at", { ascending: false }).limit(3000),
-      db.from("credit_notes").select("*").eq("shop", S.id).gte("created_at", f).lte("created_at", t + "T23:59:59").order("created_at", { ascending: false })]);
-    rows = o.data || []; notes = c.data || [];
-    const gstOf = o => (o.items || []).filter(l => !(o.returned || []).includes(l.n)).reduce((a, l) => a + (l.g ? l.p * l.q * l.g / (100 + l.g) : 0), 0);
-    const tot = rows.reduce((a, o) => a + payable(o), 0), gst = rows.reduce((a, o) => a + gstOf(o), 0);
-    $("#bb").innerHTML = `<div class="kpis k4" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>Bills</span><b>${rows.length}</b></div><div class="kpi"><span>Sales (paid)</span><b>${inr(tot)}</b></div><div class="kpi"><span>GST inside${S.gst_billing ? "" : " (GST billing off)"}</span><b>${inr2(gst)}</b></div></div>
-      <div class="grid2"><div class="box"><h3>Bills</h3>${rows.length ? `<table><thead><tr><th>BILL</th><th>DATE</th><th>CUSTOMER</th><th>PAID</th><th class="hm">MODE</th><th></th></tr></thead><tbody>${rows.map(o => `<tr><td><b>${esc(o.bill_no || short(o))}</b></td><td>${dmy(o.delivered_at || o.created_at)}</td><td>${esc(o.cust_name)}</td><td><b>${inr(payable(o))}</b></td><td class="hm">${esc(o.pay_mode || "")}</td><td><button class="mini" onclick="billPrint('${o.id}')">Print</button></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No bills in these dates.</div>`}</div>
-      <div class="box"><h3>Credit notes</h3>${notes.length ? `<table><thead><tr><th>NO.</th><th>DATE</th><th>KIND</th><th>AMOUNT</th></tr></thead><tbody>${notes.map(c => `<tr><td><b>${esc(c.cn_no || "—")}</b>${c.auto ? ` <span class="pill grey">Auto</span>` : ""}</td><td>${dmy(c.created_at)}</td><td>${esc(c.kind)}</td><td>${inr2(c.amount)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">No credit notes.</div>`}</div></div>`;
+    const [o, cs, c] = await Promise.all([
+      db.from("orders").select("id,short_id,bill_no,cust_name,cust_phone,addr,items,fee,total,returned,status,created_at,delivered_at,pay_mode").eq("shop", S.id).eq("status", "DELIVERED").gte("created_at", f).lte("created_at", t + "T23:59:59").order("created_at"),
+      db.from("counter_sales").select("*").eq("shop", S.id).gte("created_at", f).lte("created_at", t + "T23:59:59").order("created_at"),
+      db.from("credit_notes").select("*").eq("shop", S.id).gte("created_at", f).lte("created_at", t + "T23:59:59").order("created_at")]);
+    // counter bills look like orders here (same bill series)
+    const counter = (cs.data || []).map(x => ({ id: x.id, short_id: "COUNTER", bill_no: x.bill_no, cust_name: x.cust_name, cust_phone: x.cust_phone, addr: x.cust_addr || "Counter sale (at the shop)",
+      items: x.items || [], fee: Number(x.fee || 0), total: Number(x.total), returned: [], status: "DELIVERED", created_at: x.created_at, delivered_at: x.created_at, pay_mode: x.pay_mode === "CREDIT" ? "Udhaar" : x.pay_mode, counter: true }));
+    rows = [...(o.data || []).filter(x => x.bill_no), ...counter].sort((x, y) => String(x.bill_no).localeCompare(String(y.bill_no), undefined, { numeric: true }));
+    notes = c.data || [];
+    const kept = r => (r.items || []).filter(l => !(r.returned || []).includes(l.n));
+    const billTot = r => (r.items || []).reduce((a, l) => a + l.p * l.q, 0) + Number(r.fee || 0);
+    const tot = rows.reduce((a, r) => a + billTot(r), 0), cnTot = notes.filter(n => n.kind !== "REPLACEMENT").reduce((a, n) => a + Number(n.amount), 0);
+    const gst = gstOn ? rows.reduce((a, r) => a + (r.items || []).reduce((s, l) => s + lineTax(l), 0), 0) : 0;
+    BILLS = { rows, notes, f, t, kept, billTot };
+    $("#bb").innerHTML = `<div class="kpis k4"><div class="kpi"><span>Bills</span><b>${rows.length}</b></div><div class="kpi"><span>Sales (bill total)</span><b>${inr2(tot)}</b></div>
+      <div class="kpi"><span>Credit notes</span><b class="pk">− ${inr2(cnTot)}</b></div><div class="kpi"><span>GST inside${gstOn ? "" : " (GST billing off)"}</span><b>${inr2(gst)}</b></div></div>
+      <div class="box"><h3>Downloads for your CA</h3><div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" onclick="billDl('register')">⇩ Sales register (every bill)</button>
+        <button class="btn ghost" onclick="billDl('items')">⇩ Item-wise sales</button>
+        ${gstOn ? `<button class="btn ghost" onclick="billDl('gst')">⇩ GST summary (GSTR-1 B2C)</button><button class="btn ghost" onclick="billDl('hsn')">⇩ HSN summary</button>` : ""}
+        <button class="btn ghost" onclick="billDl('cn')">⇩ Credit notes register</button>
+        <button class="btn ghost" onclick="billPrintAll('bills')">🖨 All bills (print / save as PDF)</button>
+        <button class="btn ghost" onclick="billPrintAll('cn')">🖨 All credit notes (print / save as PDF)</button></div>
+        <div class="sub" style="margin-top:8px">Excel files open in Excel, Google Sheets and Tally import. Expenses, payments and full books: <a href="/seller/books/" style="color:#7C3AED">Books &amp; expenses</a>.</div></div>
+      <div class="grid2"><div class="box"><h3>Bills</h3>${rows.length ? `<table><thead><tr><th>BILL</th><th>DATE</th><th>CUSTOMER</th><th>TOTAL</th><th class="hm">MODE</th><th></th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${esc(r.bill_no)}</b>${r.counter ? ` <span class="pill grey">Counter</span>` : ""}</td><td>${dmy(r.delivered_at || r.created_at)}</td><td>${esc(r.cust_name)}</td><td><b>${inr2(billTot(r))}</b></td><td class="hm">${esc(r.pay_mode || "")}</td><td><button class="mini" onclick="billPrint('${r.id}')">Print</button></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No bills in these dates.</div>`}</div>
+      <div class="box"><h3>Credit notes</h3>${notes.length ? `<table><thead><tr><th>NO.</th><th>DATE</th><th>AGAINST</th><th>KIND</th><th>AMOUNT</th><th></th></tr></thead><tbody>${notes.map(n => `<tr><td><b>${esc(n.cn_no || "—")}</b>${n.auto ? ` <span class="pill grey">Auto</span>` : ""}</td><td>${dmy(n.created_at)}</td><td>${esc((rows.find(r => r.id === (n.order_id || n.sale_id)) || {}).bill_no || "")}</td><td>${esc(n.kind)}</td><td>${inr2(n.amount)}</td><td><button class="mini" onclick="cnPrint('${n.id}')">Print</button></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No credit notes.</div>`}</div></div>`;
   };
-  window.billPrint = id => { const o = rows.find(x => x.id === id); if (!D.orders.find(x => x.id === id)) D.orders.push(o); printBill(id); };
+  window.billPrint = id => { const r = rows.find(x => x.id === id); billPrintAll("bills", [r]); };
+  window.cnPrint = id => billPrintAll("cn", null, [notes.find(n => n.id === id)]);
   $("#bgo").onclick = run;
-  $("#bx").onclick = () => csvDownload(`bills-${$("#bf").value}-to-${$("#bt").value}.csv`, [["Bill no", "Date", "Customer", "Total", "Paid", "Mode"], ...rows.map(o => [o.bill_no || "", (o.delivered_at || o.created_at || "").slice(0, 10), o.cust_name, o.total, payable(o).toFixed(2), o.pay_mode || ""]),
-    [], ["Credit note", "Date", "Kind", "Amount"], ...notes.map(c => [c.cn_no || "", (c.created_at || "").slice(0, 10), c.kind, c.amount])]);
   run();
+}
+let BILLS = null;
+function billDl(kind) {
+  const { rows, notes, f, t, kept, billTot } = BILLS, gstOn = !!(S.gst_billing && S.gstin), f2 = v => Number(v || 0).toFixed(2);
+  const tax = l => l.g > 0 ? l.p * l.q * l.g / (100 + l.g) : 0, per = `${f}_to_${t}`;
+  if (kind === "register") {
+    const h = ["Bill No", "Date", "Customer", "Phone", "Source", "Items", "Goods value", "Delivery", "Bill total", "Paid by"]; if (gstOn) h.push("Taxable", "CGST", "SGST", "GST rates");
+    return csvDownload(`sales-register-${per}.csv`, [h, ...rows.map(r => { const goods = (r.items || []).reduce((a, l) => a + l.p * l.q, 0), tx = (r.items || []).reduce((a, l) => a + tax(l), 0);
+      const row = [r.bill_no, (r.delivered_at || r.created_at || "").slice(0, 10), r.cust_name, r.cust_phone || "", r.counter ? "Counter bill" : "App order", (r.items || []).map(l => `${l.n} x${l.q}`).join("; "), f2(goods), f2(r.fee), f2(billTot(r)), r.pay_mode || "Cash"];
+      if (gstOn) row.push(f2(goods - tx), f2(tx / 2), f2(tx / 2), [...new Set((r.items || []).map(l => (l.g || 0) + "%"))].join("/")); return row; })]);
+  }
+  if (kind === "items") {
+    const m = {}; rows.forEach(r => (r.items || []).forEach(l => { const k = l.n; m[k] = m[k] || { q: 0, a: 0, g: l.g, h: l.h }; m[k].q += l.q; m[k].a += l.p * l.q; }));
+    return csvDownload(`item-sales-${per}.csv`, [["Item", "HSN", "Qty", "Amount", "GST %"], ...Object.entries(m).sort((a, b) => b[1].a - a[1].a).map(([n, v]) => [n, v.h || "", v.q, f2(v.a), v.g ?? ""])]);
+  }
+  if (kind === "gst" || kind === "hsn") {
+    const m = {}; rows.forEach(r => (r.items || []).filter(l => l.g > 0 || kind === "hsn").forEach(l => { const k = kind === "gst" ? String(l.g) : (l.h || "—") + "|" + (l.g || 0); m[k] = m[k] || { q: 0, gross: 0, tax: 0 }; m[k].q += l.q; m[k].gross += l.p * l.q; m[k].tax += tax(l); }));
+    notes.filter(n => n.kind !== "REPLACEMENT").forEach(n => (n.items || []).filter(l => l.g > 0 || kind === "hsn").forEach(l => { const k = kind === "gst" ? String(l.g) : (l.h || "—") + "|" + (l.g || 0); if (!m[k]) return; m[k].q -= l.q; m[k].gross -= l.p * l.q; m[k].tax -= tax(l); }));
+    return kind === "gst"
+      ? csvDownload(`gst-b2c-${per}.csv`, [["Place of supply", "GST rate %", "Taxable value", "CGST", "SGST", "Total tax"], ...Object.entries(m).map(([g, v]) => [S.state, g, f2(v.gross - v.tax), f2(v.tax / 2), f2(v.tax / 2), f2(v.tax)])])
+      : csvDownload(`hsn-summary-${per}.csv`, [["HSN", "GST %", "Qty", "Total value", "Taxable value", "CGST", "SGST"], ...Object.entries(m).map(([k, v]) => { const [h, g] = k.split("|"); return [h, g, v.q, f2(v.gross), f2(v.gross - v.tax), f2(v.tax / 2), f2(v.tax / 2)]; })]);
+  }
+  return csvDownload(`credit-notes-${per}.csv`, [["CN No", "Date", "Type", "Against bill", "Customer", "Items", "Amount", "Refund mode", "Reason"],
+    ...notes.map(n => { const r = rows.find(x => x.id === (n.order_id || n.sale_id)) || {}; return [n.cn_no || "", n.cn_date || (n.created_at || "").slice(0, 10), n.kind, r.bill_no || "", r.cust_name || "", (n.items || []).map(l => `${l.n} x${l.q}`).join("; "), f2(n.amount), n.refund_mode || "", n.reason || ""]; })]);
+}
+// one printable page with every bill / credit note (Print → Save as PDF)
+function billPrintAll(kind, onlyRows, onlyNotes) {
+  const { rows, notes } = BILLS, gstOn = !!(S.gst_billing && S.gstin), f2 = v => Number(v || 0).toFixed(2);
+  const list = kind === "bills" ? (onlyRows || rows) : (onlyNotes || notes);
+  if (!list.length) return toast("Nothing to print in these dates");
+  const tax = l => l.g > 0 ? l.p * l.q * l.g / (100 + l.g) : 0;
+  const headHtml = `<h2 style="margin:0">${esc(S.name)}</h2><div class="m">${esc([S.addr, S.locality, S.city, S.state, S.pin].filter(Boolean).join(", "))}${S.gstin ? `<br><b>GSTIN ${esc(S.gstin)}</b>` : ""}${S.fssai ? ` · FSSAI ${esc(S.fssai)}` : ""}</div>`;
+  const bill = r => { const items = r.items || [], goods = items.reduce((a, l) => a + l.p * l.q, 0), fee = Number(r.fee || 0);
+    return `<div class="doc">${headHtml}<div class="tag">${gstOn ? "TAX INVOICE" : "BILL OF SUPPLY"}</div>
+      <div class="meta"><div><b>Bill no</b> ${esc(r.bill_no)}<br><b>Date</b> ${dmyy(r.delivered_at || r.created_at)}<br><b>Paid by</b> ${esc(r.pay_mode || "Cash")}</div><div><b>Billed to</b><br>${esc(r.cust_name)}${r.cust_phone ? " · " + esc(r.cust_phone) : ""}<br><span class="m">${esc(r.addr || "")}</span></div></div>
+      <table><tr><th>#</th><th>Item${gstOn ? " · HSN" : ""}</th><th>Qty</th><th>Rate</th>${gstOn ? "<th>Taxable</th><th>GST</th>" : ""}<th>Amount</th></tr>
+      ${items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.n)} ${esc(l.u || "")}${gstOn && l.h ? `<br><small>HSN ${esc(l.h)}</small>` : ""}</td><td>${l.q}</td><td>${f2(l.p)}</td>${gstOn ? `<td>${f2(l.p * l.q - tax(l))}</td><td>${l.g || 0}%<br><small>C ${f2(tax(l) / 2)} · S ${f2(tax(l) / 2)}</small></td>` : ""}<td>${f2(l.p * l.q)}</td></tr>`).join("")}
+      ${fee ? `<tr><td></td><td>Delivery charges</td><td></td><td></td>${gstOn ? "<td></td><td></td>" : ""}<td>${f2(fee)}</td></tr>` : ""}
+      <tr class="t"><td colspan="${gstOn ? 6 : 4}">Total</td><td>₹${f2(goods + fee)}</td></tr></table>
+      ${(r.returned || []).length ? `<div class="m">Returned at the door: ${esc(r.returned.join(", "))} — reduced by credit note.</div>` : ""}
+      ${gstOn ? `<div class="m">Whether tax is payable on reverse charge: No</div>` : `<div class="m">Seller not registered under GST · no GST charged.</div>`}
+      <div class="m">Issued by ${esc(S.name)}, the seller. Gali Bazaar is only a platform that connects buyers and sellers.</div></div>`; };
+  const cn = n => { const r = rows.find(x => x.id === (n.order_id || n.sale_id)) || {};
+    return `<div class="doc">${headHtml}<div class="tag">CREDIT NOTE</div>
+      <div class="meta"><div><b>Credit note</b> ${esc(n.cn_no || "")}<br><b>Date</b> ${esc(n.cn_date || dmyy(n.created_at))}<br><b>Against bill</b> ${esc(r.bill_no || "")}</div><div><b>Customer</b><br>${esc(r.cust_name || "")}<br><span class="m">${esc(n.reason || n.kind)}</span></div></div>
+      <table><tr><th>#</th><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>${(n.items || []).map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.n)}</td><td>${l.q}</td><td>${f2(l.p)}</td><td>${f2(l.p * l.q)}</td></tr>`).join("")}
+      <tr class="t"><td colspan="4">Credit amount</td><td>₹${f2(n.amount)}</td></tr></table><div class="m">Refund: ${esc(n.refund_mode || "")}${n.auto ? " · made automatically for a return at the door" : ""}</div></div>`; };
+  const w = window.open("", "_blank"); if (!w) return toast("Allow pop-ups to print");
+  w.document.write(`<html><head><title>${kind === "bills" ? "Bills" : "Credit notes"} · ${esc(S.name)}</title><style>
+    body{font-family:Arial,sans-serif;color:#1D0F30;margin:0;padding:16px}.doc{max-width:720px;margin:0 auto 24px;border:1px solid #eee;border-radius:12px;padding:18px;page-break-after:always}
+    .m{color:#6B6380;font-size:12px;margin-top:4px}.tag{display:inline-block;background:#6A1BB0;color:#fff;font-weight:700;border-radius:8px;padding:5px 12px;margin:10px 0}
+    .meta{display:flex;gap:16px;font-size:13px}.meta div{flex:1;background:#FAF8FC;border-radius:8px;padding:8px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+    th{background:#F4EDFC;text-align:left;padding:6px}td{padding:6px;border-bottom:1px solid #eee;vertical-align:top}.t td{font-weight:800;border-top:2px solid #1D0F30}
+    @media print{body{padding:0}.doc{border:0}button{display:none}}</style></head><body>
+    <button onclick="print()" style="display:block;margin:0 auto 14px;padding:10px 18px;border:0;border-radius:10px;background:#6A1BB0;color:#fff;font-weight:700">Print / Save as PDF</button>
+    ${list.map(kind === "bills" ? bill : cn).join("")}</body></html>`);
+  w.document.close();
 }
 
 // ================= Shop & KYC =================
