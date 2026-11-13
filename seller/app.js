@@ -185,7 +185,7 @@ function dash() {
   const cashO = D.orders.filter(o => o.status === "DELIVERED" && o.pay_mode === "CASH" && o.delivered_by && o.delivered_by !== "Shop" && !o.cash_settled_at && o.rider);
   const cash = cashO.reduce((a, o) => a + payable(o), 0), who = [...new Set(cashO.map(o => D.riders.find(r => r.id === o.rider)?.name).filter(Boolean))];
   const back = D.orders.filter(o => comingBack(o) && !o.return_checked_at), backV = back.reduce((a, o) => a + backItems(o).reduce((x, l) => x + l.p * l.q, 0), 0);
-  const miss = D.items.filter(i => photos(i).length < 2).length, oos = D.items.filter(i => !i.in_stock).length, liveI = D.items.filter(i => photos(i).length >= 2 && i.in_stock).length;
+  const miss = D.items.filter(i => photos(i).length < NEED()).length, oos = D.items.filter(i => !i.in_stock).length, liveI = D.items.filter(i => photos(i).length >= NEED() && i.in_stock).length;
   const dl = daysLeft(), paid = D.orders.length >= 0 && S.trial_used;
   const plan = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC under verification" : "Finish KYC in the app") : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`;
   const fest = D.festivals.find(f => f.active !== false && (new Date(f.day) - new Date(t)) / 864e5 <= 7);
@@ -212,7 +212,7 @@ function dash() {
         ${fest ? `<div class="box" style="background:linear-gradient(135deg,#FF8A1F,#EF287B);color:#fff"><b style="font-size:16px">${esc(fest.name)} ${(new Date(fest.day) - new Date(t)) / 864e5 < 1 ? "is today" : "in " + Math.round((new Date(fest.day) - new Date(t)) / 864e5) + " days"}</b>
           <div style="font-size:12.5px;opacity:.9;margin:4px 0 10px">${D.items.filter(i => i.fest === fest.id).length} items tagged. Tag your festival items in the app (Dashboard → Festival items) — they show in the festival banner for customers near you.</div></div>` : ""}
         <div class="box"><h3>Catalogue health <span style="float:right">${D.items.length} items</span></h3>
-          <div class="fu"><div><b style="font-weight:500">Missing photos (need all 3)</b></div><a class="pill bad" href="#" onclick="event.preventDefault();catF='missing';go('catalog')">${miss} items</a></div>
+          <div class="fu"><div><b style="font-weight:500">Missing photos</b></div><a class="pill bad" href="#" onclick="event.preventDefault();catF='missing';go('catalog')">${miss} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Out of stock</b></div><a class="pill warn" href="#" onclick="event.preventDefault();catF='oos';go('catalog')">${oos} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Live with 3 photos</b></div><span class="pill ok">${liveI} items</span></div></div>
         <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Renewal link goes to your email</div></div>
@@ -322,20 +322,20 @@ function printBill(id) {
 // ================= Catalog =================
 function catalog() {
   const groups = [...new Set(D.items.map(i => (i.grp || "").trim()).filter(Boolean))].sort().slice(0, 8);
-  const liveN = D.items.filter(i => photos(i).length >= 2 && i.in_stock).length;
-  const F = [["all", `All ${D.items.length}`], ["missing", `Missing photos ${D.items.filter(i => photos(i).length < 2).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
+  const liveN = D.items.filter(i => photos(i).length >= NEED() && i.in_stock).length;
+  const F = [["all", `All ${D.items.length}`], ["missing", `Missing photos ${D.items.filter(i => photos(i).length < NEED()).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
   $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, "Every item needs 2 photos: F = front (name &amp; brand), B = back label (ingredients)",
       `<button class="btn ghost" onclick="go('catalog/bulk')">⇪ Bulk upload</button><button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
     <div class="bar2"><div class="fchips">${F.map(([k, l]) => `<button class="fchip ${catF === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div><div class="sp"></div>
       <input class="search" id="q" placeholder="🔍 Search items" value="${esc(catQ)}"></div>
-    <div class="box" id="ct"></div><div class="sub">Items with fewer than 3 photos are hidden from customers until all 3 are added.</div>`;
+    <div class="box" id="ct"></div><div class="sub">Items without their photos are hidden from customers until the photos are added.</div>`;
   $$(".fchip").forEach(b => b.onclick = () => { catF = b.dataset.f; catalog(); });
   $("#q").oninput = e => { catQ = e.target.value; drawCat(); };
   drawCat();
 }
 function drawCat() {
   const q = catQ.toLowerCase().trim();
-  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && photos(i).length < 2) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
+  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && photos(i).length < NEED()) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
   const fei = i => { const p = photos(i), q = [p[0], p.length >= 3 ? p[2] : p[1]]; return ["F", "B"].map((l, k) => `<span class="pill ${q[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
@@ -380,16 +380,19 @@ function editItem(id) {
   const i = id ? D.items.find(x => x.id === id) : null;
   if (!id && route() !== "catalog/new" && route().startsWith("catalog")) history.replaceState({}, "", "/seller/catalog/new/");
   const p = i ? photos(i) : [];
-  F_ = { id, ph: [p[0] || null, (p.length >= 3 ? p[2] : p[1]) || null], pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
+  F_ = { id, ph: [p[0] || null, (p.length >= 3 ? p[2] : p[1]) || null].slice(0, NEED()), pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
   const groups = [...new Set(D.items.map(x => (x.grp || "").trim()).filter(Boolean))].sort();
   drawer(`<h2><span>${i ? "Edit item" : "Add item"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
-    <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• all 3 required</span><span class="sp" style="flex:1"></span><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
-    <div id="phs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px"></div>
-    <label>ITEM NAME</label><input class="in" id="fn" value="${esc(i?.name || "")}" placeholder="e.g. Aashirvaad Whole Wheat Atta">
+    <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• ${NEED() === 1 ? "required" : "both required"}</span><span class="sp" style="flex:1"></span><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
+    <div id="phs" style="display:grid;grid-template-columns:repeat(${NEED() === 1 ? 2 : 3},1fr);gap:10px;margin-top:8px"></div>
+    <label>ITEM NAME</label><input class="in" id="fn" value="${esc(i?.name || "")}" placeholder="e.g. Aashirvaad Whole Wheat Atta" autocomplete="off"><div id="msug"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CATEGORY</label><input class="in" id="fg" list="grps" value="${esc(i?.grp || "")}" placeholder="Atta &amp; Rice"><datalist id="grps">${groups.map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
       <div><label>UNIT</label><input class="in" id="fu" value="${esc(i?.unit || "")}" placeholder="5 kg"></div>
       <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${i?.mrp ?? ""}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${i ? i.price : ""}"></div></div>
     <div id="off"></div>
+    ${S.type === "grocery" ? `<label>MANUFACTURER / BRAND OWNER (on the pack)</label><input class="in" id="fmk" value="${esc(i?.maker || "")}">
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px"><div><label>FSSAI LICENCE NO.</label><input class="in" id="ffs" inputmode="numeric" maxlength="14" value="${esc(i?.fssai || "")}"></div>
+      <div><label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}"></div></div>` : ""}
     <label style="margin-top:14px;font-size:13px;letter-spacing:0;color:#1D0F30;text-transform:none">Return / replacement</label>
     <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement", "Return & refund"].map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
     <div id="dw" style="display:none"><label>WITHIN HOW MANY DAYS OF DELIVERY? (1–30)</label><input class="in" id="fd" inputmode="numeric" value="${i?.ret_days || 7}"></div>
@@ -403,6 +406,15 @@ function editItem(id) {
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
     ${i ? `<button class="btn ghost full" style="margin-top:8px;color:#BE185D" onclick="delItem('${i.id}')">Delete item</button>` : ""}`);
   drawPhotos(); paintPol();
+  // suggestions from the Gali Bazaar item list (new items): pick → name, pack, group, HSN, photos, pack details
+  if (!i) { let tmr = null; $("#fn").addEventListener("input", () => { clearTimeout(tmr); const q = $("#fn").value.trim(); if (q.length < 3) { $("#msug").innerHTML = ""; return; }
+    tmr = setTimeout(async () => {
+      let qq = db.from("common_items").select("*"); q.split(/\s+/).filter(w => w.length >= 2).slice(0, 3).forEach(w => qq = qq.ilike("name", `%${w.replace(/[%_]/g, "")}%`));
+      const { data } = await qq.order("uses", { ascending: false }).limit(6); window._ms = data || [];
+      $("#msug").innerHTML = _ms.length ? `<div style="border:1px solid #EEE7F6;border-radius:12px;margin-top:6px;overflow:hidden"><div class="sub" style="padding:6px 10px">Gali Bazaar item list — tap to use</div>${_ms.map((c, k) =>
+        `<div onclick="useMaster(${k})" style="display:flex;align-items:center;gap:10px;padding:7px 10px;cursor:pointer;border-top:1px solid #F4EFF9">${c.images && c.images[0] ? `<img src="${esc(thumbUrl(c.images[0]))}" onerror="this.onerror=null;this.src='${esc(c.images[0])}'" style="width:34px;height:34px;border-radius:8px;object-fit:cover">` : `<span style="width:34px;height:34px;border-radius:8px;background:#F6F2FB"></span>`}
+        <div style="flex:1"><b style="font-size:13px">${esc(c.name)}</b><div class="sub" style="margin:0">${esc([c.unit, c.grp, c.images && c.images.length ? "" : "no photo yet"].filter(Boolean).join(" · "))}</div></div><b style="color:#7C3AED;font-size:12.5px">Use</b></div>`).join("")}</div>` : "";
+    }, 300); }); }
   // HSN + GST % fill in by themselves from the item name (GST shops); seller can still change them
   if (S.gst_billing && $("#fh") && typeof hsnSuggest === "function") {
     let auto = !(i && i.hsn);
@@ -414,38 +426,59 @@ function editItem(id) {
   ["#fm", "#fp"].forEach(s => $(s).oninput = offLine); offLine();
   $("#fsave").onclick = saveItem;
 }
+function useMaster(k) {
+  const c = (window._ms || [])[k]; if (!c) return;
+  $("#fn").value = c.name; $("#fu").value = c.unit || ""; if (c.grp) $("#fg").value = c.grp;
+  if (S.gst_billing && $("#fh") && c.hsn) { $("#fh").value = c.hsn; if (c.gst_rate != null) $("#fgst").value = String(c.gst_rate); }
+  if ($("#fmk") && c.maker) $("#fmk").value = c.maker; if ($("#ffs") && c.fssai) $("#ffs").value = c.fssai; if ($("#fin") && c.ingredients) $("#fin").value = c.ingredients;
+  (c.images || []).slice(0, NEED()).forEach((u, j) => F_.ph[j] = u);
+  $("#msug").innerHTML = `<div class="okline">Details taken from the Gali Bazaar item list${(c.images || []).length ? "" : " — add the photos"}. Set your price.</div>`; drawPhotos();
+}
 function paintPol() { $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
-const PH = ["1. Front", "2. Back label"];
+// photos needed: grocery = front + back label, fruits & veg = 2, food / sweets / stationery = 1
+const NEED = () => (S.type === "grocery" || S.type === "fruitveg") ? 2 : 1;
+const PHL = () => S.type === "grocery" ? ["1. Front", "2. Back label"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
+const normN = s => String(s || "").trim().replace(/\s+/g, " ").toLowerCase(), normU = s => String(s || "").replace(/\s+/g, "").toLowerCase();
+// Gali Bazaar item list (common_items): rows matching these names, grouped by name
+async function masterFind(names) {
+  const out = {}, list = [...new Set(names.map(normN))].filter(n => n && !/[%_,()]/.test(n));
+  for (let i = 0; i < list.length; i += 60) {
+    const { data } = await db.from("common_items").select("*").or(list.slice(i, i + 60).map(n => `name.ilike.${n}`).join(",")).limit(1000);
+    (data || []).forEach(c => (out[normN(c.name)] = out[normN(c.name)] || []).push(c));
+  }
+  return out;
+}
 function drawPhotos() {
   const n = F_.ph.filter(Boolean).length;
-  $("#phc").textContent = `${n} of 3`;
+  $("#phc").textContent = `${n} of ${NEED()}`;
   $("#phs").innerHTML = F_.ph.map((v, k) => `<div><div class="drop" data-k="${k}" style="height:104px;border-radius:16px;border:${v ? "1px solid #EEE7F6" : "1.5px dashed #EF287B"};background:${v ? "#FFF7E6" : "#FFF5F8"};display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative">
       ${v ? `<img src="${esc(typeof v === "string" ? v : v.url)}" style="width:100%;height:100%;object-fit:cover"><button onclick="event.stopPropagation();F_.ph[${k}]=null;drawPhotos()" style="position:absolute;top:4px;right:4px;border:0;border-radius:50%;width:22px;height:22px;background:#fff;cursor:pointer">×</button>`
         : `<span style="color:#EF287B;font-size:12px;font-weight:600;text-align:center">⇪<br>Drop or browse</span>`}</div>
-      <div style="font-size:12px;font-weight:600;margin-top:4px">${PH[k]} <span style="color:#EF287B">*</span></div></div>`).join("");
+      <div style="font-size:12px;font-weight:600;margin-top:4px">${PHL()[k]} <span style="color:#EF287B">*</span></div></div>`).join("");
   $$("#phs .drop").forEach(d => {
     const k = +d.dataset.k, pick = f => { if (!f || !/^image\//.test(f.type)) return; F_.ph[k] = { file: f, url: URL.createObjectURL(f) }; drawPhotos(); };
     d.onclick = () => { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.onchange = () => pick(inp.files[0]); inp.click(); };
     d.ondragover = e => { e.preventDefault(); d.style.background = "#F3EDFF"; }; d.ondragleave = () => { d.style.background = ""; drawPhotos(); };
-    d.ondrop = e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type)); fs.forEach((f, j) => { if (k + j < 2) F_.ph[k + j] = { file: f, url: URL.createObjectURL(f) }; }); drawPhotos(); };
+    d.ondrop = e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type)); fs.forEach((f, j) => { if (k + j < NEED()) F_.ph[k + j] = { file: f, url: URL.createObjectURL(f) }; }); drawPhotos(); };
   });
-  const miss = F_.ph.map((v, k) => v ? null : ["front", "back label"][k]).filter(Boolean), b = $("#fsave");
+  const miss = F_.ph.map((v, k) => v ? null : (S.type === "grocery" ? ["front", "back label"] : ["item", "second"])[k]).filter(Boolean), b = $("#fsave");
   if (b) { b.disabled = miss.length > 0; b.textContent = miss.length ? `Add ${miss.join(" & ")} photo to save` : "Save item"; b.style.opacity = miss.length ? .5 : 1; }
 }
 async function saveItem() {
   const e = $("#fe"), name = $("#fn").value.trim(), grp = $("#fg").value.trim(), desc = $("#fx").value.trim();
   const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
   const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(30, +$("#fd").value || 0));
-  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? "Add both photos: front and the back label"
+  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? (NEED() === 1 ? "Add a photo" : S.type === "grocery" ? "Add both photos: front and the back label" : "Add both photos")
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0" : null;
   if (err) { e.className = "msg err"; e.textContent = err; return; }
   const b = $("#fsave"); b.disabled = true; b.textContent = "Saving…";
   try {
     const imgs = [];
-    for (let k = 0; k < 2; k++) { const v = F_.ph[k]; imgs.push(typeof v === "string" ? v : await uploadPhoto(v.file, k)); }
+    for (let k = 0; k < NEED(); k++) { const v = F_.ph[k]; imgs.push(typeof v === "string" ? v : await uploadPhoto(v.file, k)); }
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0], images: imgs, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days };
+    if ($("#fmk")) { row.maker = $("#fmk").value.trim() || null; row.fssai = $("#ffs").value.replace(/\D/g, "") || null; row.ingredients = $("#fin").value.trim() || null; }
     if (S.gst_billing && $("#fgst")) row.gst_rate = $("#fgst").value === "" ? null : +$("#fgst").value;
     if (S.gst_billing && $("#fh")) row.hsn = $("#fh").value.replace(/\D/g, "") || null;
     const r = F_.id ? await db.from("items").update(row).eq("id", F_.id) : await db.from("items").insert(row);
@@ -461,7 +494,8 @@ async function delItem(id) {
 
 // ================= Bulk upload =================
 const TPL_HEAD = ["Item name*", "MRP (Rs)", "Selling price (Rs)", "Pack / unit", "In stock (Yes/No)", "Group (optional)", "Sizes (optional)", "Description",
-  "HSN code", "GST type (Inclusive / Exclusive / Nil - blank = no GST)", "GST %", "Doorstep return only (Yes)", "Return / exchange days (blank = doorstep only)"];
+  "HSN code", "GST type (Inclusive / Exclusive / Nil - blank = no GST)", "GST %", "Doorstep return only (Yes)", "Return / exchange days (blank = doorstep only)",
+  "Manufacturer (grocery)", "FSSAI no. (grocery)", "Ingredients (grocery)"];
 const TPL_ROWS = [
   ["Aashirvaad atta", 285, 265, "5 kg", "Yes", "Atta & rice", "", "Whole wheat", "11010000", "Inclusive", 5, "Yes", ""],
   ["Toor dal", 185, 170, "1 kg", "Yes", "Dal", "", "", "07136000", "Exclusive", 5, "", 7],
@@ -474,7 +508,8 @@ function bulkCols(head) {
   if (!h || !h.some(c => c.includes("hsn") || c.includes("selling"))) return { name: 0, price: 1, unit: 2, stock: 3, mrp: 4, grp: 5, sizes: 6, desc: 7 };
   const f = (...k) => h.findIndex(c => k.some(x => c.includes(x)));
   const m = { name: f("item"), mrp: f("mrp"), price: f("selling", "price"), unit: f("pack", "unit"), stock: f("stock"), grp: f("group"), sizes: f("size"), desc: f("desc"),
-    hsn: f("hsn"), gtype: f("gst type"), grate: f("gst %", "gst%", "gst rate"), door: f("doorstep"), ret: f("return /", "return/", "exchange") };
+    hsn: f("hsn"), gtype: f("gst type"), grate: f("gst %", "gst%", "gst rate"), door: f("doorstep"), ret: f("return /", "return/", "exchange"),
+    maker: f("manufacturer"), fssai: f("fssai"), ingr: f("ingredient") };
   Object.keys(m).forEach(k => m[k] < 0 && delete m[k]); return m;
 }
 let BU = { rows: [], file: "", photos: {} };
@@ -532,10 +567,20 @@ async function readFile(f) {
     const rt = col("ret").toLowerCase(), dm = rt.match(/\d+/), days = dm ? Math.min(30, Math.max(1, +dm[0])) : null;
     const door = /^y/i.test(col("door")) || !days;
     const item = { shop: S.id, name: col("name"), price, unit: vs.length ? "" : col("unit"), in_stock: !/^no$/i.test(col("stock")), mrp: +col("mrp") || null, grp: col("grp") || null,
-      descr: col("desc") || null, variants: vs, hsn, gst_rate: gst, ret_policy: door ? "none" : /exch|repl/.test(rt) ? "replace" : "return", ret_days: door ? 0 : days };
+      descr: col("desc") || null, variants: vs, hsn, gst_rate: gst,
+      maker: col("maker") || null, fssai: col("fssai").replace(/\D/g, "") || null, ingredients: col("ingr") || null, ret_policy: door ? "none" : /exch|repl/.test(rt) ? "replace" : "return", ret_days: door ? 0 : days };
     const badGst = gstShop && (gtype.startsWith("in") || gtype.startsWith("ex")) && ![0, 5, 12, 18, 28, 40].includes(rate);
     return { line, item, ban, err: ban ? null : (price <= 0 || vs.some(v => v.p <= 0)) ? "Price missing" : badGst ? "GST % missing" : null, dup: names.has(col("name").toLowerCase()) };
   }) };
+  // names in the Gali Bazaar item list take its exact name + HSN (+ photos / pack details when the pack size matches)
+  try {
+    const M = await masterFind(BU.rows.map(r => r.item.name));
+    BU.rows.forEach(r => { const l = M[normN(r.item.name)]; if (!l) return;
+      const same = r.item.variants.length ? null : l.find(c => normU(c.unit) === normU(r.item.unit)), c = same || l.sort((a, b) => b.uses - a.uses)[0];
+      r.master = true; r.item.name = c.name; r.item.hsn = c.hsn || r.item.hsn;
+      if (same && (same.images || []).length) { r.item.images = same.images.slice(0, NEED()); r.item.img_url = same.images[0]; }
+      if (same) ["maker", "fssai", "ingredients"].forEach(k => r.item[k] = r.item[k] || same[k] || null); });
+  } catch (e) {}
   bulk();
 }
 function parseCsv(t) {
@@ -554,10 +599,10 @@ function drawPreview() {
   $("#bsum").innerHTML = `<span class="pill ok">${ready.length} ready</span> <span class="pill bad">${errs.length} errors</span> <span class="pill" style="background:#1D0F30;color:#fff">${ban.length} blocked</span>`;
   $("#bprev").innerHTML = `<div style="max-height:520px;overflow:auto"><table><thead><tr><th>ROW</th><th>ITEM</th><th>PRICE</th><th class="hm">UNIT</th><th class="hm">GST · HSN</th><th class="hm">RETURN</th><th>PHOTOS</th><th>CHECK</th></tr></thead><tbody>${rows.map(r => {
     const ph = photoKeyFor(r.item.name), n = ph.filter(Boolean).length;
-    const chk = r.ban ? `<span class="pill" style="background:#1D0F30;color:#fff">Blocked: ${r.ban}</span>` : r.err ? `<span class="pill bad">${r.err}</span>` : n === 3 ? `<span class="pill ok">Ready</span>` : `<span class="pill warn">Ready • ${n ? (3 - n) + " photo" + (3 - n > 1 ? "s" : "") + " missing" : "add photos"}</span>`;
+    const chk = r.ban ? `<span class="pill" style="background:#1D0F30;color:#fff">Blocked: ${r.ban}</span>` : r.err ? `<span class="pill bad">${r.err}</span>` : (n >= NEED() || (r.item.images || []).length >= NEED()) ? `<span class="pill ok">Ready${r.master ? " • from item list" : ""}</span>` : `<span class="pill warn">Ready • ${n ? (NEED() - n) + " photo" + (NEED() - n > 1 ? "s" : "") + " missing" : "add photos"}</span>`;
     return `<tr><td>${r.line}</td><td><b>${esc(r.item.name)}</b>${r.dup ? `<br><span class="sub">already in your catalogue</span>` : ""}</td><td>${r.item.variants.length ? esc(r.item.variants.map(v => `${v.n}=${v.p}`).join("; ")) : r.item.price ? inr(r.item.price) : "—"}</td>
       <td class="hm">${esc(r.item.unit || "—")}</td><td class="hm">${r.item.gst_rate == null ? "No GST" : r.item.gst_rate + "%"}${r.item.hsn ? " · " + esc(r.item.hsn) : ""}</td><td class="hm">${r.item.ret_policy === "none" ? "Doorstep" : (r.item.ret_policy === "replace" ? "Exchange " : "Return ") + r.item.ret_days + "d"}</td><td style="white-space:nowrap">${["F", "E", "I"].map((l, k) => `<span class="pill ${ph[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join("")}</td><td>${chk}</td></tr>`; }).join("")}</tbody></table></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><span class="sub" style="flex:1">Items without all 3 photos stay hidden until photos are added</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><span class="sub" style="flex:1">Items without photos stay hidden until photos are added. Names matching the Gali Bazaar item list get its HSN (and photos) by themselves</span>
       <button class="btn pink" id="bup" ${ready.length ? "" : "disabled"}>⇪ Upload ${ready.length} item${ready.length === 1 ? "" : "s"}</button></div><div class="msg" id="bmsg"></div>`;
   $("#bup") && ($("#bup").onclick = doBulk);
 }
@@ -569,7 +614,7 @@ async function doBulk() {
       const chunk = [];
       for (const r of ready.slice(i, i + 50)) {
         const ph = photoKeyFor(r.item.name), row = { ...r.item };
-        if (ph.every(Boolean)) { const urls = []; for (let k = 0; k < 2; k++) urls.push(await uploadPhoto(ph[k], k)); row.images = urls; row.img_url = urls[0]; }
+        if (ph.slice(0, NEED()).every(Boolean)) { const urls = []; for (let k = 0; k < NEED(); k++) urls.push(await uploadPhoto(ph[k], k)); row.images = urls; row.img_url = urls[0]; }
         chunk.push(row);
       }
       b.textContent = `Uploading ${Math.min(i + 50, ready.length)} / ${ready.length}…`;
