@@ -21,6 +21,8 @@
     var cats = res[0], live = {};
     (res[1] || []).forEach(function (x) { live[x.key] = x.shops; });
     if (!cats || !cats.length) return;
+    // hero stat "N shop categories" follows the real list
+    document.querySelectorAll(".s-v").forEach(function (el) { el.textContent = cats.length; });
     boxes.forEach(function (box) {
       var forShops = box.getAttribute("data-cats") === "shops";
       var html = cats.map(function (c) {
