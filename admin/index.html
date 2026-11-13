@@ -74,7 +74,7 @@ const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fIm
 const db = supabase.createClient(SB, KEY);
 const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -138,7 +138,7 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts };
+  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage };
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
@@ -244,10 +244,85 @@ async function kyc() {
   const [shops, riders] = await Promise.all([q("shops", "*", x => x.eq("kyc", "PENDING")), q("riders", "id,name,phone,kyc,shop", x => x.eq("kyc", "PENDING"))]);
   $("#main").innerHTML = head("KYC queue", `${shops.length} shops · ${riders.length} delivery partners waiting`) + `<div class="box"><h3>Shops</h3>${kycTable(shops)}</div>
     <div class="box"><h3>Delivery partners</h3>${riders.length ? `<table><tbody>${riders.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td>
-      <td style="white-space:nowrap"><button class="mini dk" onclick="riderKyc('${r.id}','APPROVED')">Approve</button><button class="mini" onclick="riderKyc('${r.id}','REJECTED')">Reject</button></td></tr>`).join("")}</tbody></table>` : '<div class="sub">None.</div>'}</div>`;
+      <td style="white-space:nowrap"><button class="mini" onclick="riderDocs('${r.id}')">Docs</button><button class="mini dk" onclick="riderKyc('${r.id}','APPROVED')">Approve</button><button class="mini" onclick="riderKyc('${r.id}','REJECTED')">Reject</button></td></tr>`).join("")}</tbody></table>` : '<div class="sub">None.</div>'}</div>`;
 }
 async function riderKyc(id, st) { const reason = st === "REJECTED" ? prompt("Reason") : null; if (st === "REJECTED" && !reason) return;
   const { error } = await db.from("riders").update({ kyc: st, kyc_reason: reason }).eq("id", id); if (error) alert(error.message); else go(page); }
+async function riderDocs(id) {
+  const [r] = await q("riders", "name,kyc_files,pan_number,aadhaar_last4,kyc_report", x => x.eq("id", id));
+  const order = ["pan", "aadhaar front", "aadhaar back", "selfie"];
+  const links = await Promise.all(Object.entries(r.kyc_files || {}).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(async ([k, path]) => {
+    const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`; }));
+  const checks = (r.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
+  const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
+  p.innerHTML = `<h2><span>${esc(r.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(r.pan_number || "—")} · Aadhaar XXXX ${esc(r.aadhaar_last4 || "")}</div>
+    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div>
+    <div style="margin-top:16px"><button class="btn pink" onclick="riderKyc('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="riderKyc('${id}','REJECTED');closeForm()">Reject</button></div>`;
+}
+// ---------- Item list (master): products every shop picks from ----------
+let IL = { q: "", f: 0, n: 50 };
+async function itemList() {
+  let x = db.from("common_items").select("*");
+  IL.q.trim().split(/\s+/).filter(w => w.length >= 2).slice(0, 3).forEach(w => x = x.ilike("name", `%${w.replace(/[%_]/g, "")}%`));
+  x = IL.f === 1 ? x.eq("images", "{}").eq("hidden", false) : IL.f === 2 ? x.eq("hidden", true) : x.eq("hidden", false);
+  const { data, error } = await x.order("uses", { ascending: false }).order("name").limit(IL.n + 1); if (error) throw error;
+  const list = data || [], more = list.length > IL.n;
+  $("#main").innerHTML = head("Item list", "Products every shop picks from — the first shop's photos are shared. Fix names / HSN, hide wrong items, remove copied photos.") +
+    `<div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input class="in" id="ilq" placeholder="Search name" value="${esc(IL.q)}" style="flex:1;min-width:180px">
+      ${["All", "No photo", "Hidden"].map((l, k) => `<button class="btn ${IL.f === k ? "pink" : "ghost"}" onclick="IL.f=${k};IL.n=50;go('items')">${l}</button>`).join("")}</div>
+    <table><thead><tr><th></th><th>ITEM</th><th>PACK</th><th class="hm">CATEGORY</th><th>HSN</th><th class="hm">SHOPS</th><th></th></tr></thead><tbody>${list.slice(0, IL.n).map(c => `<tr>
+      <td>${c.images && c.images[0] ? `<img src="${esc(c.images[0].replace(/\.webp$/, "_t.webp"))}" onerror="this.onerror=null;this.src='${esc(c.images[0])}'" style="width:38px;height:38px;border-radius:8px;object-fit:cover">` : '<span class="sub">—</span>'}</td>
+      <td><b>${esc(c.name)}</b>${c.images && c.images.length ? `<br><span class="sub">${c.images.length} photo${c.images.length > 1 ? "s" : ""}</span>` : ""}</td><td>${esc(c.unit)}</td><td class="hm">${esc(c.grp || "")}</td><td>${esc(c.hsn || "—")}</td><td class="hm">${c.uses}</td>
+      <td style="white-space:nowrap"><button class="mini" onclick="ilEdit('${c.id}')">Edit</button></td></tr>`).join("") || '<tr><td colspan="7" class="sub">Nothing here.</td></tr>'}</tbody></table>
+    ${more ? `<button class="btn ghost" style="margin-top:10px" onclick="IL.n+=50;go('items')">Show more</button>` : ""}</div>`;
+  let t; $("#ilq").oninput = e => { clearTimeout(t); t = setTimeout(() => { IL.q = e.target.value; IL.n = 50; go("items"); setTimeout(() => { const i = $("#ilq"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 50); }, 400); };
+}
+async function ilEdit(id) {
+  const [c] = await q("common_items", "*", x => x.eq("id", id));
+  const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
+  p.innerHTML = `<h2><span>Edit item</span><button class="x" onclick="closeForm()">×</button></h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${(c.images || []).map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" style="width:84px;height:84px;object-fit:cover;border-radius:10px"></a>`).join("") || '<div class="sub">No photos yet — the first shop that adds this product fills them.</div>'}</div>
+    <label>NAME</label><input class="in" id="ie_n" value="${esc(c.name)}"><label>PACK / UNIT</label><input class="in" id="ie_u" value="${esc(c.unit)}">
+    <label>CATEGORY</label><input class="in" id="ie_g" value="${esc(c.grp || "")}"><label>HSN</label><input class="in" id="ie_h" value="${esc(c.hsn || "")}" maxlength="8">
+    <label><input type="checkbox" id="ie_x" ${c.hidden ? "checked" : ""}> Hidden — shops won't see it</label>
+    ${(c.images || []).length ? '<label><input type="checkbox" id="ie_p"> Remove these photos (wrong / copied)</label>' : ""}
+    <div class="msg" id="ie_m"></div><div style="margin-top:14px"><button class="btn pink" onclick="ilSave('${id}')">Save</button></div>`;
+}
+async function ilSave(id) {
+  const row = { name: $("#ie_n").value.trim(), unit: $("#ie_u").value.trim(), grp: $("#ie_g").value.trim() || null, hsn: $("#ie_h").value.replace(/\D/g, "") || null, hidden: $("#ie_x").checked };
+  if ($("#ie_p") && $("#ie_p").checked) row.images = [];
+  const { error } = await db.from("common_items").update(row).eq("id", id);
+  if (error) { $("#ie_m").className = "msg err"; $("#ie_m").textContent = /duplicate|unique/i.test(error.message) ? "An item with this name and pack already exists." : error.message; return; }
+  closeForm(); go("items");
+}
+// ---------- Settings: plan price, trial, payments ----------
+async function settingsPage() {
+  const [s] = await q("settings", "*", x => x.eq("id", 1));
+  const d = s.plan_discounts || {};
+  const f = (k, l, v, ty = "text") => `<div><label>${l}</label><input class="in" id="st_${k}" type="${ty}" value="${esc(v ?? "")}"></div>`;
+  $("#main").innerHTML = head("Settings", "Plan price, free trial, discounts and the UPI that shops pay to") + `<div class="box"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    ${f("plan_price", "PLAN PRICE ₹ / MONTH", s.plan_price, "number")}${f("trial_days", "FREE TRIAL (DAYS)", s.trial_days, "number")}
+    ${f("d3", "3 MONTHS % OFF", d["3"] ?? 10, "number")}${f("d6", "6 MONTHS % OFF", d["6"] ?? 15, "number")}${f("d12", "12 MONTHS % OFF", d["12"] ?? 20, "number")}
+    ${f("feat_week_price", "TOP SPOT 1 WEEK ₹", s.feat_week_price, "number")}${f("feat_month_price", "TOP SPOT 1 MONTH ₹", s.feat_month_price, "number")}
+    ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${f("app_link", "APP DOWNLOAD LINK", s.app_link)}</div>
+    <label style="margin-top:10px"><input type="checkbox" id="st_auto" ${s.auto_kyc ? "checked" : ""}> KYC auto-checker on</label>
+    <div class="sub" style="margin-top:8px">UPI ID for payments and GST details are changed in the admin app (Settings) — they need a confirmation step.</div>
+    <div class="msg" id="st_m"></div><button class="btn pink" style="margin-top:12px" onclick="settingsSave()">Save</button></div>`;
+}
+async function settingsSave() {
+  const v = k => $("#st_" + k).value, n = k => +v(k) || 0;
+  const row = { plan_price: n("plan_price") || 99, trial_days: n("trial_days"), plan_discounts: { "1": 0, "3": n("d3"), "6": n("d6"), "12": n("d12") },
+    feat_week_price: n("feat_week_price"), feat_month_price: n("feat_month_price"), biz_name: v("biz_name").trim(), biz_email: v("biz_email").trim(), app_link: v("app_link").trim(), auto_kyc: $("#st_auto").checked };
+  const { error } = await db.from("settings").update(row).eq("id", 1);
+  $("#st_m").className = "msg " + (error ? "err" : "ok"); $("#st_m").textContent = error ? error.message : "Saved";
+}
+// ---------- Blocked items (checked automatically on the server) ----------
+async function blockedPage() {
+  const words = ["cigarette", "cigar", "bidi / beedi", "gutkha", "tobacco / tambaku", "khaini", "zarda", "pan masala", "hookah", "vape / e-cig", "nicotine", "snuff", "beer", "whisky", "vodka", "rum", "wine", "liquor / daru / sharab"];
+  $("#main").innerHTML = head("Blocked items", "Items with these words in the name, group or description can't be added — the database refuses them") +
+    `<div class="box"><div style="display:flex;gap:6px;flex-wrap:wrap">${words.map(w => `<span class="pill bad">${esc(w)}</span>`).join("")}</div>
+    <div class="sub" style="margin-top:12px">Hindi spellings (सिगरेट, बीड़ी, गुटखा, तंबाकू, खैनी, ज़र्दा, शराब, दारू) are blocked too. Medicines are not allowed either.</div></div>`;
+}
 async function payments() {
   const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "PLAN").order("created_at", { ascending: false }).limit(200)), q("shops", "id,name")]);
   $("#main").innerHTML = head("Payments", `${claims.filter(c => c.status === "PENDING").length} waiting to be checked`) + `<div class="box">${claimTable(claims, shops, false) || '<div class="sub">No payments yet.</div>'}</div>`;
