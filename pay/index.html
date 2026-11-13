@@ -253,8 +253,10 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
         <span class="pm">${inr(Math.round(p / m))} / month</span><span class="sv">${d ? "Save " + d + "%" : "Standard"}</span><span class="rd"></span></div>`; }).join("");
     document.querySelector(".side").style.display = "block";
     document.querySelector(".side").innerHTML = `<div class="card"><h2>Renew your shop</h2>
-      <div class="lead" style="font-size:14px;line-height:1.6">Renewal works from your shop's personal link. In the Gali Bazaar app, open <b>Account</b> and tap
-      <b>Send renewal link to my email</b>, then open the link in that email.</div></div>`;
+      ${shop ? '<div class="note err" style="margin:6px 0 10px">This link is for a shop that is closed or no longer exists — so it can\'t take a payment.</div>' : ""}
+      <div class="lead" style="font-size:14px;line-height:1.6">Payment works only from your shop's own link. In the Gali Bazaar app open <b>Shop &amp; KYC → Plan &amp; renewal</b> and tap
+      <b>Send renewal link to my email</b>, then open the link in that email. (The button shows once your KYC is approved.)</div></div>`;
+    document.querySelectorAll("#plans .pl").forEach(p => p.style.cursor = "default");
     return;
   }
 
