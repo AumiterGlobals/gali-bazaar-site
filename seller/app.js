@@ -383,7 +383,7 @@ function editItem(id) {
   F_ = { id, ph: [p[0] || null, (p.length >= 3 ? p[2] : p[1]) || null].slice(0, NEED()), pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
   const groups = [...new Set(D.items.map(x => (x.grp || "").trim()).filter(Boolean))].sort();
   drawer(`<h2><span>${i ? "Edit item" : "Add item"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
-    <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• ${NEED() === 1 ? "required" : "both required"}</span><span class="sp" style="flex:1"></span><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
+    <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• ${NEED() === 1 ? "required" : "both required"}</span><span class="sp" style="flex:1"></span><a href="/help/seller-guide/#photos-en" target="_blank" style="font-size:12.5px;margin-right:10px;color:#7C3AED;font-weight:600">Photo guidelines</a><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
     <div id="phs" style="display:grid;grid-template-columns:repeat(${NEED() === 1 ? 2 : 3},1fr);gap:10px;margin-top:8px"></div>
     <label>ITEM NAME</label><input class="in" id="fn" value="${esc(i?.name || "")}" placeholder="e.g. Aashirvaad Whole Wheat Atta" autocomplete="off"><div id="msug"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CATEGORY</label><input class="in" id="fg" list="grps" value="${esc(i?.grp || "")}" placeholder="Atta &amp; Rice"><datalist id="grps">${groups.map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
