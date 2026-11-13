@@ -74,7 +74,7 @@ const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fIm
 const db = supabase.createClient(SB, KEY);
 const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -138,7 +138,7 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage };
+  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage };
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
@@ -646,5 +646,49 @@ async function saveForm() {
 
 start();
 </script>
-<script src="/admin/books.js?v=5"></script>
+<script src="/admin/books.js?v=5">
+// ================= Seller support chat =================
+let supT = null, supShop = null, supSig = "";
+async function supportPage() {
+  clearInterval(supT);
+  const { data, error } = await db.rpc("support_inbox");
+  if (error) throw new Error(/function|schema cache/.test(error.message) ? "Run update-43-support-chat.sql in Supabase first." : error.message);
+  const t = x => new Date(x).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  $("#main").innerHTML = head("Seller support", "Sellers write here from their app or the seller website") + (data.length ? `<div class="box"><table><thead><tr><th>SHOP</th><th>LAST MESSAGE</th><th class="hi">WHEN</th><th></th></tr></thead><tbody>${data.map(r => `<tr style="cursor:pointer" onclick="supOpen('${r.shop}')">
+    <td><b>${esc(r.shop_name)}</b><br><span class="sub">${esc(r.city || "")}</span></td><td>${r.last_from_admin ? `<span class="sub">You: </span>` : ""}${esc(String(r.last_body).slice(0, 90))}</td>
+    <td class="hi">${t(r.last_at)}</td><td>${r.unread ? `<span class="pill bad">${r.unread} new</span>` : ""}</td></tr>`).join("")}</tbody></table></div>` : `<div class="soon">No messages from sellers yet.</div>`);
+  supT = setInterval(() => { if (page !== "support") return clearInterval(supT); if (!supShop) supportPage(); }, 15000);
+}
+async function supOpen(shop) {
+  supShop = shop; supSig = "";
+  const el = $("#panel"); el.classList.add("open"); document.body.classList.add("po");
+  const { data: s } = await db.from("shops").select("name, city, phone").eq("id", shop).single();
+  el.innerHTML = `<h2><span>${esc(s?.name || "Shop")}</span><button class="x" onclick="supClose()" aria-label="Close">×</button></h2>
+    <div class="sub">${esc(s?.city || "")}${s?.phone ? " · " + esc(s.phone) : ""}</div>
+    <div id="supMsgs" style="height:calc(100vh - 260px);overflow:auto;background:#F7F4FB;border-radius:14px;padding:12px;margin:12px 0"></div>
+    <textarea class="in" id="supRe" rows="3" maxlength="2000" placeholder="Reply…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();supReply()}"></textarea>
+    <button class="btn pink full" id="supRb" onclick="supReply()">Send reply</button>`;
+  await supMsgs(true);
+  const iv = setInterval(() => { if (supShop !== shop || !el.classList.contains("open")) return clearInterval(iv); supMsgs(); }, 4000);
+}
+function supClose() { supShop = null; closeForm(); supportPage(); }
+async function supMsgs(force) {
+  const { data } = await db.from("support_messages").select("*").eq("shop", supShop).order("created_at", { ascending: false }).limit(200);
+  const m = (data || []).reverse(), sig = m.length + ":" + (m.at(-1)?.id || ""), box = $("#supMsgs");
+  if (!box || (!force && sig === supSig)) return; supSig = sig;
+  const t = x => new Date(x).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  box.innerHTML = m.map(x => `<div style="display:flex;justify-content:${x.from_admin ? "flex-end" : "flex-start"};margin:6px 0"><div style="max-width:80%;padding:8px 12px;border-radius:14px;background:${x.from_admin ? "#1D0F30" : "#fff"};color:${x.from_admin ? "#fff" : "#1D0F30"};white-space:pre-wrap;word-break:break-word">${esc(x.body)}<div style="font-size:10.5px;opacity:.6;text-align:right;margin-top:3px">${t(x.created_at)}${x.from_admin && x.read_at ? " · seen" : ""}</div></div></div>`).join("");
+  box.scrollTop = box.scrollHeight;
+  if (m.some(x => !x.from_admin && !x.read_at)) db.rpc("support_mark_read", { p_shop: supShop }).then(() => {}, () => {});
+}
+async function supReply() {
+  const i = $("#supRe"), b = $("#supRb"), body = i.value.trim(); if (!body || !supShop) return;
+  b.disabled = true;
+  const { data: { user } } = await db.auth.getUser();
+  const { error } = await db.from("support_messages").insert({ shop: supShop, body, sender: user.id, from_admin: true });
+  b.disabled = false;
+  if (error) return alert(error.message);
+  i.value = ""; supMsgs(true);
+}
+</script>
 </body></html>

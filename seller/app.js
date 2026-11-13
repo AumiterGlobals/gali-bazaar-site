@@ -5,12 +5,13 @@ const db = makeClient("gb-seller-auth");
 const BANNED = /(cigar|cigarette|bidi|beedi|gutkha|gutka|tobacco|tambaku|khaini|zarda|pan masala|paan masala|hookah|vape|e-cig|nicotine|snuff|beer|whisky|whiskey|vodka|\brum\b|wine|liquor|daru|sharab|सिगरेट|बीड़ी|बीडी|गुटखा|तंबाकू|तम्बाकू|खैनी|ज़र्दा|जर्दा|शराब|दारू)/i;
 const banWord = (...s) => { for (const x of s) { const m = x && String(x).match(BANNED); if (m) return /cig|bidi|beedi|gutk|tobac|tamba|khain|zard|masala|hookah|vape|nicot|snuff|सिग|बीड़|बीडी|गुट|तंब|तम्ब|खैन|ज़र्द|जर्द/i.test(m[0]) ? "tobacco" : "alcohol"; } return null; };
 const ICON = {
+  support: "M4 12a8 8 0 0 1 16 0v5a2 2 0 0 1-2 2h-2v-6h4M4 13h4v6H6a2 2 0 0 1-2-2zM12 21h4",
   dash: "M3 11 12 4l9 7v9h-6v-6H9v6H3z", orders: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01", cat: "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6",
   ret: "M6 6l12 12M18 6 6 18", comp: "M3 6h18v12H3zM3 7l9 6 9-6", staff: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 7M22 21c0-3-2-5-4-5.6",
   slots: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", bills: "M6 3h9l4 4v14H6zM14 3v5h5", books: "M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6M8 11h6", shop: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
 };
 const NAV = [["", "Dashboard", "dash"], ["orders", "Orders", "orders"], ["catalog", "Catalog", "cat"], ["returns", "Returns & cancelled", "ret"], ["complaints", "Complaints", "comp"],
-  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"]];
+  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"], ["support", "Help & support", "support"]];
 const ico = (k, s = 19) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[k] || k}"/></svg>`;
 let S = null, me = null, D = { items: [], orders: [], riders: [], complaints: [], cns: [], slots: [], cov: [], festivals: [] };
 let catF = "all", catQ = "", ordTab = "new", retTab = "coming", drawerOpen = false;
@@ -170,7 +171,7 @@ function page() {
   const r = route();
   if (r === "catalog/bulk") return bulk();
   if (r === "catalog/new") { catalog(); return editItem(null); }
-  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop }[r.split("/")[0]] || dash)();
+  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop, support }[r.split("/")[0]] || dash)();
 }
 function drawer(html, wide) {
   const el = $("#panel"); el.innerHTML = html; el.classList.add("open"); el.style.width = wide ? "520px" : ""; document.body.classList.add("po"); drawerOpen = true;
@@ -918,3 +919,41 @@ async function saveShopForm() {
 }
 
 boot();
+
+// ================= Help & support (chat with the Gali Bazaar team) =================
+let supTimer = null;
+async function support() {
+  $("#main").innerHTML = head("Help & support", "Chat with the Gali Bazaar team • app not working, payment issue, anything") + `
+    <div class="box" style="max-width:760px;display:flex;flex-direction:column;height:min(70vh,640px);padding:0;overflow:hidden">
+      <div id="supList" style="flex:1;overflow:auto;padding:16px;background:#F7F4FB"><div class="sub">Loading…</div></div>
+      <div style="display:flex;gap:8px;padding:10px;border-top:1px solid #EEE7F6;background:#fff">
+        <textarea class="in" id="supIn" rows="2" maxlength="2000" placeholder="Write your problem…" style="flex:1;resize:none;margin:0" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();supSend()}"></textarea>
+        <button class="btn pink" id="supBtn" onclick="supSend()">Send</button></div></div>
+    <div class="sub" style="margin-top:10px">You'll get a notification in the app when we reply. Can't open the app or this website? Email <a href="mailto:support@galibazaar.site">support@galibazaar.site</a></div>`;
+  clearInterval(supTimer); await supLoad(true);
+  supTimer = setInterval(() => { if (route() !== "support") return clearInterval(supTimer); supLoad(); }, 4000);
+}
+let supLast = "";
+async function supLoad(force) {
+  const { data, error } = await db.from("support_messages").select("*").eq("shop", S.id).order("created_at", { ascending: false }).limit(200);
+  const el = $("#supList"); if (!el) return;
+  if (error) { el.innerHTML = `<div class="msg err">${esc(/relation|schema cache/.test(error.message) ? "Support chat isn't switched on yet." : niceErr(error))}</div>`; return; }
+  const m = (data || []).reverse(), sig = m.length + ":" + (m.at(-1)?.id || "");
+  if (!force && sig === supLast) return; supLast = sig;
+  const t = x => new Date(x).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  el.innerHTML = m.length ? m.map(x => `<div style="display:flex;justify-content:${x.from_admin ? "flex-start" : "flex-end"};margin:6px 0">
+      <div style="max-width:75%;padding:9px 13px;border-radius:16px;background:${x.from_admin ? "#fff" : "#1D0F30"};color:${x.from_admin ? "#1D0F30" : "#fff"};white-space:pre-wrap;word-break:break-word">
+      ${x.from_admin ? `<div style="font-size:11px;font-weight:700;color:#7C3AED">Gali Bazaar support</div>` : ""}${esc(x.body)}
+      <div style="font-size:10.5px;opacity:.6;text-align:right;margin-top:3px">${t(x.created_at)}${!x.from_admin && x.read_at ? " · seen" : ""}</div></div></div>`).join("")
+    : `<div style="text-align:center;padding:40px 10px"><div style="font-size:38px">🛟</div><b>Tell us what's wrong</b><div class="sub">Write here and the Gali Bazaar team replies in this chat.</div></div>`;
+  el.scrollTop = el.scrollHeight;
+  if (m.some(x => x.from_admin && !x.read_at)) db.rpc("support_mark_read", { p_shop: S.id }).then(() => {}, () => {});
+}
+async function supSend() {
+  const i = $("#supIn"), b = $("#supBtn"), body = i.value.trim(); if (!body) return;
+  b.disabled = true;
+  const { error } = await db.from("support_messages").insert({ shop: S.id, body, sender: me.id, from_admin: false });
+  b.disabled = false;
+  if (error) return toast(niceErr(error));
+  i.value = ""; supLoad(true);
+}
