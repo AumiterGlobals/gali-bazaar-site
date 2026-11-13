@@ -727,6 +727,7 @@ function staff() {
         <div style="font-size:30px;font-weight:800;letter-spacing:3px;margin:6px 0">${esc(S.rider_code || "—")}</div>
         <div style="font-size:12px;color:#CFC6E3">Partner opens the app → Delivery partner → enters this code and their email. You accept the request here.</div>
         <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#fff;color:#1D0F30;padding:8px 12px" onclick="navigator.clipboard.writeText('${esc(S.rider_code || "")}').then(()=>toast('Code copied'))">Copy</button>
+        <button class="btn" style="background:#25D366;color:#fff;padding:8px 12px" onclick="riderInviteWa()">Send on WhatsApp</button>
         <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;padding:8px 12px" onclick="newCode()">New code</button></div></div>
       <div class="box"><h3>Join requests <span>· ${req.length}</span></h3>${req.length ? req.map(r => `<div class="fu"><div><b>${esc(r.name)}</b><span>${esc(r.phone || "")} • KYC ${esc(String(r.kyc || "").toLowerCase())}</span></div><button class="mini" onclick="decide('${r.id}',false)">Decline</button><button class="mini" style="background:#16A34A;color:#fff;border-color:#16A34A" onclick="decide('${r.id}',true)">Accept</button></div>`).join("") : `<div class="sub">No requests.</div>`}</div>
     </div>
@@ -736,6 +737,10 @@ function staff() {
         <td style="white-space:nowrap">${amt ? `<button class="mini dk" onclick="cashIn('${r.id}','${inr(amt)}')">Mark received</button>` : ""}${r.profile === me.id ? "" : `<button class="mini" style="color:#BE185D" onclick="removeRider('${r.id}')">Remove from my shop</button>`}</td></tr>`; }).join("")}</tbody></table>`
       : `<div class="sub">No delivery staff yet. Share your invite code.</div>`}
       <div class="sub" style="margin-top:10px">Removing a partner only removes them from your shop — their other shops are not affected.</div></div></div>`;
+}
+function riderInviteWa() {
+  const t = `Hello! ${S.name} wants to add you as a delivery partner on Gali Bazaar.\n\n1. Install the app: https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk\n2. Open it → tap *Join as delivery partner*\n3. Enter shop code: *${S.rider_code || ""}*\n4. Sign in with your Gmail → type the code we email you\n5. Do your KYC once (Aadhaar + PAN + selfie)\n\nI'll accept your request, then orders from ${S.name} reach your phone.`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank");
 }
 async function newCode() { if (!confirm("Make a new invite code? The old code stops working.")) return; const { error } = await db.rpc("new_rider_code"); if (error) return toast(niceErr(error)); await loadAll(); page(); }
 async function decide(id, ok) { const { error } = await db.rpc("decide_rider_request", { p_rider: id, p_accept: ok }); if (error) return toast(niceErr(error)); toast(ok ? "Partner added" : "Request declined"); await loadAll(); page(); }
