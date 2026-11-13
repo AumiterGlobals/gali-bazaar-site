@@ -324,7 +324,7 @@ function catalog() {
   const groups = [...new Set(D.items.map(i => (i.grp || "").trim()).filter(Boolean))].sort().slice(0, 8);
   const liveN = D.items.filter(i => photos(i).length >= NEED() && i.in_stock).length;
   const F = [["all", `All ${D.items.length}`], ["missing", `Missing photos ${D.items.filter(i => photos(i).length < NEED()).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
-  $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, "Every item needs 2 photos: F = front (name &amp; brand), B = back label (ingredients)",
+  $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, (S.type === "grocery" ? "Every item needs 3 photos: F = front, L = manufacturer / FSSAI label, I = ingredients" : NEED() === 2 ? "Every item needs 2 photos" : "Every item needs 1 photo"),
       `<button class="btn ghost" onclick="go('catalog/bulk')">⇪ Bulk upload</button><button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
     <div class="bar2"><div class="fchips">${F.map(([k, l]) => `<button class="fchip ${catF === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div><div class="sp"></div>
       <input class="search" id="q" placeholder="🔍 Search items" value="${esc(catQ)}"></div>
@@ -337,7 +337,7 @@ function drawCat() {
   const q = catQ.toLowerCase().trim();
   const list = D.items.filter(i => (catF === "all" || (catF === "missing" && photos(i).length < NEED()) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
-  const fei = i => { const p = photos(i), q = [p[0], p.length >= 3 ? p[2] : p[1]]; return ["F", "B"].map((l, k) => `<span class="pill ${q[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
+  const fei = i => { const p = photos(i), q = p.slice(0, NEED()); return (S.type === "grocery" ? ["F", "L", "I"] : NEED() === 2 ? ["1", "2"] : ["P"]).map((l, k) => `<span class="pill ${q[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join(""); };
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
     <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
@@ -380,7 +380,7 @@ function editItem(id) {
   const i = id ? D.items.find(x => x.id === id) : null;
   if (!id && route() !== "catalog/new" && route().startsWith("catalog")) history.replaceState({}, "", "/seller/catalog/new/");
   const p = i ? photos(i) : [];
-  F_ = { id, ph: [p[0] || null, (p.length >= 3 ? p[2] : p[1]) || null].slice(0, NEED()), pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
+  F_ = { id, ph: [p[0] || null, p[1] || null, p[2] || null].slice(0, NEED()), pol: i ? (i.ret_policy === "replace" ? 1 : i.ret_policy === "return" ? 2 : 0) : 0, stock: i ? i.in_stock : true };
   const groups = [...new Set(D.items.map(x => (x.grp || "").trim()).filter(Boolean))].sort();
   drawer(`<h2><span>${i ? "Edit item" : "Add item"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <div style="display:flex;align-items:center"><b>Item photos</b><span class="sub" style="margin:0 0 0 6px">• ${NEED() === 1 ? "required" : "both required"}</span><span class="sp" style="flex:1"></span><a href="/help/seller-guide/#photos-en" target="_blank" style="font-size:12.5px;margin-right:10px;color:#7C3AED;font-weight:600">Photo guidelines</a><b id="phc" style="color:#EF287B;font-size:12.5px"></b></div>
@@ -437,8 +437,8 @@ function useMaster(k) {
 function paintPol() { $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
 // photos needed: grocery = front + back label, fruits & veg = 2, food / sweets / stationery = 1
-const NEED = () => (S.type === "grocery" || S.type === "fruitveg") ? 2 : 1;
-const PHL = () => S.type === "grocery" ? ["1. Front", "2. Back label"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
+const NEED = () => S.type === "grocery" ? 3 : S.type === "fruitveg" ? 2 : 1;
+const PHL = () => S.type === "grocery" ? ["1. Front", "2. Maker / FSSAI", "3. Ingredients"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
 const normN = s => String(s || "").trim().replace(/\s+/g, " ").toLowerCase(), normU = s => String(s || "").replace(/\s+/g, "").toLowerCase();
 // Gali Bazaar item list (common_items): rows matching these names, grouped by name
 async function masterFind(names) {
@@ -462,14 +462,14 @@ function drawPhotos() {
     d.ondragover = e => { e.preventDefault(); d.style.background = "#F3EDFF"; }; d.ondragleave = () => { d.style.background = ""; drawPhotos(); };
     d.ondrop = e => { e.preventDefault(); const fs = [...e.dataTransfer.files].filter(f => /^image\//.test(f.type)); fs.forEach((f, j) => { if (k + j < NEED()) F_.ph[k + j] = { file: f, url: URL.createObjectURL(f) }; }); drawPhotos(); };
   });
-  const miss = F_.ph.map((v, k) => v ? null : (S.type === "grocery" ? ["front", "back label"] : ["item", "second"])[k]).filter(Boolean), b = $("#fsave");
+  const miss = F_.ph.map((v, k) => v ? null : (S.type === "grocery" ? ["front", "FSSAI label", "ingredients"] : ["item", "second"])[k]).filter(Boolean), b = $("#fsave");
   if (b) { b.disabled = miss.length > 0; b.textContent = miss.length ? `Add ${miss.join(" & ")} photo to save` : "Save item"; b.style.opacity = miss.length ? .5 : 1; }
 }
 async function saveItem() {
   const e = $("#fe"), name = $("#fn").value.trim(), grp = $("#fg").value.trim(), desc = $("#fx").value.trim();
   const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
   const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(30, +$("#fd").value || 0));
-  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? (NEED() === 1 ? "Add a photo" : S.type === "grocery" ? "Add both photos: front and the back label" : "Add both photos")
+  const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? (NEED() === 1 ? "Add a photo" : S.type === "grocery" ? "Add all 3 photos: front, manufacturer / FSSAI label and ingredients" : "Add both photos")
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0" : null;
   if (err) { e.className = "msg err"; e.textContent = err; return; }
   const b = $("#fsave"); b.disabled = true; b.textContent = "Saving…";
@@ -524,7 +524,7 @@ function bulk() {
         <div class="box"><h3>2. Upload the filled file</h3>
           <div id="fdrop" style="border:1.5px dashed #16A34A;border-radius:16px;padding:22px;text-align:center;cursor:pointer;background:#F7FFF9">${BU.file ? `📊<br><b>${esc(BU.file)}</b><div class="sub">${BU.rows.length} rows read • Drop another file to replace</div>` : `📊<br><b>Drop your .xlsx or .csv here</b><div class="sub">or click to browse</div>`}</div></div>
         <div class="box" style="border:2px solid #8B5CF6"><h3>3. Add photos in bulk</h3>
-          <div class="sub">Drop a folder of photos named like <code>atta-front.jpg</code> and <code>atta-back.jpg</code> — we match them to items by name. Or add them item by item later.</div>
+          <div class="sub">Drop a folder of photos named like <code>atta-front.jpg</code>, <code>atta-label.jpg</code>, <code>atta-ingredients.jpg</code> — we match them to items by name. Or add them item by item later.</div>
           <div id="pdrop" style="border:1.5px dashed #C4B5FD;border-radius:16px;padding:20px;text-align:center;cursor:pointer;margin-top:10px;color:#7C3AED;font-weight:600">⇪ Drop photos folder <div class="sub" style="font-weight:400">or click to choose a folder</div></div>
           <div class="msg" id="pm"></div></div>
       </div>
@@ -591,7 +591,7 @@ function parseCsv(t) {
   if (cur || row.length) { row.push(cur); out.push(row); }
   return out;
 }
-function photoKeyFor(name) { const s = slug(name), p = BU.photos; return ["front", "back"].map(k => p[s + "-" + k] || null); }
+function photoKeyFor(name) { const s = slug(name), p = BU.photos; return ["front", "label", "ingredients"].slice(0, NEED()).map(k => p[s + "-" + k] || null); }
 function drawPreview() {
   const rows = BU.rows;
   if (!rows.length) { $("#bprev").innerHTML = `<div class="sub" style="padding:18px 0">Upload your filled template to see every row checked before anything is saved.</div>`; $("#bsum").innerHTML = ""; return; }
@@ -635,18 +635,18 @@ async function filesFromDrop(dt) {
 async function bulkPhotos(files) {
   const m = $("#pm"), map = {};
   files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)).forEach(f => {
-    const base = f.name.replace(/\.[^.]+$/, ""), mm = base.match(/^(.*?)[-_ ](front|back|label|ingredients|ingredient|ing)$/i);
-    if (!mm) return; const k = /^f/i.test(mm[2]) ? "front" : "back"; map[slug(mm[1]) + "-" + k] = f;
+    const base = f.name.replace(/\.[^.]+$/, ""), mm = base.match(/^(.*?)[-_ ](front|back|label|fssai|maker|ingredients|ingredient|ing|2|3)$/i);
+    if (!mm) return; const k = /^front/i.test(mm[2]) ? "front" : /^(ing|3)/i.test(mm[2]) ? "ingredients" : "label"; map[slug(mm[1]) + "-" + k] = f;
   });
   BU.photos = { ...BU.photos, ...map };
   const n = Object.keys(map).length;
-  if (!n) { m.className = "msg err"; m.textContent = "No photos named like item-front / item-back found."; return; }
+  if (!n) { m.className = "msg err"; m.textContent = "No photos named like item-front / item-label / item-ingredients found."; return; }
   // photos for items that are already in the catalogue → attach right away
-  const existing = D.items.filter(i => ["front", "back"].every(k => map[slug(i.name) + "-" + k]));
+  const existing = D.items.filter(i => ["front", "label", "ingredients"].slice(0, NEED()).every(k => map[slug(i.name) + "-" + k]));
   m.className = "msg ok"; m.textContent = `${n} photos matched${existing.length ? ` • updating ${existing.length} existing item${existing.length === 1 ? "" : "s"}…` : ""}`;
   drawPreview();
   for (const i of existing) {
-    try { const urls = []; for (let k = 0; k < 2; k++) urls.push(await uploadPhoto(map[slug(i.name) + "-" + ["front", "back"][k]], k));
+    try { const urls = []; for (let k = 0; k < NEED(); k++) urls.push(await uploadPhoto(map[slug(i.name) + "-" + ["front", "label", "ingredients"][k]], k));
       await db.from("items").update({ images: urls, img_url: urls[0] }).eq("id", i.id); } catch (e) { toast(niceErr(e)); }
   }
   if (existing.length) { m.textContent = `${n} photos matched • ${existing.length} existing item${existing.length === 1 ? "" : "s"} updated`; await loadAll(); }
