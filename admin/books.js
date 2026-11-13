@@ -14,13 +14,15 @@ function csvDl(name, rows) {
 }
 async function rpc(fn, args) { const { data, error } = await db.rpc(fn, args || {}); if (error) throw error; return data; }
 
+function acFy(a, b) { AC.from = a; AC.to = b > today() ? today() : b; accounts(); }
 async function accounts() {
   AC.from = AC.from || fy0(); AC.to = AC.to || today();
+  await fyLoad(null);
   AC.acc = await q("accounts", "*", x => x.eq("active", true).order("code"));
   AC.parties = await q("parties", "*", x => x.eq("active", true).order("name")).catch(() => []);
   const tabs = [["inv", "Sales invoices"], ["reports", "TB · P&L · Balance sheet"], ["day", "Day book"], ["ledger", "Ledger"], ["parties", "Vendors & parties"], ["bill", "＋ Vendor bill"], ["pay", "＋ Receipt / payment"], ["gst", "GST paid"], ["tds", "TDS"], ["payout", "Sales payouts (TDS)"]];
   $("#main").innerHTML = head("Accounts & books", "Double-entry books — plan payments, commission and payouts post by themselves",
-    `<button class="btn pink" onclick="acPartyForm()">＋ New vendor</button> <button class="btn ghost" onclick="AC.tab='pay';accounts()">＋ Payment / receipt</button> <input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
+    `<button class="btn pink" onclick="acPartyForm()">＋ New vendor</button> <button class="btn ghost" onclick="AC.tab='pay';accounts()">＋ Payment / receipt</button> <button class="btn ghost" onclick="fyManage(null, accounts)">Financial years</button> ${fySelect(AC.from, AC.to, "acFy")} <input type="date" class="in" id="acF" value="${AC.from}" style="width:auto"> <input type="date" class="in" id="acT" value="${AC.to}" style="width:auto">`) +
     `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${tabs.map(([k, l]) => `<button class="btn ${AC.tab === k ? "pink" : "ghost"}" onclick="AC.tab='${k}';accounts()">${l}</button>`).join("")}</div><div id="acBody"><div class="sub">Loading…</div></div>`;
   $("#acF").onchange = e => { AC.from = e.target.value; accounts(); };
   $("#acT").onchange = e => { AC.to = e.target.value; accounts(); };

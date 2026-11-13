@@ -66,11 +66,13 @@ function bkTrial(es, to) {
   return Object.entries(all).filter(([, v]) => Math.abs(v) > .004).sort((a, b) => ord.indexOf(bkType(a[0])) - ord.indexOf(bkType(b[0])) || a[0].localeCompare(b[0]));
 }
 
+function bkFy(a, b) { BKD.from = a; BKD.to = b > todayStr() ? todayStr() : b; books(); }
 async function books() {
   BKD.from = BKD.from || `${fyStart().getFullYear()}-04-01`; BKD.to = BKD.to || todayStr();
+  await fyLoad(S.id);
   $("#main").innerHTML = head("Books & expenses", "Made automatically from your bills, counter sales, credit notes, payments and expenses",
-    `<button class="btn pink" onclick="bkExpense()">＋ Expense / vendor bill</button><button class="btn ghost" onclick="bkVendor()">＋ New vendor</button><button class="btn ghost" onclick="bkOwner()">Owner money</button>`) +
-    `<div class="bar2"><label style="margin:0">FROM</label><input class="in" type="date" id="kf" value="${BKD.from}" style="width:auto"><label style="margin:0">TO</label><input class="in" type="date" id="kt" value="${BKD.to}" style="width:auto"></div><div id="kb"><div class="sub">Loading…</div></div>`;
+    `<button class="btn pink" onclick="bkExpense()">＋ Expense / vendor bill</button><button class="btn ghost" onclick="bkVendor()">＋ New vendor</button><button class="btn ghost" onclick="bkOwner()">Owner money</button><button class="btn ghost" onclick="fyManage(S.id, books)">Financial years</button>`) +
+    `<div class="bar2">${fySelect(BKD.from, BKD.to, "bkFy")}<label style="margin:0">FROM</label><input class="in" type="date" id="kf" value="${BKD.from}" style="width:auto"><label style="margin:0">TO</label><input class="in" type="date" id="kt" value="${BKD.to}" style="width:auto"></div><div id="kb"><div class="sub">Loading…</div></div>`;
   $("#kf").onchange = e => { BKD.from = e.target.value; books(); }; $("#kt").onchange = e => { BKD.to = e.target.value; books(); };
   const t = BKD.to + "T23:59:59";
   const [o, cs, cn, ex, rc, cl] = await Promise.all([
