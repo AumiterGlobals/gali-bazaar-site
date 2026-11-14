@@ -7,11 +7,11 @@ const banWord = (...s) => { for (const x of s) { const m = x && String(x).match(
 const ICON = {
   plan: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h4",
   support: "M4 12a8 8 0 0 1 16 0v5a2 2 0 0 1-2 2h-2v-6h4M4 13h4v6H6a2 2 0 0 1-2-2zM12 21h4",
-  dash: "M3 11 12 4l9 7v9h-6v-6H9v6H3z", orders: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01", cat: "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6",
+  dash: "M3 11 12 4l9 7v9h-6v-6H9v6H3z", courier: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", orders: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01", cat: "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6",
   ret: "M6 6l12 12M18 6 6 18", comp: "M3 6h18v12H3zM3 7l9 6 9-6", staff: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 7M22 21c0-3-2-5-4-5.6",
   slots: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", bills: "M6 3h9l4 4v14H6zM14 3v5h5", books: "M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6M8 11h6", shop: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
 };
-const NAV = [["", "Dashboard", "dash"], ["orders", "Orders", "orders"], ["catalog", "Catalog", "cat"], ["returns", "Returns & cancelled", "ret"], ["complaints", "Complaints", "comp"],
+const NAV = [["", "Dashboard", "dash"], ["orders", "Orders", "orders"], ["courier", "Courier", "courier"], ["catalog", "Catalog", "cat"], ["returns", "Returns & cancelled", "ret"], ["complaints", "Complaints", "comp"],
   ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"], ["plan", "Plan & invoices", "plan"], ["support", "Help & support", "support"]];
 const ico = (k, s = 19) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[k] || k}"/></svg>`;
 let S = null, me = null, D = { items: [], orders: [], riders: [], complaints: [], cns: [], slots: [], cov: [], festivals: [] };
@@ -25,7 +25,7 @@ const ago = t => { const m = Math.round((Date.now() - new Date(t)) / 6e4); retur
 const short = o => "#" + (o.short_id || String(o.id).slice(0, 6).toUpperCase());
 const payable = o => { const kept = (o.items || []).filter(l => !(o.returned || []).includes(l.n)); return kept.length ? kept.reduce((a, l) => a + l.p * l.q, 0) + Number(o.fee || 0) : 0; };
 const saleOf = o => o.status === "DELIVERED" ? payable(o) : 0;
-const comingBack = o => (o.status === "DELIVERED" && (o.returned || []).length) || (o.status === "CANCELLED" && o.picked_at);
+const comingBack = o => (o.status === "DELIVERED" && (o.returned || []).length) || (o.status === "CANCELLED" && (o.picked_at || o.refused_at));
 const backItems = o => o.status === "CANCELLED" ? (o.items || []) : (o.items || []).filter(l => (o.returned || []).includes(l.n));
 const photos = i => (i.images && i.images.length ? i.images : [i.img_url]).filter(Boolean);
 const hidden = i => i.photos_ok === false || (i.photos_ok == null && photos(i).length < NEED());
@@ -205,7 +205,7 @@ function page() {
   if (r === "catalog/bulk") return bulk();
   if (r === "catalog/charts") return charts();
   if (r === "catalog/new") { catalog(); return editItem(null); }
-  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop, plan, support }[r.split("/")[0]] || dash)();
+  ({ "": dash, orders, courier, catalog, returns, complaints, staff, slots, bills, books, shop, plan, support }[r.split("/")[0]] || dash)();
 }
 function drawer(html, wide) {
   const el = $("#panel"); el.innerHTML = html; el.classList.add("open"); el.style.width = wide ? "520px" : ""; document.body.classList.add("po"); drawerOpen = true;
@@ -284,9 +284,10 @@ function actions(o) {
 function orders() {
   const T = [["new", "New", o => o.status === "PLACED"], ["packing", "Packing", o => o.status === "ACCEPTED"], ["out", "On the way", o => o.status === "OUT"],
     ["done", "Done (3 days)", o => ["DELIVERED", "CANCELLED", "DECLINED"].includes(o.status)]];
-  const cur = T.find(t => t[0] === ordTab) || T[0], list = D.recent.filter(cur[2]);
+  const cur = T.find(t => t[0] === ordTab) || T[0], loc = D.recent.filter(o => o.delivery_type !== "courier"), list = loc.filter(cur[2]);
   $("#main").innerHTML = head("Orders", "Running orders and the last 3 days • older ones are in Bills & GST") + `
-    <div class="bar2"><div class="fchips">${T.map(([k, l, f]) => `<button class="fchip ${ordTab === k ? "on" : ""}" onclick="ordTab='${k}';orders()">${l} ${D.recent.filter(f).length}</button>`).join("")}</div></div>
+    <div class="bar2"><div class="fchips">${T.map(([k, l, f]) => `<button class="fchip ${ordTab === k ? "on" : ""}" onclick="ordTab='${k}';orders()">${l} ${loc.filter(f).length}</button>`).join("")}</div>
+      ${COURIER_SHOP() || D.recent.some(o => o.delivery_type === "courier") ? `<div class="sp"></div><button class="btn ghost" onclick="go('courier')">📦 Courier orders ${D.recent.filter(o => o.delivery_type === "courier" && ["PLACED", "ACCEPTED"].includes(o.status)).length}</button>` : ""}</div>
     <div class="box">${list.length ? orderTable(list) : `<div class="sub" style="padding:18px 0">Nothing here.</div>`}</div>`;
 }
 const findO = id => D.orders.find(o => o.id === id);
@@ -885,6 +886,7 @@ function shop() {
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12.5px;line-height:1.45"><input type="checkbox" id="gul" ${S.gst_under_limit ? "checked" : ""} style="margin-top:3px">
         <span>No GSTIN? Tick this: I'm not GST registered — my shop's yearly sales are under the GST limit (₹40 lakh for goods; ₹20 lakh in some states). If sales cross the limit, I'll add my GSTIN.</span></label>
       <div class="msg" id="shm"></div><button class="btn pink" style="margin-top:12px" onclick="saveShopForm()">Save details</button></div>
+      ${sellBox()}
     <div><div class="box"><h3>KYC <span class="pill ${kycTxt[1]}" style="float:right">${kycTxt[0]}</span></h3>
         <div class="row" style="border:0;margin:0"><div><b>PAN name</b><span>${esc(S.pan_name || "—")}</span></div></div><div class="row"><div><b>PAN</b><span>${S.pan_number ? esc(S.pan_number.slice(0, 5) + "••••" + S.pan_number.slice(-1)) : "—"}</span></div></div>
         <div class="row"><div><b>Aadhaar</b><span>${S.aadhaar_last4 ? "•••• " + esc(S.aadhaar_last4) : "—"}</span></div></div>
