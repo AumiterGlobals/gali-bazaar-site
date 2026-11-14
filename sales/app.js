@@ -1,7 +1,8 @@
 // Gali Bazaar — Sales panel on the web. Routes: /sales/login/, /sales/setup/, /sales/, /sales/shops/, /sales/payouts/, /sales/profile/
 const db = makeClient("gb-sales-auth");
 const NAV = [["", "Overview", "M3 11 12 4l9 7v9h-6v-6H9v6H3z"], ["shops", "Your shops", "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6"],
-  ["payouts", "Payouts & TDS", "M3 7h18v12H3zM3 11h18M7 15h4"], ["profile", "Profile", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"]];
+  ["payouts", "Payouts & TDS", "M3 7h18v12H3zM3 11h18M7 15h4"], ["kyc", "KYC & bank", "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4"],
+  ["guide", "Sales guide", "M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6M8 11h6"], ["profile", "Profile", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 4-6 8-6s8 2 8 6"]];
 const ico = d => `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 let me = null, D = null, shopFilter = "all", shopQ = "";
 const route = () => location.pathname.replace(/^\/sales\/?/, "").replace(/\/$/, "").split("/")[0];
@@ -17,13 +18,19 @@ async function render() {
   if (!me) {
     const { data: sp, error } = await db.from("sales_people").select("*").eq("profile", session.user.id).maybeSingle();
     if (error) return fail(niceErr(error));
-    if (!sp) return wrongAccount(session.user.email);
+    if (!sp) {   // applied but not approved yet → show the application status
+      const { data: ap } = await db.from("sales_applications").select("*").eq("profile", session.user.id).order("created_at", { ascending: false }).limit(1);
+      if (ap && ap[0]) return appStatus(ap[0]);
+      return wrongAccount(session.user.email);
+    }
     if (!sp.active || sp.login_blocked) return blocked();
     if (!sp.username) { history.replaceState({}, "", "/sales/setup/"); return setupView(3, session.user.email); }
     me = sp;
     if (sp.must_change) return changePassView(true);
     if (window.GBTerms) await GBTerms.gate(db, "sales", () => location.replace("/sales/login/"));
     await load();
+    // "How your commission works" — every sign-in until the current text + this person's % / type is accepted
+    if (D.sum && D.sum.needs_accept) await commissionGate(D.sum, async () => { await db.auth.signOut(); me = null; location.href = "/sales/login/"; });
     liveSync(db, "sales", ["commissions", "payouts", "sales_people", "shops"], async () => {
       const { data } = await db.from("sales_people").select("*").eq("id", me.id).maybeSingle();
       if (!data || !data.active || data.login_blocked) return blocked();
@@ -31,6 +38,11 @@ async function render() {
     });
   }
   shell(); page();
+}
+function appStatus(a) {
+  document.body.innerHTML = `<div class="login">${LOGO}<h1>${a.status === "rejected" ? "Application not approved" : "Application received"}</h1>
+    <p class="sub">${a.status === "rejected" ? `Reason: ${esc(a.reject_reason || "")}. You can apply again after 30 days.` : "We'll review your application and email you. Usually 1–2 days."}</p>
+    <a class="btn ghost" href="/help/sales-guide/">Read the Sales guide</a> <a class="btn ghost" href="#" onclick="db.auth.signOut().then(()=>location.href='/');return false">Sign out</a></div>`;
 }
 function fail(m) { document.body.innerHTML = `<div class="login">${LOGO}<h1>Couldn't open</h1><p class="sub">${esc(m)}</p><a class="btn ghost" href="/sales/login/">Back</a></div>`; }
 async function wrongAccount(email) {
@@ -176,13 +188,13 @@ function changePassView(forced) {
 
 // ---------------- data ----------------
 async function load() {
-  const [shops, com, pay, tds] = await Promise.all([
+  const [shops, com, pay, tds, sum] = await Promise.all([
     db.rpc("my_referral_shops"), db.from("commissions").select("*").eq("sales", me.id).order("created_at", { ascending: false }),
-    db.from("payouts").select("*").eq("sales", me.id).order("pdate", { ascending: false }), db.rpc("my_tds"),
+    db.from("payouts").select("*").eq("sales", me.id).order("pdate", { ascending: false }), db.rpc("my_tds"), db.rpc("my_sales_summary"),
   ]);
   let list = shops.data;
   if (shops.error) { const r = await db.rpc("my_referrals"); list = r.data || []; }
-  D = { shops: list || [], com: com.data || [], pay: pay.data || [], tds: tds.data || null };
+  D = { shops: list || [], com: com.data || [], pay: pay.data || [], tds: tds.data || null, sum: sum.data || null };
   const byShop = {};
   D.com.forEach(c => { const b = byShop[c.shop] || (byShop[c.shop] = { earned: 0, last: null }); b.earned += Number(c.amount || 0); if (!b.last || c.created_at > b.last) b.last = c.created_at; });
   D.byShop = byShop;
@@ -219,7 +231,8 @@ function head(t, sub) { return `<div class="top"><div><h1>${t}</h1>${sub ? `<div
 function page() {
   const r = route();
   $$(".nav a").forEach(a => a.classList.toggle("on", a.dataset.k === r));
-  ({ "": overview, shops, payouts, profile }[r] || overview)();
+  if (r === "guide") { location.href = "/help/sales-guide/"; return; }
+  ({ "": overview, shops, payouts: () => D.sum ? payoutsPage() : payouts(), kyc: () => D.sum ? kycPage() : overview(), profile }[r] || overview)();
 }
 
 // ---------------- Overview ----------------
@@ -237,7 +250,7 @@ function overview() {
   const shown = months.slice(0, Math.max(nowI + 1, 1)), max = Math.max(1, ...shown.map(x => x.v));
   const lim = t.threshold || 20000, credited = Number(t.fy_credited || 0) + Number(t.due || 0), over = credited > lim;
   const scale = Math.max(lim * 1.25, credited), pct = Math.min(100, credited / scale * 100), limPct = lim / scale * 100;
-  $("#main").innerHTML = head(`Hi ${esc((me.name || "").split(" ")[0])} 👋`, `${fyLabel()} • ${me.commission_pct}% of every plan payment from your shops`) + `
+  $("#main").innerHTML = head(`Hi ${esc((me.name || "").split(" ")[0])} 👋`, `${fyLabel()} • ${me.commission_pct}% of every plan amount after GST`) + (D.sum ? statusStrip(D.sum) + codeCard(D.sum) : "") + `
     <div class="kpis k4">
       <div class="kpi"><span>Earned this year</span><b>${inr2(earned)}</b><small>${fyCom.length} commission${fyCom.length === 1 ? "" : "s"}</small></div>
       <div class="kpi"><span>Pending payout</span><b class="or">${inr2(due)}</b><small>${dueN ? `TDS ≈ ${inr2(t.tds || 0)} • you get ≈ ${inr2(t.net ?? due)}` : "Nothing pending"}</small></div>
@@ -256,7 +269,8 @@ function overview() {
         <div class="box"><h3>Need follow-up</h3>${follow.length ? follow.slice(0, 6).map(s => `<div class="fu"><div><b>${esc(s.name)}</b><span>${shopState(s) === "kyc" ? "KYC not finished" : "Plan expired " + dmy(s.sub_until)}</span></div>${phoneLink(s.phone) ? `<a class="callb" href="${phoneLink(s.phone)}">📞 Call</a>` : ""}</div>`).join("")
           : `<div class="sub">All your shops are fine 👍</div>`}</div>
       </div></div>
-    <div class="note">Help the shop download the app from galibazaar.site, tap “Register your shop” and enter your code <b>${esc(me.code)}</b> in “Referral code”. No commission during the free trial — only on real plan payments, for as long as the shop stays.</div>`;
+    <div class="note">Help the shop download the app from galibazaar.site, tap “Register your shop” and enter your code <b>${esc(me.code)}</b> in “Referral code”. No commission during the free trial — only on approved plan payments, as per your commission type.</div>`;
+  if (D.sum && D.sum.code_active) drawQr(D.sum.code);
 }
 
 // ---------------- Your shops ----------------

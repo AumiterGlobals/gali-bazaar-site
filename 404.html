@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gali Bazaar</title><meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Baloo+2:wght@800&display=swap" rel="stylesheet">
+<style>body{margin:0;font-family:Poppins,system-ui,sans-serif;background:#FFFBF2;color:#1D0F30;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+.c{background:#fff;border-radius:24px;padding:28px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(29,15,48,.08);text-align:center}
+.logo{font-weight:800;font-size:26px;color:#111}.logo .g{font-family:"Baloo 2",sans-serif;color:#6A1BB0;margin-right:6px}.logo .d{color:#F0287A}
+.code{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:18px 0}.code span{width:32px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:#F4EEFF;color:#6A1BB0;font-weight:800;font-size:21px}
+.btn{display:block;padding:14px;border-radius:14px;font-weight:700;text-decoration:none;margin-top:10px;border:0;font:inherit;font-weight:700;cursor:pointer;width:100%;box-sizing:border-box}
+.p{background:linear-gradient(90deg,#EF287B,#FF5A7A);color:#fff}.g2{background:#fff;border:1.5px solid #1D0F30;color:#1D0F30}.s{color:#6B6380;font-size:14px;line-height:1.5}</style></head>
+<body><div class="c" id="c"><div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div><h2>Page not found</h2><p class="s">This page doesn't exist.</p><a class="btn g2" href="/">Go to galibazaar.site</a></div>
+<script>
+// /r/GB-RAHUL7 → a sales partner's referral link: open the app's "Register your shop" with the code, or download the app first
+const m = location.pathname.match(/^\/r\/([A-Za-z0-9-]{4,20})\/?$/);
+if (m) {
+  const code = m[1].toUpperCase(), apk = "https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk";
+  try { localStorage.setItem("gb_ref", code); } catch (e) {}
+  document.title = "Register your shop · Gali Bazaar";
+  document.getElementById("c").innerHTML = `<div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div>
+    <h2 style="margin:14px 0 4px">Register your shop</h2><p class="s">0% commission · customers from your own gali. Use this referral code when you register:</p>
+    <div class="code">${code.split("").map(c => `<span>${c}</span>`).join("")}</div>
+    <a class="btn p" href="intent://ref/${code}#Intent;scheme=galibazaar;package=com.galibazaar.app;end">Open in the Gali Bazaar app</a>
+    <button class="btn g2" id="dl">Copy code &amp; download the app</button>
+    <p class="s" style="font-size:12.5px">New install? Open the app → <b>Register your shop</b> → the code is filled in from your clipboard. Please check it's <b>${code}</b>.</p>
+    <a class="s" href="/help/install/" style="font-size:12.5px;color:#7C3AED">How to install</a>`;
+  document.getElementById("dl").onclick = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} location.href = apk; };
+}
+</script></body></html>
