@@ -373,7 +373,7 @@
   function load(){
     Promise.all([fetch(SB + "/rest/v1/rpc/public_counts", { method:"POST", headers:{ apikey:KEY, "Content-Type":"application/json" }, body:"{}" })
       .then(r => r.ok ? r.json() : null), cats()]).then(([d]) => {
-      if (!d || d.customers == null) return;   // counting not switched on (settings.count_from empty) → stay hidden
+      if (!d || d.show !== true || d.customers == null) return;   // server says "not yet" (minimum not reached) → stay hidden; checked again in 30 s
       document.getElementById("live-counter").style.display = "";
       const sec = document.querySelector(".gbc");
       sec.querySelectorAll(".gbc-odo").forEach(o => update(o, o.dataset.target === "customers" ? d.customers : d.shops));
