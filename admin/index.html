@@ -7,8 +7,9 @@
 button,input{font:inherit}a{color:inherit}
 .app{display:flex;min-height:100vh}
 .side{width:236px;background:#1D0F30;color:#CFC6E3;padding:22px 16px;flex-shrink:0;position:sticky;top:0;height:100vh}
-.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#1D0F30}
-.logo .g{color:#6D28D9}.logo .d{color:#EC4899}
+.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#111111}
+.logo .g{color:#6A1BB0}
+.kinds{display:grid;grid-template-columns:1fr 1fr;gap:6px}.kinds button{text-align:left;border:1.5px solid #E7E1F2;background:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;font:inherit}.kinds button b{display:block;font-size:13px}.kinds button span{font-size:11px;color:#6B6380}.kinds button.on{border-color:#6A1BB0;background:#F4EEFF}.kinds button[disabled]{opacity:.55;cursor:not-allowed}.kinds button[disabled].on{opacity:1}.logo .d{color:#F0287A}
 .side small{display:block;letter-spacing:1.5px;font-size:10.5px;margin:10px 0 26px 6px;color:#8E84A8}
 .nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-decoration:none;margin-bottom:4px;cursor:pointer}
 .nav a:hover{background:#2A1A44}.nav a.on{background:linear-gradient(90deg,#A855F7,#EC4899);color:#fff;font-weight:600}
@@ -72,7 +73,17 @@ body.po .main{padding-right:430px}
 <script>
 const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
 const db = supabase.createClient(SB, KEY);
-const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook pill package wrapped_gift shopping_bags".split(" ");
+const ICONS = "shopping_cart basket bread croissant cookie doughnut candy lollipop chocolate_bar custard honey_pot leafy_green coconut peanuts sheaf_of_rice salt glass_of_milk cup_with_straw dumpling oden takeout_box pencil notebook package wrapped_gift shopping_bags hibiscus t_shirt running_shoe backpack cooking sponge diya_lamp soccer_ball lipstick baby_bottle dog_face teddy_bear electric_plug".split(" ");
+// fixed category kinds — same rules as kind_rules() on the server (update-51)
+const KINDS = [
+  { k: "food_fresh", n: "Fresh food", fssai: true, courier: "No courier", ret: 0, refund: false, h: "Fruits, veg, milk, meat" },
+  { k: "food_cooked", n: "Cooked / sweets", fssai: true, courier: "Only sealed, 1+ month shelf life", ret: 0, refund: false, h: "Mithai, snacks, bakery" },
+  { k: "food_packed", n: "Packed food", fssai: true, courier: "Only sealed, 1+ month shelf life", ret: 3, refund: false, h: "Grocery" },
+  { k: "flowers", n: "Flowers", fssai: false, courier: "No courier", ret: 0, refund: false, h: "Flowers, garlands" },
+  { k: "general", n: "General goods", fssai: false, courier: "Yes", ret: 30, refund: true, h: "Clothes, home, books, beauty" },
+  { k: "bis_goods", n: "BIS goods", fssai: false, courier: "Yes", ret: 15, refund: true, h: "Toys, electricals — BIS/ISI no. on every item" },
+];
+const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
 const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
@@ -665,7 +676,7 @@ const slug = s => s.toLowerCase().normalize("NFKD").replace(/&/g, " and ").repla
 function openForm(key, name) {
   const c = cats.find(x => x.key === key);
   form = c ? { ...c, subs: [...(c.subs || [])], isNew: false }
-    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, needs_fssai: false, max_return_days: 30, allow_refund: true, isNew: true };
+    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, needs_fssai: false, kind: "", max_return_days: 30, allow_refund: true, isNew: true };
   renderForm();
 }
 
@@ -685,10 +696,12 @@ function renderForm() {
       <span class="chip add" onclick="addSub()">＋ Add</span></div>
     <div class="row"><div><b>Show to customers</b><span>Off = draft</span></div><button class="tog ${f.visible ? "on" : ""}" onclick="setF('visible', ${!f.visible})"></button></div>
     <div class="row" style="margin-top:0"><div><b>Allow shop sign-ups</b><span>Shops can pick this type</span></div><button class="tog ${f.allow_signup ? "on" : ""}" onclick="setF('allow_signup', ${!f.allow_signup})"></button></div>
-    <div class="row"><div><b>Food category, FSSAI required</b><span>Shops of this type must give a 14-digit FSSAI number</span></div><button class="tog ${f.needs_fssai ? "on" : ""}" onclick="setF('needs_fssai', ${!f.needs_fssai})"></button></div>
-    ${"max_return_days" in f ? `<label>MAX RETURN DAYS (0 = AT DOOR ONLY)</label><input class="in" id="f-ret" type="number" min="0" max="30" value="${f.max_return_days ?? 30}" onchange="keepTyped();renderForm()">
-    <div class="sub" style="font-size:12px;margin-top:2px">Fresh / cooked food: 0 • Grocery: 3 • Others: up to 30. Items above this are lowered automatically.</div>
-    ${(f.max_return_days ?? 30) > 0 ? `<div class="row"><div><b>Allow "Return &amp; refund"</b><span>Off = shops can offer only "Replacement"</span></div><button class="tog ${f.allow_refund !== false ? "on" : ""}" onclick="setF('allow_refund', ${f.allow_refund === false})"></button></div>` : ""}` : ""}
+    <label>CATEGORY KIND (FIXED RULES)</label>
+    ${f.kind && !f.isNew && (counts[f.key] || 0) > 0 ? `<div class="sub" style="font-size:12px;margin:2px 0 6px">🔒 Locked — ${counts[f.key]} shop(s) use this category.</div>` : ""}
+    <div class="kinds">${KINDS.map(k => `<button class="${f.kind === k.k ? "on" : ""}" ${!f.isNew && f.kind && (counts[f.key] || 0) > 0 ? "disabled" : ""} onclick="setKind('${k.k}')"><b>${k.n}</b><span>${k.h}</span></button>`).join("")}</div>
+    ${kindOf(f.kind) ? (k => `<div class="note" style="margin-top:8px">FSSAI: <b>${k.fssai ? "required" : "no"}</b> · Courier: <b>${k.courier}</b> · Returns: <b>${k.ret ? `up to ${k.ret} days` : "at the door only"}</b>${k.refund ? "" : " · refund off"}</div>`)(kindOf(f.kind)) : ""}
+    ${kindOf(f.kind) && kindOf(f.kind).ret > 0 ? `<label>MAX RETURN DAYS (0 = AT DOOR ONLY, UP TO ${kindOf(f.kind).ret})</label><input class="in" id="f-ret" type="number" min="0" max="${kindOf(f.kind).ret}" value="${Math.min(f.max_return_days ?? 30, kindOf(f.kind).ret)}" onchange="keepTyped();renderForm()">
+    ${(f.max_return_days ?? 30) > 0 && kindOf(f.kind).refund ? `<div class="row"><div><b>Allow "Return &amp; refund"</b><span>Off = shops can offer only "Replacement"</span></div><button class="tog ${f.allow_refund !== false ? "on" : ""}" onclick="setF('allow_refund', ${f.allow_refund === false})"></button></div>` : ""}` : ""}
     <div class="note"><b>Cards are made automatically</b> from name + icon + colour — app home, Categories, seller sign-up &amp; website.</div>
     <div class="msg" id="fm"></div>
     <button class="btn pink full" onclick="saveForm()">Save category</button>
@@ -697,7 +710,10 @@ function renderForm() {
       <div class="sub" style="margin-top:6px;font-size:11.5px">Only a category with no shops can be deleted. Otherwise switch “Show to customers” off.</div>`}`;
 }
 function keepTyped() { if (!$("#f-name")) return; form.name = $("#f-name").value; form.name_hi = $("#f-hi").value; form.short_line = $("#f-line").value;
-  if ($("#f-ret")) form.max_return_days = Math.max(0, Math.min(30, parseInt($("#f-ret").value, 10) || 0)); }
+  const k = kindOf(form.kind);
+  if ($("#f-ret")) form.max_return_days = Math.max(0, Math.min(k ? k.ret : 30, parseInt($("#f-ret").value, 10) || 0)); }
+function setKind(v) { keepTyped(); const k = kindOf(v); form.kind = v; form.needs_fssai = k.fssai; form.max_return_days = Math.min(form.max_return_days ?? k.ret, k.ret) || k.ret;
+  if (!k.refund) form.allow_refund = false; renderForm(); }
 function setF(k, v) { keepTyped(); form[k] = v; renderForm(); }
 function addSub() { const s = prompt("Sub-category name (e.g. Cakes)"); if (s && s.trim()) { keepTyped(); form.subs.push(s.trim()); renderForm(); } }
 function closeForm() { $("#panel").classList.remove("open"); document.body.classList.remove("po"); form = null; }
@@ -725,10 +741,11 @@ async function saveForm() {
   const f = form, m = $("#fm");
   if (!f.name.trim()) { m.className = "msg err"; m.textContent = "Name is required"; return; }
   const key = f.isNew ? slug(f.name) : f.key;
+  if (!kindOf(f.kind)) { m.className = "msg err"; m.textContent = "Pick the category kind"; return; }
   if (f.isNew && cats.some(c => c.key === key)) { m.className = "msg err"; m.textContent = `"${key}" already exists — edit that one instead.`; return; }
   const { error } = await db.rpc("admin_save_category", { p: { key, name: f.name.trim(), name_hi: f.name_hi, short_line: f.short_line, icon: f.icon,
-    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup, needs_fssai: !!f.needs_fssai,
-    ...("max_return_days" in f ? { max_return_days: f.max_return_days ?? 30, allow_refund: f.allow_refund !== false } : {}) } });
+    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup, needs_fssai: !!kindOf(f.kind).fssai, kind: f.kind,
+    max_return_days: Math.min(f.max_return_days ?? 30, kindOf(f.kind).ret), allow_refund: kindOf(f.kind).refund && f.allow_refund !== false } });
   if (error) { m.className = "msg err"; m.textContent = error.message; return; }
   closeForm(); loadCats();
 }

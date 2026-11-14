@@ -3,8 +3,8 @@
 button,input{font:inherit}a{color:inherit}
 .app{display:flex;min-height:100vh}
 .side{width:236px;background:#1D0F30;color:#CFC6E3;padding:22px 16px;flex-shrink:0;position:sticky;top:0;height:100vh}
-.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#1D0F30}
-.logo .g{color:#6D28D9}.logo .d{color:#EC4899}
+.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#111111}
+.logo .g{color:#6A1BB0}.logo .d{color:#F0287A}
 .side small{display:block;letter-spacing:1.5px;font-size:10.5px;margin:10px 0 26px 6px;color:#8E84A8}
 .nav a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;text-decoration:none;margin-bottom:4px;cursor:pointer}
 .nav a:hover{background:#2A1A44}.nav a.on{background:linear-gradient(90deg,#A855F7,#EC4899);color:#fff;font-weight:600}
