@@ -43,6 +43,7 @@ async function boot() {
   if (error) { document.body.innerHTML = `<div class="login">${LOGO}<h1>Couldn't open</h1><p class="sub">${esc(niceErr(error))}</p></div>`; return; }
   if (!shop) return notSeller(me.email);
   S = shop;
+  if (window.GBTerms) await GBTerms.gate(db, "seller", () => location.replace("/seller/login/"));
   await loadAll();
   shell(); page();
   liveSync(db, "seller", [["orders", `shop=eq.${S.id}`], ["items", `shop=eq.${S.id}`], ["riders", `shop=eq.${S.id}`], ["complaints", `shop=eq.${S.id}`],

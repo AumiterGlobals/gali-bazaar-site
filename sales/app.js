@@ -22,6 +22,7 @@ async function render() {
     if (!sp.username) { history.replaceState({}, "", "/sales/setup/"); return setupView(3, session.user.email); }
     me = sp;
     if (sp.must_change) return changePassView(true);
+    if (window.GBTerms) await GBTerms.gate(db, "sales", () => location.replace("/sales/login/"));
     await load();
     liveSync(db, "sales", ["commissions", "payouts", "sales_people", "shops"], async () => {
       const { data } = await db.from("sales_people").select("*").eq("id", me.id).maybeSingle();
@@ -94,6 +95,7 @@ async function setupView(startAt = 1, knownEmail = "") {
         <label>CREATE PASSWORD</label><input class="in" id="p1" type="password" autocomplete="new-password">
         <label>CONFIRM PASSWORD</label><input class="in" id="p2" type="password" autocomplete="new-password">
         <div class="sub" style="font-size:11.5px">8+ characters, with a number</div><div class="msg" id="m3"></div>
+        ${window.GBTerms ? GBTerms.html("sales", "tsales") : ""}
         <button class="btn pink full" id="b3" style="margin-top:8px">Create &amp; sign in</button></div>
     </div>
     <div class="note" style="margin-top:22px">🛡 Your username is shown to the admin. If you forget your username or password, the admin can reset it for you.</div></div>`;
@@ -142,11 +144,13 @@ async function setupView(startAt = 1, knownEmail = "") {
     const { error } = await db.rpc("sales_set_login", { p_username: un, p_password: p1 });
     if (error) { m.className = "msg err"; m.textContent = niceErr(error); $("#b3").disabled = false; return; }
     await db.auth.signInWithPassword({ email, password: p1 }).then(() => {}, () => {});
+    if (window.GBTerms) await GBTerms.accept(db, "sales").catch(() => {});
     me = null; go("");
   }
   $("#b1").onclick = send; $("#em").onkeydown = e => { if (e.key === "Enter") send(); };
   $("#rs").onclick = e => { e.preventDefault(); $("#b1").disabled = false; send(); };
   $("#b2").onclick = () => verify(); $("#b3").onclick = create;
+  if (window.GBTerms) GBTerms.bind("tsales", $("#b3"));
   if (email) $("#em").value = email;
   if (step === 3) { $("#emok").innerHTML = '<span class="ok2">✓ On sales team</span>'; $("#b1").textContent = "Verified ✓"; $("#sentto").innerHTML = `<b>${esc(email)}</b>`; $("#m2").className = "msg ok"; $("#m2").textContent = "✓ Email verified"; }
   paint();

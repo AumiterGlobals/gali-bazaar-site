@@ -328,7 +328,8 @@ async function settingsPage() {
     ${f("plan_price", "PLAN PRICE ₹ / MONTH", s.plan_price, "number")}${f("trial_days", "FREE TRIAL (DAYS)", s.trial_days, "number")}
     ${f("d3", "3 MONTHS % OFF", d["3"] ?? 10, "number")}${f("d6", "6 MONTHS % OFF", d["6"] ?? 15, "number")}${f("d12", "12 MONTHS % OFF", d["12"] ?? 20, "number")}
     ${f("feat_week_price", "TOP SPOT 1 WEEK ₹", s.feat_week_price, "number")}${f("feat_month_price", "TOP SPOT 1 MONTH ₹", s.feat_month_price, "number")}
-    ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${f("app_link", "APP DOWNLOAD LINK", s.app_link)}</div>
+    ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${f("app_link", "APP DOWNLOAD LINK", s.app_link)}${"terms_version" in s ? f("terms_version", "TERMS VERSION (YYYY-MM-DD)", s.terms_version) : ""}</div>
+    ${"terms_version" in s ? `<div class="sub" style="margin-top:6px">Terms version = "Last updated" on the <a href="/legal/" target="_blank">legal page</a>. Change it after editing the Terms — everyone is asked to accept again.</div>` : ""}
     <label style="margin-top:10px"><input type="checkbox" id="st_auto" ${s.auto_kyc ? "checked" : ""}> KYC auto-checker on</label>
     <div class="sub" style="margin-top:8px">UPI ID for payments and GST details are changed in the admin app (Settings) — they need a confirmation step.</div>
     <div class="msg" id="st_m"></div><button class="btn pink" style="margin-top:12px" onclick="settingsSave()">Save</button></div>`;
@@ -337,6 +338,7 @@ async function settingsSave() {
   const v = k => $("#st_" + k).value, n = k => +v(k) || 0;
   const row = { plan_price: n("plan_price") || 99, trial_days: n("trial_days"), plan_discounts: { "1": 0, "3": n("d3"), "6": n("d6"), "12": n("d12") },
     feat_week_price: n("feat_week_price"), feat_month_price: n("feat_month_price"), biz_name: v("biz_name").trim(), biz_email: v("biz_email").trim(), app_link: v("app_link").trim(), auto_kyc: $("#st_auto").checked };
+  if ($("#st_terms_version")) { const tv = v("terms_version").trim(); if (!/^\d{4}-\d{2}-\d{2}$/.test(tv)) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Terms version must look like 2026-11-14"; return; } row.terms_version = tv; }
   const { error } = await db.from("settings").update(row).eq("id", 1);
   $("#st_m").className = "msg " + (error ? "err" : "ok"); $("#st_m").textContent = error ? error.message : "Saved";
 }
