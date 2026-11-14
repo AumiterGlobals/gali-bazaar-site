@@ -85,7 +85,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -158,13 +158,48 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage };
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
     <div class="soon"><b>Coming to the web console soon.</b><br>Until then, use the Admin panel inside the Gali Bazaar app (same admin email).</div>`;
 }
 
+
+// ---------------- Courier issues (late shipments, not received, auto-cancelled, refusals) + one-tap pause ----------------
+async function courierPage() {
+  const since = new Date(Date.now() - 30 * 864e5).toISOString(), t = today();
+  const [ords, shops, paused] = await Promise.all([
+    q("orders", "id,short_id,shop,cust_name,status,total,dispatch_date,shipped_at,courier_name,awb,refused_at,refuse_reason,not_received_at,auto_cancel_reason,other_state,created_at", x => x.eq("delivery_type", "courier").gte("created_at", since).order("created_at", { ascending: false }).limit(2000)),
+    q("shops", "id,name,phone,city,state,delivery_mode,courier_blocked", x => x.or("delivery_mode.neq.local,courier_blocked.eq.true")),
+    q("profiles", "id,name,phone,courier_paused_until", x => x.gt("courier_paused_until", new Date().toISOString())),
+  ]);
+  const S = Object.fromEntries(shops.map(s => [s.id, s])), nm = id => S[id]?.name || "—";
+  const late = ords.filter(o => o.status === "ACCEPTED" && o.dispatch_date && o.dispatch_date < t);
+  const nr = ords.filter(o => o.not_received_at && o.status === "OUT");
+  const auto = ords.filter(o => o.auto_cancel_reason);
+  const byShop = {}; ords.forEach(o => { const b = byShop[o.shop] = byShop[o.shop] || { n: 0, ref: 0, late: 0 }; b.n++; if (o.refused_at) b.ref++; if (o.auto_cancel_reason === "No tracking added by the dispatch date") b.late++; });
+  const perDay = {}; ords.forEach(o => { const d = o.created_at.slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; });
+  const row = o => `<tr><td><b>#${esc(o.short_id)}</b><div class="sub" style="margin:0">${esc(o.cust_name)}</div></td><td>${esc(nm(o.shop))}<div class="sub" style="margin:0">${esc(S[o.shop]?.phone || "")}</div></td><td>${inr(o.total)}</td>
+    <td>${o.awb ? esc(o.courier_name + " · " + o.awb) : o.dispatch_date ? "Dispatch " + esc(o.dispatch_date) : "—"}</td><td>${esc(o.auto_cancel_reason || (o.not_received_at ? "Not received" : o.refused_at ? "Refused: " + o.refuse_reason : "Late"))}</td></tr>`;
+  const tbl = (l, empty) => l.length ? `<table><thead><tr><th>ORDER</th><th>SHOP</th><th>COD</th><th>COURIER</th><th>ISSUE</th></tr></thead><tbody>${l.map(row).join("")}</tbody></table>` : `<div class="sub" style="padding:10px 0">${empty}</div>`;
+  $("#main").innerHTML = head("Courier issues", `Last 30 days · ${ords.length} courier orders · ${ords.filter(o => o.other_state).length} to other states`) + `
+    <div class="grid2"><div class="box"><h3>Late shipments (${late.length})</h3>${tbl(late, "None 🎉")}</div><div class="box"><h3>“Not received” (${nr.length})</h3>${tbl(nr, "None")}</div></div>
+    <div class="box"><h3>Auto-cancelled (${auto.length})</h3>${tbl(auto.slice(0, 50), "None")}</div>
+    <div class="box"><h3>Shops selling by courier</h3><table><thead><tr><th>SHOP</th><th>MODE</th><th>ORDERS (30 D)</th><th>REFUSAL RATE</th><th>LATE / AUTO-CANCELLED</th><th></th></tr></thead><tbody>
+      ${shops.map(s => { const b = byShop[s.id] || { n: 0, ref: 0, late: 0 }; return `<tr><td><b>${esc(s.name)}</b><div class="sub" style="margin:0">${esc(s.city || "")}, ${esc(s.state || "")} · ${esc(s.phone || "")}</div></td>
+        <td>${s.courier_blocked ? `<span class="pill bad">Paused</span>` : esc(s.delivery_mode)}</td><td>${b.n}</td><td>${b.n ? Math.round(b.ref * 100 / b.n) + "%" : "—"}</td><td>${b.late}</td>
+        <td><button class="btn ${s.courier_blocked ? "pink" : "ghost"}" onclick="courierPause('${s.id}', ${!s.courier_blocked})">${s.courier_blocked ? "Turn courier back on" : "Pause courier"}</button></td></tr>`; }).join("") || `<tr><td colspan="6" class="sub">No shop sells by courier yet.</td></tr>`}</tbody></table></div>
+    <div class="grid2"><div class="box"><h3>Courier orders per day</h3>${Object.entries(perDay).sort().reverse().slice(0, 14).map(([d, n]) => `<div class="row"><div><b>${esc(d)}</b></div><b>${n}</b></div>`).join("") || `<div class="sub">No orders yet.</div>`}</div>
+    <div class="box"><h3>Customers with courier paused (${paused.length})</h3><div class="sub">2 refused parcels in 60 days without a valid reason → courier ordering paused 30 days.</div>
+      ${paused.map(p => `<div class="row"><div><b>${esc(p.name || "—")}</b><span>${esc(p.phone || "")} · till ${esc(p.courier_paused_until.slice(0, 10))}</span></div><button class="btn ghost" onclick="courierLift('${p.id}')">Lift</button></div>`).join("")}</div></div>`;
+}
+async function courierPause(id, pause) {
+  if (!confirm(pause ? "Pause courier selling for this shop? Local delivery keeps working." : "Turn courier selling back on for this shop?")) return;
+  const { error } = await db.from("shops").update(pause ? { courier_blocked: true, delivery_mode: "local" } : { courier_blocked: false }).eq("id", id);
+  if (error) return alert(error.message); courierPage();
+}
+async function courierLift(id) { const { error } = await db.from("profiles").update({ courier_paused_until: null }).eq("id", id); if (error) return alert(error.message); courierPage(); }
 
 // ---------------- shared ----------------
 const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
