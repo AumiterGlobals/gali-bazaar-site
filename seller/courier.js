@@ -8,6 +8,7 @@ const COURIER_RULES = [
   ["❓", "Not received:", "नहीं मिला:", "if the parcel doesn't arrive, the customer can tap “Not received” 7 days after you ship. It goes to you and to Gali Bazaar.", "पार्सल न पहुँचे तो भेजने के 7 दिन बाद ग्राहक \"Not received\" दबा सकता है — शिकायत आपको और Gali Bazaar को जाती है।"],
   ["⏱️", "Cancel:", "कैंसिल:", "the customer can cancel free until you accept. If you don't accept within 24 hours, or don't add tracking within 1 day after your dispatch date, the order is cancelled automatically.", "आपके स्वीकार करने तक ग्राहक मुफ़्त में कैंसिल कर सकता है। आप 24 घंटे में स्वीकार न करें, या भेजने की तारीख़ के 1 दिन बाद तक ट्रैकिंग न डालें, तो ऑर्डर अपने आप कैंसिल हो जाता है।"],
   ["🧾", "Your responsibility:", "आपकी ज़िम्मेदारी:", "packing well, booking the courier as COD + open-box, adding the correct courier name and tracking number on time; the courier paying you the COD money; delays, damage, loss and return charges. Gali Bazaar does not book couriers or hold any money.", "अच्छी पैकिंग, कूरियर को COD + ओपन-बॉक्स बुक करना, सही कूरियर नाम और ट्रैकिंग नंबर समय पर डालना; कूरियर से COD का पैसा लेना; देरी, नुक़सान, गुम होना और वापसी का ख़र्च। Gali Bazaar कूरियर बुक नहीं करता और कोई पैसा नहीं रखता।"],
+  ["⏳", "Delivery time:", "डिलीवरी का समय:", "set your delivery time (from – to days, 1 to 15). Customers see “arrives in X–Y days”. It is your estimate, not a Gali Bazaar promise.", "अपना डिलीवरी समय डालें (कितने से कितने दिन, 1 से 15)। ग्राहक को “X–Y दिन में पहुँचेगा” दिखता है। यह आपका अंदाज़ा है, Gali Bazaar का वादा नहीं।"],
   ["⚠️", "Repeated problems:", "बार-बार दिक़्क़त:", "3 late or auto-cancelled courier orders in 30 days, or many refused parcels because of wrong or damaged items, can switch off courier selling for your shop.", "30 दिन में 3 देर से भेजे/अपने आप कैंसिल हुए ऑर्डर, या ग़लत/ख़राब सामान से बहुत से लौटे पार्सल — आपकी दुकान का कूरियर बंद हो सकता है।"],
 ];
 const COURIERS = ["India Post", "DTDC", "Delhivery", "Blue Dart", "Ecom Express", "Xpressbees", "Shadowfax", "Shiprocket", "Ekart", "Professional Couriers", "Trackon", "Other"];
@@ -71,10 +72,10 @@ function sellBox() {
         <div><label>FREE ABOVE ₹ (optional)</label><input class="in" id="cs_free" type="number" value="${S.courier_free_above ?? ""}"></div>
         <div><label>MINIMUM COURIER ORDER ₹ (optional)</label><input class="in" id="cs_min" type="number" value="${S.courier_min_order ?? ""}" placeholder="${S.min_order || 0}"></div>
         <div><label>SHIPS WITHIN (DAYS)</label><select class="in" id="cs_days">${[1, 2, 3].map(d => `<option ${(S.ships_within_days || 2) === d ? "selected" : ""}>${d}</option>`).join("")}</select></div></div>
-      <label>DELIVERY TIME (customer ko kitne din mein milega)</label>
+      <label>DELIVERY TIME — DAYS FOR THE CUSTOMER TO GET THE PARCEL</label>
       <div style="display:flex;gap:8px;align-items:center"><input class="in" id="cs_dmin" type="number" min="1" max="15" style="max-width:90px" value="${S.courier_days_min ?? ""}" placeholder="3"> to
         <input class="in" id="cs_dmax" type="number" min="1" max="15" style="max-width:90px" value="${S.courier_days_max ?? ""}" placeholder="6"> days</div>
-      <div class="sub">Apne courier ke hisaab se sahi din daalo. Galat din = customer cancel/refuse.</div>
+      <div class="sub">Give the real days for your courier. Wrong days lead to cancellations and refusals.</div>
       <div class="note">Gali Bazaar doesn't book couriers. Every courier order is <b>COD + Open-box</b>. <a href="#" onclick="courierRules(false);return false" style="color:#7C3AED">What customers can do →</a></div></div>
     <div class="msg" id="csm"></div><button class="btn pink" style="margin-top:10px" onclick="saveSell()">Save</button></div>`;
 }
