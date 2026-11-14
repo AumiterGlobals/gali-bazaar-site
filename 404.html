@@ -36,7 +36,7 @@ if (sm) {
   const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const C = document.getElementById("c");
   C.innerHTML = `<div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div><p class="s" style="margin-top:18px">Opening the shop…</p>`;
-  fetch(`${SB}/rest/v1/shops?link_code=eq.${code}&select=name,locality,city,logo_url,delivery_mode`, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
+  fetch(`${SB}/rest/v1/shops_public?link_code=eq.${code}&select=name,locality,city,logo_url,delivery_mode`, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
     .then(r => r.ok ? r.json() : []).catch(() => []).then(rows => {
       const sh = rows && rows[0];
       if (!sh) {
