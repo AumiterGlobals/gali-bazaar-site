@@ -608,7 +608,7 @@ const slug = s => s.toLowerCase().normalize("NFKD").replace(/&/g, " and ").repla
 function openForm(key, name) {
   const c = cats.find(x => x.key === key);
   form = c ? { ...c, subs: [...(c.subs || [])], isNew: false }
-    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, needs_fssai: false, isNew: true };
+    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, needs_fssai: false, max_return_days: 30, allow_refund: true, isNew: true };
   renderForm();
 }
 
@@ -629,6 +629,9 @@ function renderForm() {
     <div class="row"><div><b>Show to customers</b><span>Off = draft</span></div><button class="tog ${f.visible ? "on" : ""}" onclick="setF('visible', ${!f.visible})"></button></div>
     <div class="row" style="margin-top:0"><div><b>Allow shop sign-ups</b><span>Shops can pick this type</span></div><button class="tog ${f.allow_signup ? "on" : ""}" onclick="setF('allow_signup', ${!f.allow_signup})"></button></div>
     <div class="row"><div><b>Food category, FSSAI required</b><span>Shops of this type must give a 14-digit FSSAI number</span></div><button class="tog ${f.needs_fssai ? "on" : ""}" onclick="setF('needs_fssai', ${!f.needs_fssai})"></button></div>
+    ${"max_return_days" in f ? `<label>MAX RETURN DAYS (0 = AT DOOR ONLY)</label><input class="in" id="f-ret" type="number" min="0" max="30" value="${f.max_return_days ?? 30}" onchange="keepTyped();renderForm()">
+    <div class="sub" style="font-size:12px;margin-top:2px">Fresh / cooked food: 0 • Grocery: 3 • Others: up to 30. Items above this are lowered automatically.</div>
+    ${(f.max_return_days ?? 30) > 0 ? `<div class="row"><div><b>Allow "Return &amp; refund"</b><span>Off = shops can offer only "Replacement"</span></div><button class="tog ${f.allow_refund !== false ? "on" : ""}" onclick="setF('allow_refund', ${f.allow_refund === false})"></button></div>` : ""}` : ""}
     <div class="note"><b>Cards are made automatically</b> from name + icon + colour — app home, Categories, seller sign-up &amp; website.</div>
     <div class="msg" id="fm"></div>
     <button class="btn pink full" onclick="saveForm()">Save category</button>
@@ -636,7 +639,8 @@ function renderForm() {
     ${f.isNew ? "" : `<button class="btn full" style="margin-top:8px;background:#FFE4EC;color:#BE185D" onclick="delCat('${f.key}')">Delete category</button>
       <div class="sub" style="margin-top:6px;font-size:11.5px">Only a category with no shops can be deleted. Otherwise switch “Show to customers” off.</div>`}`;
 }
-function keepTyped() { if (!$("#f-name")) return; form.name = $("#f-name").value; form.name_hi = $("#f-hi").value; form.short_line = $("#f-line").value; }
+function keepTyped() { if (!$("#f-name")) return; form.name = $("#f-name").value; form.name_hi = $("#f-hi").value; form.short_line = $("#f-line").value;
+  if ($("#f-ret")) form.max_return_days = Math.max(0, Math.min(30, parseInt($("#f-ret").value, 10) || 0)); }
 function setF(k, v) { keepTyped(); form[k] = v; renderForm(); }
 function addSub() { const s = prompt("Sub-category name (e.g. Cakes)"); if (s && s.trim()) { keepTyped(); form.subs.push(s.trim()); renderForm(); } }
 function closeForm() { $("#panel").classList.remove("open"); document.body.classList.remove("po"); form = null; }
@@ -666,7 +670,8 @@ async function saveForm() {
   const key = f.isNew ? slug(f.name) : f.key;
   if (f.isNew && cats.some(c => c.key === key)) { m.className = "msg err"; m.textContent = `"${key}" already exists — edit that one instead.`; return; }
   const { error } = await db.rpc("admin_save_category", { p: { key, name: f.name.trim(), name_hi: f.name_hi, short_line: f.short_line, icon: f.icon,
-    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup, needs_fssai: !!f.needs_fssai } });
+    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup, needs_fssai: !!f.needs_fssai,
+    ...("max_return_days" in f ? { max_return_days: f.max_return_days ?? 30, allow_refund: f.allow_refund !== false } : {}) } });
   if (error) { m.className = "msg err"; m.textContent = error.message; return; }
   closeForm(); loadCats();
 }

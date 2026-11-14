@@ -65,6 +65,10 @@ async function notSeller(email) {
 }
 // voice alerts ("New order arrived!") — the same tones as the app
 // food shops must give a 14-digit FSSAI number (update-47)
+// return options this shop's category allows (admin → Categories): food = only at the door, grocery = replacement ≤ 3 days
+const RET = () => { const c = (D.cats || []).find(x => x.key === S.type), t = S.type;
+  const d = c && c.max_return_days != null ? c.max_return_days : (["sweets", "food", "fruitveg"].includes(t) ? 0 : t === "grocery" ? 3 : 30);
+  return { max: Math.max(0, Math.min(30, d)), refund: c && c.allow_refund != null ? !!c.allow_refund : t !== "grocery" }; };
 const FOOD = () => (D.cats || []).some(c => c.key === S.type && c.needs_fssai) || (!(D.cats || []).length && ["grocery", "fruitveg", "sweets", "food"].includes(S.type));
 const TONE = {};
 function tone(k) { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
@@ -82,7 +86,7 @@ async function loadAll() {
     db.from("shop_slots").select("*").eq("shop", S.id).order("from_t"),
     db.from("shop_coverage").select("*").eq("shop", S.id),
     db.from("festivals").select("*").gte("day", todayStr()).order("day").limit(3),
-    db.from("categories").select("key,needs_fssai"),
+    db.from("categories").select("*"),
   ]);
   if (shop.data) S = shop.data;
   D = { items: items.data || [], orders: ords.data || [], riders: rid.data || [], complaints: comp.data || [], cns: cns.data || [], slots: slots.data || [], cov: cov.data || [], festivals: fest.data || [] };
@@ -417,8 +421,10 @@ function editItem(id) {
       <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px"><div><label>FSSAI LICENCE NO.</label><input class="in" id="ffs" inputmode="numeric" maxlength="14" value="${esc(i?.fssai || "")}"></div>
       <div><label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}"></div></div>` : ""}
     <label style="margin-top:14px;font-size:13px;letter-spacing:0;color:#1D0F30;text-transform:none">Return / replacement</label>
-    <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement", "Return & refund"].map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
-    <div id="dw" style="display:none"><label>WITHIN HOW MANY DAYS OF DELIVERY? (1–30)</label><input class="in" id="fd" inputmode="numeric" value="${i?.ret_days || 7}"></div>
+    ${RET().max === 0 ? `<div class="note" id="pol" style="margin:4px 0 8px">At door only — fresh and cooked food can be returned only at the door.</div>` : `
+    <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement"].concat(RET().refund ? ["Return & refund"] : []).map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
+    ${RET().refund ? "" : `<div class="sub" style="font-size:12px;margin-top:4px">Replacement only for damaged or expired packs.</div>`}`}
+    <div id="dw" style="display:none"><label>WITHIN HOW MANY DAYS OF DELIVERY? (1–${RET().max || 30})</label><input class="in" id="fd" inputmode="numeric" value="${Math.min(i?.ret_days || 7, RET().max || 30)}"></div>
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
     <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
       <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
@@ -459,7 +465,7 @@ function useMaster(k) {
   (c.images || []).slice(0, NEED()).forEach((u, j) => F_.ph[j] = u);
   $("#msug").innerHTML = `<div class="okline">Details taken from the Gali Bazaar item list${(c.images || []).length ? "" : " — add the photos"}. Set your price.</div>`; drawPhotos();
 }
-function paintPol() { $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
+function paintPol() { const R = RET(); if (R.max === 0) F_.pol = 0; else if (F_.pol === 2 && !R.refund) F_.pol = 1; $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
 // photos needed: grocery = front + back label, fruits & veg = 2, food / sweets / stationery = 1
 // category master per shop type + unit master (same lists as the app)
@@ -500,7 +506,8 @@ function drawPhotos() {
 async function saveItem() {
   const e = $("#fe"), name = $("#fn").value.trim(), grp = $("#fg").value.trim(), desc = $("#fx").value.trim();
   const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
-  const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(30, +$("#fd").value || 0));
+  const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(RET().max, +$("#fd").value || 0));
+  if (RET().max === 0) F_.pol = 0; else if (F_.pol === 2 && !RET().refund) F_.pol = 1;
   const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : F_.ph.some(x => !x) ? (NEED() === 1 ? "Add a photo" : S.type === "grocery" ? "Add all 3 photos: front, manufacturer / FSSAI label and ingredients" : "Add both photos")
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0" : null;
   if (err) { e.className = "msg err"; e.textContent = err; return; }
@@ -596,11 +603,11 @@ async function readFile(f) {
     const gst = !gstShop ? null : (gtype.startsWith("in") || gtype.startsWith("ex")) ? rate : (gtype.startsWith("nil") || gtype === "0") ? 0 : null;
     const auto = typeof hsnSuggest === "function" && gstShop && gst != null ? hsnSuggest(col("name"), col("grp")) : null;
     const hsn = col("hsn").replace(/\D/g, "").slice(0, 8) || (auto ? auto.hsn : null);
-    const rt = col("ret").toLowerCase(), dm = rt.match(/\d+/), days = dm ? Math.min(30, Math.max(1, +dm[0])) : null;
+    const R = RET(), rt = col("ret").toLowerCase(), dm = rt.match(/\d+/), days = dm && R.max > 0 ? Math.min(R.max, Math.max(1, +dm[0])) : null;
     const door = /^y/i.test(col("door")) || !days;
     const item = { shop: S.id, name: col("name"), price, unit: vs.length ? "" : col("unit"), in_stock: !/^no$/i.test(col("stock")), mrp: +col("mrp") || null, grp: col("grp") || null,
       descr: col("desc") || null, variants: vs, hsn, gst_rate: gst,
-      maker: col("maker") || null, fssai: col("fssai").replace(/\D/g, "") || null, ingredients: col("ingr") || null, ret_policy: door ? "none" : /exch|repl/.test(rt) ? "replace" : "return", ret_days: door ? 0 : days };
+      maker: col("maker") || null, fssai: col("fssai").replace(/\D/g, "") || null, ingredients: col("ingr") || null, ret_policy: door ? "none" : /exch|repl/.test(rt) || !R.refund ? "replace" : "return", ret_days: door ? 0 : days };
     const badGst = gstShop && (gtype.startsWith("in") || gtype.startsWith("ex")) && ![0, 5, 12, 18, 28, 40].includes(rate);
     return { line, item, ban, err: ban ? null : (price <= 0 || vs.some(v => v.p <= 0)) ? "Price missing" : badGst ? "GST % missing" : null, dup: names.has(col("name").toLowerCase()) };
   }) };
