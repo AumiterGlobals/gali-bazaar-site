@@ -366,6 +366,13 @@ function catalog() {
       `<a class="btn ghost" href="/help/photo-guide/" target="_blank">📷 Photo guide</a>${["garments", "footwear"].includes(S.type) ? `<button class="btn ghost" onclick="go('catalog/charts')">📏 Size charts</button>` : ""}<button class="btn ghost" onclick="go('catalog/bulk')">⇪ Bulk upload</button><button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
     <div class="bar2"><div class="fchips">${F.map(([k, l]) => `<button class="fchip ${catF === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div><div class="sp"></div>
       <input class="search" id="q" placeholder="🔍 Search items" value="${esc(catQ)}"></div>
+    ${(() => { const H = D.items.filter(hidden); if (!H.length) return ""; const why = {};
+      H.forEach(i => { const k = String(i.hidden_reason || "Add photos").startsWith("Fix:") ? "Fix details" : (i.hidden_reason || "Add photos"); why[k] = (why[k] || 0) + 1; });
+      const main = Object.entries(why).sort((a, b) => b[1] - a[1])[0][0], act = main === "Add size chart" ? "pick a size chart" : main === "Add photos" ? "add photos" : "fix the details";
+      return `<div class="box" style="border:1.5px solid #F7A8C4;background:#FFF1F5;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="catF='${catF === "missing" ? "all" : "missing"}';catalog()">
+        <span style="font-size:24px">🙈</span><div style="flex:1"><b style="color:#BE185D">${H.length} item${H.length === 1 ? "" : "s"} hidden — ${act}</b>
+        <div class="sub" style="margin:0">${Object.entries(why).map(([k, v]) => `${esc(k)} (${v})`).join(" · ")} · customers can't see them</div></div>
+        <b style="color:#BE185D">${catF === "missing" ? "Show all" : "Fix now →"}</b></div>`; })()}
     <div class="box" id="ct"></div><div class="sub">Items missing photos, pack details or a size chart are hidden from customers until fixed — the PHOTOS column says what to fix.</div>`;
   $$(".fchip").forEach(b => b.onclick = () => { catF = b.dataset.f; catalog(); });
   $("#q").oninput = e => { catQ = e.target.value; drawCat(); };
@@ -375,7 +382,8 @@ function drawCat() {
   const q = catQ.toLowerCase().trim();
   const list = D.items.filter(i => (catF === "all" || (catF === "missing" && hidden(i)) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
-  const fei = i => hidden(i) ? `<span class="pill bad" title="Hidden from customers">${esc(i.hidden_reason || "Add photos")}</span>`
+  const fei = i => hidden(i) ? `<span class="pill bad" title="Hidden from customers">${esc(i.hidden_reason || "Add photos")}</span>` + (i.hidden_reason === "Add size chart" && (D.charts || []).length
+      ? `<br><select class="in" style="margin-top:4px;padding:4px 8px;font-size:12px;width:auto" onchange="if(this.value)setChart('${i.id}',this.value)"><option value="">📏 Pick size chart…</option>${(D.charts || []).map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>` : "")
     : i.photos && Object.keys(i.photos).length ? Object.keys(i.photos).filter(k => i.photos[k]).map(k => `<span class="pill ok" style="padding:2px 6px;margin-right:2px" title="${esc(k)}">${esc(SLOT_ABBR[k] || k.replace(/^c-/, ""))}</span>`).join("")
     : `<span class="pill ok" style="padding:2px 6px">${photos(i).length}</span>`;
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
@@ -385,6 +393,11 @@ function drawCat() {
     <td style="white-space:nowrap">${fei(i)}</td><td><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button></td>
     <td class="hm">${retLabel(i)}</td><td><button class="edit" onclick="editItem('${i.id}')">Edit</button></td></tr>`).join("")}</tbody></table>`
     : `<div class="sub" style="padding:18px 0">${D.items.length ? "No items match." : "No items yet. Add one, or upload your whole catalogue from Excel."}</div>`;
+}
+async function setChart(id, chart) {
+  const { error } = await db.from("items").update({ size_chart: chart }).eq("id", id);
+  if (error) return toast(niceErr(error));
+  toast("Size chart linked"); await loadAll(); catalog();
 }
 async function stock(id, on) {
   const i = D.items.find(x => x.id === id); i.in_stock = on; drawCat();
