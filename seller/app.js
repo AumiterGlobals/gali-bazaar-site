@@ -47,13 +47,24 @@ async function boot() {
   shell(); page();
   liveSync(db, "seller", [["orders", `shop=eq.${S.id}`], ["items", `shop=eq.${S.id}`], ["riders", `shop=eq.${S.id}`], ["complaints", `shop=eq.${S.id}`],
     ["credit_notes", `shop=eq.${S.id}`], ["shops", `id=eq.${S.id}`], ["shop_slots", `shop=eq.${S.id}`], ["shop_coverage", `shop=eq.${S.id}`], "festivals"],
-    async () => { const before = D.orders.filter(o => o.status === "PLACED").length; await loadAll(); refreshChrome(); if (!drawerOpen) page(); const now = D.orders.filter(o => o.status === "PLACED").length; if (now > before) { toast("🔔 New order"); beep(); } });
+    async () => {
+      const cnt = () => ({ o: D.orders.filter(o => o.status === "PLACED").length, c: (D.complaints || []).filter(c => c.status === "OPEN").length, k: S.kyc,
+        paid: D.orders.filter(o => o.status === "DELIVERED").length });
+      const b = cnt(); await loadAll(); refreshChrome(); if (!drawerOpen) page(); const a = cnt();
+      if (a.o > b.o) { toast("🔔 New order"); tone("new_order"); }
+      else if (a.c > b.c) { toast("⚠️ New complaint"); tone("complaint"); }
+      else if (a.k === "APPROVED" && b.k !== "APPROVED") { toast("✅ KYC approved"); tone("kyc_ok"); }
+      else if (a.paid > b.paid) tone("payment");
+    });
 }
 async function notSeller(email) {
   await db.auth.signOut();
   document.body.innerHTML = `<div class="login">${LOGO}<h1>This account isn't a seller account</h1><p class="sub">${esc(email || "")} doesn't own a shop on Gali Bazaar, so it can't open the seller panel. You've been signed out.<br><br>New shop? Download the app and tap <b>Register your shop</b> — KYC is done in the app.</p><a class="btn pink" href="/seller/login/">Sign in again</a> <a class="btn ghost" href="/#install">Download app</a></div>`;
 }
-function beep() { try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.value = .08; o.start(); setTimeout(() => { o.frequency.value = 1180; }, 150); setTimeout(() => { o.stop(); a.close(); }, 320); } catch (e) {} }
+// voice alerts ("New order arrived!") — the same tones as the app
+const TONE = {};
+function tone(k) { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
+function beep() { tone("new_order"); }
 
 async function loadAll() {
   const since3 = new Date(Date.now() - 3 * 864e5).toISOString(), since30 = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -947,7 +958,7 @@ async function supLoad(force) {
       <div style="font-size:10.5px;opacity:.6;text-align:right;margin-top:3px">${t(x.created_at)}${!x.from_admin && x.read_at ? " · seen" : ""}</div></div></div>`).join("")
     : `<div style="text-align:center;padding:40px 10px"><div style="font-size:38px">🛟</div><b>Tell us what's wrong</b><div class="sub">Write here and the Gali Bazaar team replies in this chat.</div></div>`;
   el.scrollTop = el.scrollHeight;
-  if (m.some(x => x.from_admin && !x.read_at)) db.rpc("support_mark_read", { p_shop: S.id }).then(() => {}, () => {});
+  if (m.some(x => x.from_admin && !x.read_at)) { if (!force) tone("support_reply"); db.rpc("support_mark_read", { p_shop: S.id }).then(() => {}, () => {}); }
 }
 async function supSend() {
   const i = $("#supIn"), b = $("#supBtn"), body = i.value.trim(); if (!body) return;

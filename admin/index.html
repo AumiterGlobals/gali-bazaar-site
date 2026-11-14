@@ -97,8 +97,17 @@ async function start() {
     if (page === "festivals" && Date.now() - (window.FEST_QUIET || 0) < 4000) return;          // my own switch change — page already shows it
     const a = document.activeElement; if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && $("#main").contains(a)) return;
     go(page); }, 600); };
+  // voice alerts ("New KYC for approval"…) — the same tones as the app
+  const TONE = {}, tone = k => { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} };
+  const alertFor = p => {
+    const t = p.table, n = p.new || {}, o = p.old || {};
+    if (t === "shops" && p.eventType === "INSERT") return tone("new_shop");
+    if ((t === "shops" || t === "riders") && p.eventType === "UPDATE" && n.kyc === "PENDING" && o.kyc !== "PENDING") return tone("new_kyc");
+    if (t === "pay_claims" && p.eventType === "INSERT" && n.status === "PENDING") return tone("pay_verify");
+    if (t === "support_messages" && p.eventType === "INSERT" && !n.from_admin) return tone("seller_help");
+  };
   let ch = db.channel("admin-live");
-  ["shops", "pay_claims", "complaints", "categories", "category_requests", "festivals", "sales_people", "commissions", "payouts", "settings", "riders"].forEach(t => ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t }, fire));
+  ["shops", "pay_claims", "complaints", "categories", "category_requests", "festivals", "sales_people", "commissions", "payouts", "settings", "riders", "support_messages"].forEach(t => ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t }, p => { alertFor(p); fire(); }));
   ch.subscribe();
 }
 
