@@ -71,6 +71,10 @@ function sellBox() {
         <div><label>FREE ABOVE ₹ (optional)</label><input class="in" id="cs_free" type="number" value="${S.courier_free_above ?? ""}"></div>
         <div><label>MINIMUM COURIER ORDER ₹ (optional)</label><input class="in" id="cs_min" type="number" value="${S.courier_min_order ?? ""}" placeholder="${S.min_order || 0}"></div>
         <div><label>SHIPS WITHIN (DAYS)</label><select class="in" id="cs_days">${[1, 2, 3].map(d => `<option ${(S.ships_within_days || 2) === d ? "selected" : ""}>${d}</option>`).join("")}</select></div></div>
+      <label>DELIVERY TIME (customer ko kitne din mein milega)</label>
+      <div style="display:flex;gap:8px;align-items:center"><input class="in" id="cs_dmin" type="number" min="1" max="15" style="max-width:90px" value="${S.courier_days_min ?? ""}" placeholder="3"> to
+        <input class="in" id="cs_dmax" type="number" min="1" max="15" style="max-width:90px" value="${S.courier_days_max ?? ""}" placeholder="6"> days</div>
+      <div class="sub">Apne courier ke hisaab se sahi din daalo. Galat din = customer cancel/refuse.</div>
       <div class="note">Gali Bazaar doesn't book couriers. Every courier order is <b>COD + Open-box</b>. <a href="#" onclick="courierRules(false);return false" style="color:#7C3AED">What customers can do →</a></div></div>
     <div class="msg" id="csm"></div><button class="btn pink" style="margin-top:10px" onclick="saveSell()">Save</button></div>`;
 }
@@ -79,6 +83,11 @@ async function saveSell(afterRules) {
   const mode = S._mode || S.delivery_mode || "local", v = id => $(id)?.value?.trim() ?? "", m = $("#csm");
   if (mode !== "local" && !afterRules && ((S.delivery_mode || "local") === "local" || !S.courier_rules_ok_at)) return courierRules(true);
   const patch = { delivery_mode: mode };
+  if (mode !== "local") {
+    const a = parseInt(v("#cs_dmin")), b = parseInt(v("#cs_dmax"));
+    if (!(a >= 1 && a <= 15 && b >= a && b <= 15)) { if (m) { m.className = "msg err"; m.textContent = "Delivery time: fill both, from 1 to 15 days (From ≤ To)"; } return; }
+    Object.assign(patch, { courier_days_min: a, courier_days_max: b });
+  }
   if (mode !== "local") Object.assign(patch, { courier_scope: v("#cs_scope"), courier_cities: v("#cs_cities").split(",").map(x => x.trim()).filter(Boolean), courier_fee: +v("#cs_fee") || 0,
     courier_free_above: v("#cs_free") === "" ? null : +v("#cs_free"), courier_min_order: v("#cs_min") === "" ? null : +v("#cs_min"), ships_within_days: +v("#cs_days") || 2 });
   const { error } = await db.from("shops").update(patch).eq("id", S.id);
