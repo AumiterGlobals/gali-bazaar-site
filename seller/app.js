@@ -333,7 +333,7 @@ async function openOrder(id) {
   const cn = D.cns.filter(c => c.order_id === id), r = D.riders.find(x => x.id === o.rider);
   drawer(`<h2><span>Order ${short(o)}</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${pill(o)}<span class="sub" style="margin:0">${dt(o.created_at)}</span></div>
-    <div class="box" style="background:#F6F2FB;margin-top:12px"><b>${esc(o.cust_name)}</b>${o.cust_phone ? ` • <a href="${phoneLink(o.cust_phone)}" style="color:#7C3AED">${esc(o.cust_phone)}</a>` : ""}<div class="sub">${esc(o.addr)}</div>
+    <div class="box" style="background:#F6F2FB;margin-top:12px"><b>${esc(o.cust_name)}</b>${o.cust_phone ? (/^X/.test(o.cust_phone) ? ` • ${esc(o.cust_phone)} <span class="sub" style="margin:0">(hidden 24 h after the order)</span>` : ` • <a href="${phoneLink(o.cust_phone)}" style="color:#7C3AED">${esc(o.cust_phone)}</a>`) : ""}<div class="sub">${esc(o.addr)}</div>
       <div class="sub">Slot: ${esc(o.slot_label || "")} ${o.slot_date ? "• " + dmy(o.slot_date) : ""}${r ? ` • 🛵 ${esc(r.name)}` : ""}</div>${o.note ? `<div class="note" style="margin:8px 0 0">Note: ${esc(o.note)}</div>` : ""}</div>
     <table><thead><tr><th>ITEM</th><th>QTY</th><th>AMOUNT</th></tr></thead><tbody>${(o.items || []).map(l => `<tr><td>${esc(l.n)}${l.u ? ` <span class="sub">${esc(l.u)}</span>` : ""}${(o.returned || []).includes(l.n) ? ` <span class="pill bad">Returned</span>` : ""}</td><td>${l.q}</td><td>${inr(l.p * l.q)}</td></tr>`).join("")}
       ${Number(o.fee) ? `<tr><td>Delivery fee</td><td></td><td>${inr(o.fee)}</td></tr>` : ""}<tr><td><b>Total</b></td><td></td><td><b>${inr(o.total)}</b></td></tr>
