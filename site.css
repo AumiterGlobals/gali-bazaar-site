@@ -356,3 +356,15 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
 .cat.more,.cat.req{background:#fff;border:1.5px dashed #D9C8FB;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:#6B6380;text-decoration:none}
 .cat.req b{font-size:30px;color:#EF287B;line-height:1}.cat.req h3{font-size:17px;color:#1D0F30;margin:6px 0 4px}.cat.more p,.cat.req p{max-width:none;color:#6B6380}
 @media(max-width:640px){.cats.cats-dyn{grid-template-columns:1fr 1fr;gap:12px}.cat.dyn{min-height:150px;padding:16px 14px 76px}.cat.dyn h3{font-size:16px}.cat.dyn p{font-size:12px}.cat.dyn img{width:64px}}
+
+/* ---- teaser buttons: own wrapper so the heading never gets squeezed ---- */
+.teaser .tt{flex:1;min-width:260px}
+.teaser .tbtns{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.teaser .tbtns .tins{flex-basis:100%;text-align:left;padding:0;font-size:13px;font-weight:500;color:inherit;text-decoration:underline;border:0;background:none}
+@media (max-width:720px){
+  .teaser{flex-direction:column;align-items:flex-start;text-align:left;flex-wrap:nowrap}
+  .teaser .tt{min-width:0;width:100%}
+  .teaser .tbtns{width:100%}
+  .teaser .tbtns .ty,.teaser .tbtns .tw{display:block;flex:1 1 100%;text-align:center;padding:12px 14px;font-size:14px}
+  .teaser .tbtns .tw{color:var(--ink);border:1.5px solid #E2D9EE;background:#fff}
+}
