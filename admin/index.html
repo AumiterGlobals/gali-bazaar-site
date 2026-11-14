@@ -385,8 +385,31 @@ async function settingsPage() {
     <label style="margin-top:10px"><input type="checkbox" id="st_auto" ${s.auto_kyc ? "checked" : ""}> KYC auto-checker on</label>
     <div class="sub" style="margin-top:8px">UPI ID for payments and GST details are changed in the admin app (Settings) — they need a confirmation step.</div>
     <div class="msg" id="st_m"></div><button class="btn pink" style="margin-top:12px" onclick="settingsSave()">Save</button></div>
-    ${"nudges_on" in s ? `<div class="box" id="nudgeBox"><div class="sub">Loading nudges…</div></div>` : ""}`;
+    ${"nudges_on" in s ? `<div class="box" id="nudgeBox"><div class="sub">Loading nudges…</div></div>` : ""}
+    ${"launch_on" in s ? launchBox(s) : ""}`;
   if ("nudges_on" in s) nudgesBox(s);
+  if ("launch_on" in s) lbPrev();
+}
+// ---------- Launch banner on the customer Home (only customers with no orders see it) ----------
+function launchBox(s) {
+  const e = t => String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return `<div class="box"><h3>Launch banner</h3><div class="sub">Top of the customer Home — shown only to customers who haven't ordered yet. Don't promise a discount here; shops set their own prices.</div>
+    <div class="row" style="margin-top:10px"><div><b>Banner ON</b></div><button class="tog ${s.launch_on ? "on" : ""}" id="lb_on" onclick="this.classList.toggle('on')"></button></div>
+    <label>Title</label><input id="lb_t" maxlength="60" value="${e(s.launch_title)}" oninput="lbPrev()">
+    <label>Message</label><textarea id="lb_s" maxlength="160" rows="2" oninput="lbPrev()">${e(s.launch_sub)}</textarea>
+    <div id="lb_p" style="margin-top:10px;border-radius:18px;padding:14px;background:linear-gradient(120deg,#6A1BB0,#F0287A);color:#fff"></div>
+    <div class="msg" id="lb_m"></div><button class="btn pink" style="margin-top:10px" onclick="lbSave()">Save banner</button></div>`;
+}
+function lbPrev() {
+  const p = document.getElementById("lb_p"); if (!p) return;
+  const e = t => String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  p.innerHTML = `🎉 <b style="font-size:15px">${e($("#lb_t").value) || "Title"}</b><div style="font-size:12.5px;opacity:.9;margin-top:3px">${e($("#lb_s").value)}</div>`;
+}
+async function lbSave() {
+  const row = { launch_on: $("#lb_on").classList.contains("on"), launch_title: $("#lb_t").value.trim(), launch_sub: $("#lb_s").value.trim() };
+  if (row.launch_on && !row.launch_title) { $("#lb_m").className = "msg err"; $("#lb_m").textContent = "Add a title"; return; }
+  const { error } = await db.from("settings").update(row).eq("id", 1);
+  $("#lb_m").className = "msg " + (error ? "err" : "ok"); $("#lb_m").textContent = error ? error.message : row.launch_on ? "Saved — banner is ON" : "Saved — banner is OFF";
 }
 // ---------- "Mann hai?" nudges: switch, limits, templates (with preview), this week's report ----------
 let NT = [];

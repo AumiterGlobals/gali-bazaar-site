@@ -25,4 +25,39 @@ if (m) {
     <a class="s" href="/help/install/" style="font-size:12.5px;color:#7C3AED">How to install</a>`;
   document.getElementById("dl").onclick = async () => { try { await navigator.clipboard.writeText(code); } catch (e) {} location.href = apk; };
 }
+
+// /shop/AB7K2Q → a shop's QR poster / WhatsApp link: open that shop in the app, or download the app first
+const sm = location.pathname.match(/^\/shop\/([A-Za-z0-9]{4,12})\/?$/);
+if (sm) {
+  const code = sm[1].toUpperCase(), apk = "https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk";
+  const SB = "https://airbbnopqgubftqjzkjr.supabase.co", KEY = "sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1";
+  const esc = t => String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const open = `intent://shop/${code}#Intent;scheme=galibazaar;package=com.galibazaar.app;S.browser_fallback_url=${encodeURIComponent(apk)};end`;
+  const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const C = document.getElementById("c");
+  C.innerHTML = `<div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div><p class="s" style="margin-top:18px">Opening the shop…</p>`;
+  fetch(`${SB}/rest/v1/shops?link_code=eq.${code}&select=name,locality,city,logo_url,delivery_mode`, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
+    .then(r => r.ok ? r.json() : []).catch(() => []).then(rows => {
+      const sh = rows && rows[0];
+      if (!sh) {
+        document.title = "Shop not found · Gali Bazaar";
+        C.innerHTML = `<div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div><h2 style="margin:14px 0 4px">This shop isn't open right now</h2>
+          <p class="s">The shop may be closed on Gali Bazaar for now, or the link is wrong. You can still find other shops near you in the app.</p>
+          <a class="btn p" href="/">Go to galibazaar.site</a>`;
+        return;
+      }
+      const where = [sh.locality, sh.city].filter(Boolean).join(", ");
+      const how = sh.delivery_mode === "courier" ? "Delivered by courier · pay cash when it arrives" : "Home delivery · pay cash or UPI when it arrives";
+      document.title = sh.name + " · Gali Bazaar";
+      C.innerHTML = `<div class="logo"><span class="g">गली</span>Bazaar<span class="d">.</span></div>
+        ${sh.logo_url ? `<img src="${esc(sh.logo_url)}" alt="" style="width:76px;height:76px;border-radius:20px;object-fit:cover;margin-top:18px">` : `<div style="font-size:44px;margin-top:16px">🏪</div>`}
+        <h2 style="margin:10px 0 2px">${esc(sh.name)}</h2>${where ? `<p class="s" style="margin:0">${esc(where)}</p>` : ""}
+        <p class="s" style="margin:12px 0 4px">${how}</p>
+        ${isIos ? `<div class="s" style="background:#FFF4D6;border-radius:12px;padding:10px 12px;margin-top:12px">Gali Bazaar is on <b>Android</b> for now. Open this link on an Android phone to order.</div>`
+        : `<a class="btn p" href="${open}">Open the shop in the app</a>
+        <a class="btn g2" href="${apk}">Download the app (free)</a>
+        <p class="s" style="font-size:12.5px">New here? Download and install the app, sign in, then <b>come back to this page and tap “Open the shop in the app”</b>.</p>
+        <a class="s" href="/help/install/" style="font-size:12.5px;color:#7C3AED">How to install</a>`}`;
+    });
+}
 </script></body></html>

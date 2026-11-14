@@ -242,6 +242,7 @@ function dash() {
       <div class="box"><h3>New orders <a href="/seller/orders/" onclick="event.preventDefault();go('orders')" style="float:right;color:#7C3AED;font-size:13px;text-decoration:none">All orders →</a></h3>
         ${news.length ? orderTable(news.slice(0, 8), true) : `<div class="sub" style="padding:18px 0">No new orders right now. New orders appear here by themselves.</div>`}</div>
       <div>
+        ${typeof shareBox === "function" ? shareBox() : ""}
         <div class="box"><h3>Quick actions</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <button class="btn" style="background:#F3EDFF;text-align:left" onclick="editItem(null)">＋ Add item</button>
           <button class="btn" style="background:#FFE4EC;text-align:left" onclick="go('catalog/bulk')">⇪ Bulk upload</button>
