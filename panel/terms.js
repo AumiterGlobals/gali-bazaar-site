@@ -6,14 +6,14 @@
   const T = {
     en: {
       seller: "I am the owner of this shop. I agree to the [Seller Terms](#seller-terms) and [Privacy Policy](#privacy), and I am responsible for my goods, prices, licences (FSSAI/GST) and bills.",
-      sales: "I agree to the [Sales Terms](#sales-terms) and [Privacy Policy](#privacy).",
+      sales: "I agree to the [Sales Partner Terms](#sales-terms) and [Privacy Policy](#privacy).",
       rider: "I agree to the [Delivery Partner Terms](#partner-terms) and [Privacy Policy](#privacy) and will use customer details only for delivery.",
       customer: "I am 18+ and I agree to the [Terms of Use](#terms) and [Privacy Policy](#privacy).",
       tick: "Please tick to continue", title: "We've updated our Terms", sub: "Please read and accept them to continue.", btn: "Accept & continue", out: "Sign out",
     },
     hi: {
       seller: "मैं इस दुकान का मालिक हूँ। मैं [सेलर नियम](#seller-terms) और [प्राइवेसी पॉलिसी](#privacy) से सहमत हूँ, और अपने सामान, दाम, लाइसेंस (FSSAI/GST) और बिल की ज़िम्मेदारी मेरी है।",
-      sales: "मैं [सेल्स नियम](#sales-terms) और [प्राइवेसी पॉलिसी](#privacy) से सहमत हूँ।",
+      sales: "मैं [सेल्स पार्टनर नियम](#sales-terms) और [प्राइवेसी पॉलिसी](#privacy) से सहमत हूँ।",
       rider: "मैं [डिलीवरी पार्टनर नियम](#partner-terms) और [प्राइवेसी पॉलिसी](#privacy) से सहमत हूँ और ग्राहक की जानकारी सिर्फ़ डिलीवरी के लिए इस्तेमाल करूँगा।",
       customer: "मैं 18+ हूँ और [नियम व शर्तें](#terms) और [प्राइवेसी पॉलिसी](#privacy) से सहमत हूँ।",
       tick: "आगे बढ़ने के लिए टिक करें", title: "हमने अपने नियम अपडेट किए हैं", sub: "आगे बढ़ने के लिए कृपया नए नियम पढ़कर स्वीकार करें।", btn: "स्वीकार करें और आगे बढ़ें", out: "साइन आउट",
