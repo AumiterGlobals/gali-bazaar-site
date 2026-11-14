@@ -98,7 +98,7 @@ async function loadAll() {
     db.from("festivals").select("*").gte("day", todayStr()).order("day").limit(3),
     db.from("categories").select("*"),
   ]);
-  const charts = await db.from("size_charts").select("*").eq("shop", S.id).order("name");
+  const charts = await db.from("size_charts").select("*").or(`shop.eq.${S.id},shop.is.null`).order("name");   // own + Gali Bazaar standard
   if (shop.data) S = shop.data;
   D = { items: items.data || [], orders: ords.data || [], riders: rid.data || [], complaints: comp.data || [], cns: cns.data || [], slots: slots.data || [], cov: cov.data || [], festivals: fest.data || [] };
   D.cats = catq.data || [];
@@ -444,9 +444,11 @@ function editItem(id) {
         ${K.food ? `<div><label>FSSAI (ON PACK) *</label><input class="in" id="ffs" inputmode="numeric" maxlength="14" value="${esc(i?.fssai || "")}" placeholder="14 digits"></div>` : "<div></div>"}</div>
       ${K.food ? `<label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}">` : ""}</div>` : ""}
     ${!K.food && K.key !== "flowers" ? `<label>BIS / ISI / R-NUMBER (ON THE BOX OR LABEL) <span id="bisreq"></span></label><input class="in" id="fbis" value="${esc(i?.bis_no || "")}" maxlength="20" placeholder="e.g. CM/L-1234567 or R-41012345" style="text-transform:uppercase">` : ""}
-    ${["garments", "footwear"].includes(S.type) ? `<label>📏 SIZE CHART <span class="sub" style="text-transform:none;letter-spacing:0">— needed when the item has more than one size</span></label>
-      <div style="display:flex;gap:8px"><select class="in" id="fch" style="flex:1"><option value="">No chart</option>${(D.charts || []).map(c => `<option value="${c.id}" ${c.id === F_.chart ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
-      <button class="btn ghost" type="button" onclick="go('catalog/charts')">Size charts</button></div><div id="chw"></div>` : ""}
+    ${["garments", "footwear"].includes(S.type) ? `<label>📏 SIZE CHART</label>
+      <div style="display:flex;gap:8px"><select class="in" id="fch" style="flex:1"><option value="">Standard — picked automatically</option>
+        <optgroup label="Gali Bazaar standard">${(D.charts || []).filter(c => !c.shop).map(c => `<option value="${c.id}" ${c.id === F_.chart && i?.size_chart_auto === false ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</optgroup>
+        ${(D.charts || []).some(c => c.shop) ? `<optgroup label="My own charts">${(D.charts || []).filter(c => c.shop).map(c => `<option value="${c.id}" ${c.id === F_.chart ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</optgroup>` : ""}</select>
+      <button class="btn ghost" type="button" onclick="go('catalog/charts')">My own chart</button></div><div id="chw"></div>` : ""}
     <label style="margin-top:14px;font-size:13px;letter-spacing:0;color:#1D0F30;text-transform:none">Return / replacement</label>
     ${RET().max === 0 ? `<div class="note" id="pol" style="margin:4px 0 8px">At door only — fresh and cooked food can be returned only at the door.</div>` : `
     <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement"].concat(RET().refund ? ["Return & refund"] : []).map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
@@ -468,10 +470,13 @@ function editItem(id) {
   $("#fn").addEventListener("input", () => { clearTimeout(F_.st); F_.st = setTimeout(loadSlots, 500); });
   if ($("#fpk")) $("#fpk").onclick = () => { F_.packaged = !F_.packaged; $("#fpk").classList.toggle("on", F_.packaged); $("#pkbox").style.display = F_.packaged ? "block" : "none"; loadSlots(); };
   if ($("#fcr")) $("#fcr").onclick = () => { F_.courier = !F_.courier; $("#fcr").classList.toggle("on", F_.courier); $("#crow").style.borderColor = F_.courier ? "#6A1BB0" : "#EEE7F6"; if ($("#sealbox")) $("#sealbox").style.display = F_.courier ? "grid" : "none"; };
-  if ($("#fch")) { const chk = () => { const c = (D.charts || []).find(x => x.id === $("#fch").value), sz = $("#fv").value.split(";").map(x => x.split("=")[0].trim()).filter(Boolean);
-      const no = c ? sz.filter(z => !(c.rows || []).some(r => String(r.size).toLowerCase() === z.toLowerCase())) : [];
-      $("#chw").innerHTML = no.length ? `<div class="sub" style="color:#B45309">⚠ No row for ${esc(no.join(", "))} in this chart</div>` : !c && sz.length > 1 ? `<div class="sub" style="color:#BE185D">More than one size — the item stays hidden until a chart is linked.</div>` : ""; };
-    $("#fch").onchange = chk; $("#fv").addEventListener("input", chk); chk(); }
+  if ($("#fch")) { const chk = async () => { const sz = $("#fv").value.split(";").map(x => x.split("=")[0].trim()).filter(Boolean);
+      let id = $("#fch").value, auto = false;
+      if (!id && sz.length > 1) { const { data } = await db.rpc("pick_size_chart", { p_type: S.type, p_name: $("#fn").value, p_grp: $("#fg").value, p_sizes: sz }); id = data || ""; auto = true; }
+      const c = (D.charts || []).find(x => x.id === id), no = c ? sz.filter(z => !(c.rows || []).some(r => String(r.size).toLowerCase().replace(/^uk\s*/, "") === z.toLowerCase().replace(/^uk\s*/, ""))) : [];
+      $("#chw").innerHTML = c && auto ? `<div class="okline">📏 Size chart: ${esc(c.name)} ✓ <span class="sub" style="margin:0">— picked automatically</span></div>` : "";
+      $("#chw").innerHTML += no.length ? `<div class="sub" style="color:#B45309">⚠ No row for ${esc(no.join(", "))} in this chart</div>` : !c && sz.length > 1 ? `<div class="sub" style="color:#BE185D">No standard chart fits these sizes — pick one above, or the item stays hidden.</div>` : ""; };
+    $("#fch").onchange = chk; $("#fv").addEventListener("input", chk); $("#fn").addEventListener("input", () => { clearTimeout(F_.ct); F_.ct = setTimeout(chk, 500); }); chk(); }
   const syncU = () => { const q = $("#fq").value.trim(); $("#fu").value = q ? q + " " + $("#fuu").value : ($("#fu").value && !splitUnit($("#fu").value)[0] ? $("#fu").value : ""); };
   $("#fq").addEventListener("input", syncU); $("#fuu").addEventListener("change", syncU);
   // suggestions from the Gali Bazaar item list (new items): pick → name, pack, group, HSN, photos, pack details
@@ -627,164 +632,8 @@ async function delItem(id) {
 }
 
 // ================= Bulk upload =================
-const TPL_HEAD = ["Item name*", "MRP (Rs)", "Selling price (Rs)", "Pack / unit", "In stock (Yes/No)", "Group (optional)", "Sizes (optional)", "Description",
-  "HSN code", "GST type (Inclusive / Exclusive / Nil - blank = no GST)", "GST %", "Doorstep return only (Yes)", "Return / exchange days (blank = doorstep only)",
-  "Manufacturer (grocery)", "FSSAI no. (grocery)", "Ingredients (grocery)"];
-const TPL_ROWS = [
-  ["Aashirvaad atta", 285, 265, "5 kg", "Yes", "Atta & rice", "", "Whole wheat", "11010000", "Inclusive", 5, "Yes", ""],
-  ["Toor dal", 185, 170, "1 kg", "Yes", "Dal", "", "", "07136000", "Exclusive", 5, "", 7],
-  ["Tamatar", "", "", "", "Yes", "Vegetables", "250g=12; 500g=22; 1kg=40", "Fresh", "07020000", "Nil", "", "Yes", ""],
-  ["Classmate notebook", 60, 55, "1 pc", "Yes", "Notebooks", "", "200 pages", "48202000", "", "", "", "3 exchange"],
-  ["Paneer butter masala", "", "", "", "Yes", "Main course", "Half=140; Full=260", "", "", "", "", "Yes", ""]];
-/** column positions from the header row; old 8-column files still work */
-function bulkCols(head) {
-  const h = head && head.map(x => String(x).toLowerCase());
-  if (!h || !h.some(c => c.includes("hsn") || c.includes("selling"))) return { name: 0, price: 1, unit: 2, stock: 3, mrp: 4, grp: 5, sizes: 6, desc: 7 };
-  const f = (...k) => h.findIndex(c => k.some(x => c.includes(x)));
-  const m = { name: f("item"), mrp: f("mrp"), price: f("selling", "price"), unit: f("pack", "unit"), stock: f("stock"), grp: f("group"), sizes: f("size"), desc: f("desc"),
-    hsn: f("hsn"), gtype: f("gst type"), grate: f("gst %", "gst%", "gst rate"), door: f("doorstep"), ret: f("return /", "return/", "exchange"),
-    maker: f("manufacturer"), fssai: f("fssai"), ingr: f("ingredient") };
-  Object.keys(m).forEach(k => m[k] < 0 && delete m[k]); return m;
-}
-let BU = { rows: [], file: "", photos: {} };
+// bulk upload lives in /seller/bulk.js (server checks every row: bulk_items)
 const slug = s => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9ऀ-ॿ]+/g, "-").replace(/^-|-$/g, "");
-function bulk() {
-  $("#main").innerHTML = head("Bulk upload", "Excel or CSV • up to 500 items at once • then add 3 photos per item") + `
-    <div class="grid2" style="grid-template-columns:1fr 1.25fr">
-      <div>
-        <div class="box"><h3>✓ 1. Download the template</h3><div class="sub">${TPL_HEAD.join(", ")}</div>
-          <div class="sub" style="margin-top:8px;line-height:1.5"><b>GST type</b>: Inclusive (price has GST) / Exclusive (GST added on top) / Nil — put the % in GST %. Blank = no GST.<br><b>Returns</b>: “Yes” in Doorstep = return only at the door. Days 1–30 = return &amp; refund (“3 exchange” = exchange). Blank = doorstep only.</div>
-          <button class="btn ghost full" style="margin-top:10px" onclick="dlTemplate()">⇩ Download Excel template</button></div>
-        <div class="box"><h3>2. Upload the filled file</h3>
-          <div id="fdrop" style="border:1.5px dashed #16A34A;border-radius:16px;padding:22px;text-align:center;cursor:pointer;background:#F7FFF9">${BU.file ? `📊<br><b>${esc(BU.file)}</b><div class="sub">${BU.rows.length} rows read • Drop another file to replace</div>` : `📊<br><b>Drop your .xlsx or .csv here</b><div class="sub">or click to browse</div>`}</div></div>
-        <div class="box" style="border:2px solid #8B5CF6"><h3>3. Add photos in bulk</h3>
-          <div class="sub">Drop a folder of photos named like <code>atta-front.jpg</code>, <code>atta-label.jpg</code>, <code>atta-ingredients.jpg</code> — we match them to items by name. Or add them item by item later.</div>
-          <div id="pdrop" style="border:1.5px dashed #C4B5FD;border-radius:16px;padding:20px;text-align:center;cursor:pointer;margin-top:10px;color:#7C3AED;font-weight:600">⇪ Drop photos folder <div class="sub" style="font-weight:400">or click to choose a folder</div></div>
-          <div class="msg" id="pm"></div></div>
-      </div>
-      <div class="box"><h3>Preview <span id="bsum" style="float:right"></span></h3><div id="bprev"></div></div>
-    </div>`;
-  const fd = $("#fdrop"), pd = $("#pdrop");
-  fd.onclick = () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".xlsx,.xls,.csv"; i.onchange = () => readFile(i.files[0]); i.click(); };
-  fd.ondragover = e => e.preventDefault(); fd.ondrop = e => { e.preventDefault(); readFile(e.dataTransfer.files[0]); };
-  pd.onclick = () => { const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.webkitdirectory = true; i.onchange = () => bulkPhotos([...i.files]); i.click(); };
-  pd.ondragover = e => e.preventDefault();
-  pd.ondrop = async e => { e.preventDefault(); bulkPhotos(await filesFromDrop(e.dataTransfer)); };
-  drawPreview();
-}
-function dlTemplate() {
-  if (window.XLSX) { const ws = XLSX.utils.aoa_to_sheet([TPL_HEAD, ...TPL_ROWS]); ws["!cols"] = TPL_HEAD.map((h, i) => ({ wch: i === 0 ? 26 : i === 6 || i >= 9 ? 26 : 16 })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Items"); XLSX.writeFile(wb, "gali-bazaar-catalogue-template.xlsx"); }
-  else csvDownload("gali-bazaar-catalogue-template.csv", [TPL_HEAD, ...TPL_ROWS]);
-}
-async function readFile(f) {
-  if (!f) return;
-  let rows = [];
-  try {
-    if (/\.csv$/i.test(f.name) || !window.XLSX) { const t = (await f.text()).replace(/^﻿/, ""); rows = parseCsv(t); }
-    else { const wb = XLSX.read(await f.arrayBuffer()); rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" }); }
-  } catch (e) { return toast("Couldn't read this file"); }
-  const hasHead = rows[0] && String(rows[0][0] || "").toLowerCase().includes("item");
-  const cx = bulkCols(hasHead ? rows[0] : null); if (hasHead) rows = rows.slice(1);
-  rows = rows.map((r, i) => ({ line: i + 2, r: r.map(x => String(x ?? "").trim()) })).filter(x => x.r[cx.name]);
-  if (rows.length > 500) { toast("Up to 500 items at once — first 500 taken"); rows = rows.slice(0, 500); }
-  const names = new Set(D.items.map(i => i.name.toLowerCase())), gstShop = !!S.gst_billing;
-  BU = { file: f.name, photos: BU.photos, rows: rows.map(({ line, r }) => {
-    const col = k => cx[k] == null ? "" : (r[cx[k]] || "");
-    const gtype = col("gtype").toLowerCase(), rate = col("grate") === "" ? null : +col("grate").replace("%", "");
-    const excl = gstShop && gtype.startsWith("ex");
-    const fin = v => excl && rate > 0 ? Math.round(v * (1 + rate / 100) * 100) / 100 : v;
-    const vs = col("sizes").split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: fin(+p.trim() || 0) }));
-    const price = (+col("price") ? fin(+col("price")) : 0) || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), ban = banWord(col("name"), col("grp"), col("desc"));
-    const gst = !gstShop ? null : (gtype.startsWith("in") || gtype.startsWith("ex")) ? rate : (gtype.startsWith("nil") || gtype === "0") ? 0 : null;
-    const auto = typeof hsnSuggest === "function" && gstShop && gst != null ? hsnSuggest(col("name"), col("grp")) : null;
-    const hsn = col("hsn").replace(/\D/g, "").slice(0, 8) || (auto ? auto.hsn : null);
-    const R = RET(), rt = col("ret").toLowerCase(), dm = rt.match(/\d+/), days = dm && R.max > 0 ? Math.min(R.max, Math.max(1, +dm[0])) : null;
-    const door = /^y/i.test(col("door")) || !days;
-    const item = { shop: S.id, name: col("name"), price, unit: vs.length ? "" : col("unit"), in_stock: !/^no$/i.test(col("stock")), mrp: +col("mrp") || null, grp: col("grp") || null,
-      descr: col("desc") || null, variants: vs, hsn, gst_rate: gst,
-      maker: col("maker") || null, fssai: col("fssai").replace(/\D/g, "") || null, ingredients: col("ingr") || null, ret_policy: door ? "none" : /exch|repl/.test(rt) || !R.refund ? "replace" : "return", ret_days: door ? 0 : days };
-    const badGst = gstShop && (gtype.startsWith("in") || gtype.startsWith("ex")) && ![0, 5, 12, 18, 28, 40].includes(rate);
-    return { line, item, ban, err: ban ? null : (price <= 0 || vs.some(v => v.p <= 0)) ? "Price missing" : badGst ? "GST % missing" : null, dup: names.has(col("name").toLowerCase()) };
-  }) };
-  // names in the Gali Bazaar item list take its exact name + HSN (+ photos / pack details when the pack size matches)
-  try {
-    const M = await masterFind(BU.rows.map(r => r.item.name));
-    BU.rows.forEach(r => { const l = M[normN(r.item.name)]; if (!l) return;
-      const same = r.item.variants.length ? null : l.find(c => normU(c.unit) === normU(r.item.unit)), c = same || l.sort((a, b) => b.uses - a.uses)[0];
-      r.master = true; r.item.name = c.name; r.item.hsn = c.hsn || r.item.hsn;
-      if (same && (same.images || []).length) { r.item.images = same.images.slice(0, NEED()); r.item.img_url = same.images[0]; }
-      if (same) ["maker", "fssai", "ingredients"].forEach(k => r.item[k] = r.item[k] || same[k] || null); });
-  } catch (e) {}
-  bulk();
-}
-function parseCsv(t) {
-  const out = []; let row = [], cur = "", q = false;
-  for (let i = 0; i < t.length; i++) { const c = t[i];
-    if (q) { if (c === '"' && t[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
-    else if (c === '"') q = true; else if (c === ",") { row.push(cur); cur = ""; } else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; row.push(cur); out.push(row); row = []; cur = ""; } else cur += c; }
-  if (cur || row.length) { row.push(cur); out.push(row); }
-  return out;
-}
-function photoKeyFor(name) { const s = slug(name), p = BU.photos; return ["front", "label", "ingredients"].slice(0, NEED()).map(k => p[s + "-" + k] || null); }
-function drawPreview() {
-  const rows = BU.rows;
-  if (!rows.length) { $("#bprev").innerHTML = `<div class="sub" style="padding:18px 0">Upload your filled template to see every row checked before anything is saved.</div>`; $("#bsum").innerHTML = ""; return; }
-  const ready = rows.filter(r => !r.err && !r.ban), errs = rows.filter(r => r.err), ban = rows.filter(r => r.ban);
-  $("#bsum").innerHTML = `<span class="pill ok">${ready.length} ready</span> <span class="pill bad">${errs.length} errors</span> <span class="pill" style="background:#1D0F30;color:#fff">${ban.length} blocked</span>`;
-  $("#bprev").innerHTML = `<div style="max-height:520px;overflow:auto"><table><thead><tr><th>ROW</th><th>ITEM</th><th>PRICE</th><th class="hm">UNIT</th><th class="hm">GST · HSN</th><th class="hm">RETURN</th><th>PHOTOS</th><th>CHECK</th></tr></thead><tbody>${rows.map(r => {
-    const ph = photoKeyFor(r.item.name), n = ph.filter(Boolean).length;
-    const chk = r.ban ? `<span class="pill" style="background:#1D0F30;color:#fff">Blocked: ${r.ban}</span>` : r.err ? `<span class="pill bad">${r.err}</span>` : (n >= NEED() || (r.item.images || []).length >= NEED()) ? `<span class="pill ok">Ready${r.master ? " • from item list" : ""}</span>` : `<span class="pill warn">Ready • ${n ? (NEED() - n) + " photo" + (NEED() - n > 1 ? "s" : "") + " missing" : "add photos"}</span>`;
-    return `<tr><td>${r.line}</td><td><b>${esc(r.item.name)}</b>${r.dup ? `<br><span class="sub">already in your catalogue</span>` : ""}</td><td>${r.item.variants.length ? esc(r.item.variants.map(v => `${v.n}=${v.p}`).join("; ")) : r.item.price ? inr(r.item.price) : "—"}</td>
-      <td class="hm">${esc(r.item.unit || "—")}</td><td class="hm">${r.item.gst_rate == null ? "No GST" : r.item.gst_rate + "%"}${r.item.hsn ? " · " + esc(r.item.hsn) : ""}</td><td class="hm">${r.item.ret_policy === "none" ? "Doorstep" : (r.item.ret_policy === "replace" ? "Exchange " : "Return ") + r.item.ret_days + "d"}</td><td style="white-space:nowrap">${["F", "E", "I"].map((l, k) => `<span class="pill ${ph[k] ? "ok" : "bad"}" style="padding:2px 6px;margin-right:2px">${l}</span>`).join("")}</td><td>${chk}</td></tr>`; }).join("")}</tbody></table></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><span class="sub" style="flex:1">Items without photos stay hidden until photos are added. Names matching the Gali Bazaar item list get its HSN (and photos) by themselves</span>
-      <button class="btn pink" id="bup" ${ready.length ? "" : "disabled"}>⇪ Upload ${ready.length} item${ready.length === 1 ? "" : "s"}</button></div><div class="msg" id="bmsg"></div>`;
-  $("#bup") && ($("#bup").onclick = doBulk);
-}
-async function doBulk() {
-  const ready = BU.rows.filter(r => !r.err && !r.ban), b = $("#bup"), m = $("#bmsg");
-  b.disabled = true;
-  try {
-    for (let i = 0; i < ready.length; i += 50) {
-      const chunk = [];
-      for (const r of ready.slice(i, i + 50)) {
-        const ph = photoKeyFor(r.item.name), row = { ...r.item };
-        if (ph.slice(0, NEED()).every(Boolean)) { const urls = []; for (let k = 0; k < NEED(); k++) urls.push(await uploadPhoto(ph[k], k)); row.images = urls; row.img_url = urls[0]; }
-        chunk.push(row);
-      }
-      b.textContent = `Uploading ${Math.min(i + 50, ready.length)} / ${ready.length}…`;
-      const { error } = await db.from("items").insert(chunk); if (error) throw error;
-    }
-    toast(`${ready.length} items added`); BU = { rows: [], file: "", photos: {} }; await loadAll(); go("catalog");
-  } catch (e) { m.className = "msg err"; m.textContent = niceErr(e); b.disabled = false; b.textContent = "Try again"; }
-}
-async function filesFromDrop(dt) {
-  const out = [], walk = async en => {
-    if (en.isFile) await new Promise(ok => en.file(f => { out.push(f); ok(); }, ok));
-    else if (en.isDirectory) { const rd = en.createReader(); let ents; do { ents = await new Promise(ok => rd.readEntries(ok, () => ok([]))); for (const x of ents) await walk(x); } while (ents.length); }
-  };
-  const items = [...(dt.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
-  if (items.length) { for (const en of items) await walk(en); } else out.push(...dt.files);
-  return out;
-}
-async function bulkPhotos(files) {
-  const m = $("#pm"), map = {};
-  files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)).forEach(f => {
-    const base = f.name.replace(/\.[^.]+$/, ""), mm = base.match(/^(.*?)[-_ ](front|back|label|fssai|maker|ingredients|ingredient|ing|2|3)$/i);
-    if (!mm) return; const k = /^front/i.test(mm[2]) ? "front" : /^(ing|3)/i.test(mm[2]) ? "ingredients" : "label"; map[slug(mm[1]) + "-" + k] = f;
-  });
-  BU.photos = { ...BU.photos, ...map };
-  const n = Object.keys(map).length;
-  if (!n) { m.className = "msg err"; m.textContent = "No photos named like item-front / item-label / item-ingredients found."; return; }
-  // photos for items that are already in the catalogue → attach right away
-  const existing = D.items.filter(i => ["front", "label", "ingredients"].slice(0, NEED()).every(k => map[slug(i.name) + "-" + k]));
-  m.className = "msg ok"; m.textContent = `${n} photos matched${existing.length ? ` • updating ${existing.length} existing item${existing.length === 1 ? "" : "s"}…` : ""}`;
-  drawPreview();
-  for (const i of existing) {
-    try { const urls = []; for (let k = 0; k < NEED(); k++) urls.push(await uploadPhoto(map[slug(i.name) + "-" + ["front", "label", "ingredients"][k]], k));
-      await db.from("items").update({ images: urls, img_url: urls[0] }).eq("id", i.id); } catch (e) { toast(niceErr(e)); }
-  }
-  if (existing.length) { m.textContent = `${n} photos matched • ${existing.length} existing item${existing.length === 1 ? "" : "s"} updated`; await loadAll(); }
-}
 
 // ================= Returns & cancelled =================
 function returns() {

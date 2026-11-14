@@ -11,13 +11,13 @@ const isMeasure = c => !["EU", "US", "UK", "UK/INDIA"].includes(String(c).trim()
 const r1 = x => { const v = Math.round(x * 10) / 10; return String(v); };
 let CH = null;
 function charts() {
-  const L = D.charts || [];
-  $("#main").innerHTML = head("Size charts", "Make a chart once and link it to many items. Clothes and footwear with more than one size need a chart — without it the item stays hidden.",
+  const L = (D.charts || []).filter(c => c.shop);   // own charts; standard ones are read-only
+  $("#main").innerHTML = head("Size charts", "You don't have to make a chart: Gali Bazaar standard charts (men tops, women tops / kurti, bottoms, kids, footwear) are linked to your items by themselves. Make your own only if your brand's sizes are different.",
     `<button class="btn ghost" onclick="go('catalog')">← Catalog</button><button class="btn pink" onclick="editChart(null)">＋ New chart</button>`) +
     `<div class="box">${L.length ? `<table><thead><tr><th>NAME</th><th>SIZES</th><th class="hm">COLUMNS</th><th class="hm">ITEMS</th><th></th></tr></thead><tbody>${L.map(c => `<tr>
       <td><b>📏 ${esc(c.name)}</b></td><td>${esc((c.rows || []).map(r => r.size).join(" · "))}</td><td class="hm">${esc((c.columns || []).join(", "))}</td>
       <td class="hm">${D.items.filter(i => i.size_chart === c.id).length}</td><td><button class="edit" onclick="editChart('${c.id}')">Edit</button></td></tr>`).join("")}</tbody></table>`
-      : `<div class="sub" style="padding:18px 0">No size charts yet. Tap “＋ New chart” and start from a template.</div>`}</div>`;
+      : `<div class="sub" style="padding:18px 0">No charts of your own — standard charts are used. Tap “＋ New chart” only for brand sizes.</div>`}</div>`;
 }
 function editChart(id) {
   const c = id ? (D.charts || []).find(x => x.id === id) : null, t = c ? c.template : (S.type === "footwear" ? "footwear" : "men_tops");
