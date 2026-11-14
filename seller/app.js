@@ -403,7 +403,8 @@ async function setChart(id, chart) {
 }
 async function stock(id, on) {
   const i = D.items.find(x => x.id === id); i.in_stock = on; drawCat();
-  const { error } = await db.from("items").update({ in_stock: on }).eq("id", id);
+  const patch = { in_stock: on }; if (on && i.stock_qty === 0) { patch.stock_qty = null; i.stock_qty = null; }   // switched on by hand at 0: stop counting
+  const { error } = await db.from("items").update(patch).eq("id", id);
   if (error) { i.in_stock = !on; drawCat(); toast(niceErr(error)); }
 }
 // ---- item photos: resize to 900px WebP and upload to the same storage as the app ----
@@ -472,6 +473,8 @@ function editItem(id) {
     ${COURIER_SHOP() ? (K.courier === "never" ? `<div class="note" style="margin-top:10px">Fresh items: local delivery only.</div>` : `<div class="row" style="border:1.5px solid ${F_.courier ? "#6A1BB0" : "#EEE7F6"};border-radius:16px;padding:12px 14px;margin-top:10px" id="crow"><div><b>📦 Can go by courier</b><span>${K.courier === "sealed" ? "Only sealed packets that last at least 1 month (namkeen, biscuits, soan papdi…)." : "Customers in your courier area can order it"}</span></div><button class="tog ${F_.courier ? "on" : ""}" id="fcr"></button></div>
       ${K.courier === "sealed" ? `<div id="sealbox" style="display:${F_.courier ? "grid" : "none"};grid-template-columns:1fr 1fr;gap:10px;align-items:end"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13.5px;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="fsl" ${F_.sealed ? "checked" : ""}> Sealed pack</label>
         <div><label>SHELF LIFE (MONTHS) *</label><input class="in" id="fsh" inputmode="numeric" maxlength="2" value="${i?.shelf_life_months ?? ""}"></div></div>` : ""}`) : ""}
+    <label>STOCK — HOW MANY YOU HAVE (OPTIONAL)</label><input class="in" id="fsq" inputmode="numeric" maxlength="5" value="${i?.stock_qty ?? ""}" placeholder="${S.type === "footwear" ? "e.g. 100 (pairs)" : "e.g. 100"}" oninput="this.value=this.value.replace(/\\D/g,'');if(this.value!=='')$('#fs').classList.toggle('on',+this.value>0)">
+    <div class="sub" style="font-size:12px;margin:4px 0 8px">Goes down with each order and comes back if an order is cancelled. At 0 the item shows "Out of stock" by itself. Leave empty to use only the switch.</div>
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
     <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
       <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
@@ -631,7 +634,7 @@ async function saveItem() {
     const imgs = Object.values(map);
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0] || null, images: imgs, photos: map, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days,
-      packaged: pk, maker: val("#fmk") || null, net_qty: pk && !vs.length ? (val("#fq") + " " + ($("#fuu")?.value || "")).trim() : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
+      packaged: pk, maker: val("#fmk") || null, stock_qty: val("#fsq") === "" ? null : +val("#fsq"), net_qty: pk && !vs.length ? (val("#fq") + " " + ($("#fuu")?.value || "")).trim() : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
       courier_ok: !!F_.courier && K.courier !== "never", sealed: !!$("#fsl")?.checked, shelf_life_months: isNaN(shelf) ? null : shelf };
     if (K.food) { row.fssai = fssai || null; row.ingredients = val("#fin") || null; }
     if ($("#fch")) row.size_chart = $("#fch").value || null;
