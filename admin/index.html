@@ -463,19 +463,19 @@ async function featured() {
     <div class="box"><h3>Featured now</h3>${on.map(s => `<div class="req"><b>${esc(s.name)}</b><span>till ${s.featured_until}</span></div>`).join("") || '<div class="sub">None.</div>'}</div>`;
 }
 let SP = [];
-async function sales() {
+async function salesTeam() {
   const [sp, comm, shops] = await Promise.all([q("sales_people", "*", x => x.order("created_at")), q("commissions", "sales,amount,status"), q("shops", "id,referred_by")]);
   SP = sp;
   const stat = p => p.active === false ? `<span class="pill grey">Removed</span>` : p.login_blocked ? `<span class="pill bad">Blocked</span>` : !p.username ? `<span class="pill warn">Setup pending</span>` : `<span class="pill ok">Active</span>`;
-  $("#main").innerHTML = head("Sales team", "Only these emails can open the sales panel (app &amp; galibazaar.site/sales)", `<button class="btn pink" onclick="spAdd()">＋ Add sales person</button>`) +
+  $("#main").innerHTML = head("Sales team", "Only these emails can open the sales panel (app &amp; galibazaar.site/sales)", `<button class="btn pink" onclick="spAdd()">＋ Add sales person</button>`) + spTabs("team") +
     `<div class="box"><table><thead><tr><th>NAME</th><th class="hi">EMAIL (LOGIN)</th><th>USERNAME</th><th>STATUS</th><th class="hi">COMMISSION</th><th>SHOPS</th><th class="hi">PENDING</th><th class="hi">LAST SIGN-IN</th><th></th></tr></thead><tbody>${sp.map(p => {
     const mine = comm.filter(c => c.sales === p.id);
     return `<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc(p.code)}</span></td><td class="hi">${esc(p.email || "—")}</td>
       <td>${p.username ? `<b style="color:#6D28D9">${esc(p.username)}</b>` : `<span class="sub">not created</span>`}</td><td>${stat(p)}</td>
-      <td class="hi">${p.commission_pct}%</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
+      <td class="hi">${p.commission_pct}%${p.commission_type ? `<br><span class="sub">${p.commission_type === "one_time" ? "One-time" : p.commission_type === "period" ? p.commission_months + " months" : "Permanent"}</span>` : ""}${p.kyc ? `<br><span class="pill ${p.kyc === "APPROVED" ? "ok" : p.kyc === "PENDING" ? "warn" : "grey"}">KYC ${p.kyc.toLowerCase()}</span>` : ""}</td><td>${shops.filter(s => s.referred_by === p.id).length}</td>
       <td class="hi"><b style="color:#6D28D9">${inr(mine.filter(c => c.status === "DUE").reduce((a, c) => a + Number(c.amount), 0))}</b></td>
       <td class="hi">${p.last_sign_in ? new Date(p.last_sign_in).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : `<span class="sub">Not signed in yet</span>`}</td>
-      <td><button class="edit" onclick="spManage('${p.id}')">Manage</button></td></tr>`; }).join("")}</tbody></table></div>
+      <td><button class="edit" onclick="spManage('${p.id}')">Manage</button> <button class="edit" onclick="spTerms('${p.id}')">Commission</button></td></tr>`; }).join("")}</tbody></table></div>
     <div class="sub">“Setup pending” = email added, but the person hasn't verified the email code and created a login yet. Sales panel: Sign in → Sales team on galibazaar.site. Payouts (with TDS) are sent from the Admin panel in the app.</div>`;
 }
 function genPass() { const w = ["Gali", "Bazaar", "Dukaan", "Mohalla", "Sales"]; return w[Math.floor(Math.random() * w.length)] + "@" + (1000 + Math.floor(Math.random() * 9000)); }
@@ -788,6 +788,7 @@ async function saveForm() {
 start();
 </script>
 <script src="/panel/fy.js?v=1"></script>
+<script src="/admin/sales-partner.js?v=1795480000"></script>
 <script src="/admin/books.js?v=6">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
