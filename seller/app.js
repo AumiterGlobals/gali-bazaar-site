@@ -62,13 +62,15 @@ async function notSeller(email) {
   document.body.innerHTML = `<div class="login">${LOGO}<h1>This account isn't a seller account</h1><p class="sub">${esc(email || "")} doesn't own a shop on Gali Bazaar, so it can't open the seller panel. You've been signed out.<br><br>New shop? Download the app and tap <b>Register your shop</b> — KYC is done in the app.</p><a class="btn pink" href="/seller/login/">Sign in again</a> <a class="btn ghost" href="/#install">Download app</a></div>`;
 }
 // voice alerts ("New order arrived!") — the same tones as the app
+// food shops must give a 14-digit FSSAI number (update-47)
+const FOOD = () => (D.cats || []).some(c => c.key === S.type && c.needs_fssai) || (!(D.cats || []).length && ["grocery", "fruitveg", "sweets", "food"].includes(S.type));
 const TONE = {};
 function tone(k) { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
 function beep() { tone("new_order"); }
 
 async function loadAll() {
   const since3 = new Date(Date.now() - 3 * 864e5).toISOString(), since30 = new Date(Date.now() - 30 * 864e5).toISOString();
-  const [shop, items, ords, rid, comp, cns, slots, cov, fest] = await Promise.all([
+  const [shop, items, ords, rid, comp, cns, slots, cov, fest, catq] = await Promise.all([
     db.from("shops").select("*").eq("id", S.id).single(),
     db.from("items").select("*").eq("shop", S.id).order("name"),
     db.from("orders").select("*").eq("shop", S.id).or(`created_at.gte.${since30},status.in.(PLACED,ACCEPTED,OUT)`).order("created_at", { ascending: false }).limit(600),
@@ -78,9 +80,11 @@ async function loadAll() {
     db.from("shop_slots").select("*").eq("shop", S.id).order("from_t"),
     db.from("shop_coverage").select("*").eq("shop", S.id),
     db.from("festivals").select("*").gte("day", todayStr()).order("day").limit(3),
+    db.from("categories").select("key,needs_fssai"),
   ]);
   if (shop.data) S = shop.data;
   D = { items: items.data || [], orders: ords.data || [], riders: rid.data || [], complaints: comp.data || [], cns: cns.data || [], slots: slots.data || [], cov: cov.data || [], festivals: fest.data || [] };
+  D.cats = catq.data || [];
   D.recent = D.orders.filter(o => o.created_at >= since3 || ["PLACED", "ACCEPTED", "OUT"].includes(o.status));
 }
 
@@ -204,7 +208,10 @@ function dash() {
   const greet = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
   $("#main").innerHTML = head(`${greet}${S.pan_name ? ", " + esc(S.pan_name.split(" ")[0][0] + S.pan_name.split(" ")[0].slice(1).toLowerCase()) : ""}`,
       `${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} • ${esc(S.name)}${S.locality ? ", " + esc(S.locality) : ""}`,
-      `<button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
+      `<button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + (FOOD() && !/^[12][0-9]{13}$/.test(S.fssai || "") ? `
+    <div class="box" style="background:#FFF4D6;border-color:#F6D58A;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="font-size:24px">🧾</span>
+      <div style="flex:1;min-width:200px"><b>Add your FSSAI number</b><div class="sub">FSSAI registration is required for food shops. Add your 14-digit number to keep selling.</div></div>
+      <a class="btn dark" href="/seller/shop/">Add FSSAI number</a></div>` : "") + `
     <div class="kpis k4">
       <div class="kpi"><span>Today's sales</span><b>${inr(sales)}</b><small>${todayDone.length} order${todayDone.length === 1 ? "" : "s"} delivered</small></div>
       <div class="kpi"><span>New orders</span><b class="pk">${news.length}</b><small>waiting for you</small></div>
@@ -908,7 +915,9 @@ function shop() {
     <div class="grid2"><div class="box"><h3>Shop details</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
       ${f("name", "SHOP NAME", S.name)}${f("phone", "PHONE", S.phone)}${f("addr", "ADDRESS", S.addr)}${f("locality", "LOCALITY", S.locality)}${f("city", "CITY", S.city)}${f("pin", "PIN CODE", S.pin)}
       ${f("min_order", "MINIMUM ORDER ₹", S.min_order, "number")}${f("delivery_fee", "DELIVERY FEE ₹", S.delivery_fee, "number")}${f("free_above", "FREE DELIVERY ABOVE ₹ (optional)", S.free_above, "number")}${f("upi_id", "UPI ID (shown to customers)", S.upi_id)}
-      ${f("fssai", "FSSAI (food shops)", S.fssai)}${f("gstin", "GSTIN (optional)", S.gstin)}</div>
+      ${f("fssai", FOOD() ? "FSSAI NO. (14 DIGITS) — REQUIRED" : "FSSAI NO. (OPTIONAL)", S.fssai)}${f("gstin", "GSTIN (optional)", S.gstin)}</div>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12.5px;line-height:1.45"><input type="checkbox" id="gul" ${S.gst_under_limit ? "checked" : ""} style="margin-top:3px">
+        <span>No GSTIN? Tick this: I'm not GST registered — my shop's yearly sales are under the GST limit (₹40 lakh for goods; ₹20 lakh in some states). If sales cross the limit, I'll add my GSTIN.</span></label>
       <div class="msg" id="shm"></div><button class="btn pink" style="margin-top:12px" onclick="saveShopForm()">Save details</button></div>
     <div><div class="box"><h3>KYC <span class="pill ${kycTxt[1]}" style="float:right">${kycTxt[0]}</span></h3>
         <div class="row" style="border:0;margin:0"><div><b>PAN name</b><span>${esc(S.pan_name || "—")}</span></div></div><div class="row"><div><b>PAN</b><span>${S.pan_number ? esc(S.pan_number.slice(0, 5) + "••••" + S.pan_number.slice(-1)) : "—"}</span></div></div>
@@ -922,8 +931,12 @@ async function saveShopForm() {
   const v = k => $("#sh_" + k).value.trim(), n = k => v(k) === "" ? null : +v(k), m = $("#shm");
   if (!v("name") || !/^\d{10}$/.test(v("phone").replace(/\D/g, "").slice(-10))) { m.className = "msg err"; m.textContent = "Enter shop name and a 10-digit phone"; return; }
   const patch = { name: v("name"), phone: v("phone"), addr: v("addr"), locality: v("locality"), city: v("city"), pin: v("pin"), min_order: n("min_order") || 0, delivery_fee: n("delivery_fee") || 0,
-    free_above: n("free_above"), upi_id: v("upi_id") || null, fssai: v("fssai") || null, gstin: v("gstin") || null };
+    free_above: n("free_above"), upi_id: v("upi_id") || null, fssai: v("fssai").replace(/\D/g, "") || null, gstin: v("gstin") || null };
   if (!patch.gstin) patch.gst_billing = false;
+  patch.gst_under_limit = !patch.gstin && !!($("#gul") && $("#gul").checked);
+  if (patch.fssai && !/^[12][0-9]{13}$/.test(patch.fssai)) return toast("FSSAI number has 14 digits and starts with 1 or 2 — check your certificate");
+  if (FOOD() && !patch.fssai) return toast("Add your 14-digit FSSAI number — it's required for food shops");
+  if (!patch.gstin && !patch.gst_under_limit) return toast("Add your GSTIN, or tick the box that your sales are under the GST limit");
   const { error } = await db.from("shops").update(patch).eq("id", S.id);
   if (error) { m.className = "msg err"; m.textContent = niceErr(error); return; }
   Object.assign(S, patch); toast("Saved"); shell(); page();

@@ -201,12 +201,26 @@ async function dash() {
 
 function kycTable(list) {
   if (!list.length) return '<div class="sub">Nothing waiting. 🎉</div>';
-  return `<table><thead><tr><th>SHOP</th><th>OWNER (PAN NAME)</th><th>TYPE</th><th>AUTO SCORE</th><th>STATUS</th><th></th></tr></thead><tbody>${list.map(s => {
-    const sc = score(s), cls = sc == null ? "grey" : sc >= 90 ? "ok" : "warn";
+  return `<table><thead><tr><th>SHOP</th><th>OWNER (PAN NAME)</th><th>TYPE</th><th>AUTO SCORE</th><th>FSSAI / GST</th><th>STATUS</th><th></th></tr></thead><tbody>${list.map(s => {
+    const sc = score(s), cls = sc == null ? "grey" : sc >= 90 ? "ok" : "warn", food = needsFssai(s.type), noF = food && !/^[12][0-9]{13}$/.test(s.fssai || "");
     return `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.pan_name || "")}</td><td>${esc(s.type)}</td><td><b style="color:${sc >= 90 ? "#16A34A" : "#B45309"}">${sc == null ? "—" : sc + "%"}</b></td>
+      <td>${idCell(s)}</td>
       <td><span class="pill ${cls}">${sc == null ? "Checking" : sc >= 90 ? "Looks good" : "Review"}</span></td>
-      <td style="white-space:nowrap"><button class="mini" onclick="docs('${s.id}')">Docs</button><button class="mini dk" onclick="kycSet('${s.id}','APPROVED')">Approve</button><button class="mini" onclick="kycSet('${s.id}','REJECTED')">Reject</button></td></tr>`;
+      <td style="white-space:nowrap"><button class="mini" onclick="docs('${s.id}')">Docs</button><button class="mini" onclick="idRecheck('${s.id}')">Check IDs</button>${noF ? `<span class="sub" style="color:#BE185D;margin:0 6px">No FSSAI — can't approve</span>` : `<button class="mini dk" onclick="kycSet('${s.id}','APPROVED')">Approve</button>`}<button class="mini" onclick="kycSet('${s.id}','REJECTED')">Reject</button></td></tr>`;
   }).join("")}</tbody></table>`;
+}
+// FSSAI / GSTIN with the checker's result (update-47)
+const needsFssai = t => { const c = (cats || []).find(x => x.key === t); return c ? !!c.needs_fssai : ["grocery", "fruitveg", "sweets", "food"].includes(t); };
+function idCell(s) {
+  const c = s.id_check || {}, mark = x => ({ ok: ["✓", "#16A34A"], bad: ["✗", "#BE185D"], manual: ["?", "#B45309"] }[x?.state] || ["·", "#8C86A0"]);
+  const line = (lab, val, x, site) => { const [m, col] = mark(x); return `<div style="color:${col};font-weight:600">${m} ${lab}: ${esc(val)}${site && val && !val.startsWith("—") ? ` <a href="${site}" target="_blank" onclick="navigator.clipboard.writeText('${esc(val)}')" title="Copies the number and opens the official site" style="font-size:11px">check ↗</a>` : ""}</div>${x?.msg ? `<div class="sub" style="font-size:11px">${esc(x.msg)}${x.name ? " · " + esc(x.name) : ""}</div>` : ""}`; };
+  return line("FSSAI", s.fssai || (needsFssai(s.type) ? "— missing (required)" : "— not needed"), c.fssai, "https://foscos.fssai.gov.in/")
+       + line("GST", s.gstin || (s.gst_under_limit ? "— under the GST limit" : "—"), c.gst, "https://services.gst.gov.in/services/searchtp");
+}
+async function idRecheck(id) {
+  const { data, error } = await db.functions.invoke("push", { body: { action: "verify_ids", shop_id: id } });
+  if (error || data?.ok === false) return alert("Couldn't check: " + (data?.error || data?.note || error?.message || ""));
+  go(page);
 }
 async function kycSet(id, st) {
   const reason = st === "REJECTED" ? prompt("Reason (the shop sees this)") : null;
@@ -250,6 +264,7 @@ async function sellers() {
   window._sd = draw; draw("");
 }
 async function kyc() {
+  if (!cats.length) { const { data } = await db.from("categories").select("*"); cats = data || []; }
   const [shops, riders] = await Promise.all([q("shops", "*", x => x.eq("kyc", "PENDING")), q("riders", "id,name,phone,kyc,shop", x => x.eq("kyc", "PENDING"))]);
   $("#main").innerHTML = head("KYC queue", `${shops.length} shops · ${riders.length} delivery partners waiting`) + `<div class="box"><h3>Shops</h3>${kycTable(shops)}</div>
     <div class="box"><h3>Delivery partners</h3>${riders.length ? `<table><tbody>${riders.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone)}</td>
@@ -591,7 +606,7 @@ const slug = s => s.toLowerCase().normalize("NFKD").replace(/&/g, " and ").repla
 function openForm(key, name) {
   const c = cats.find(x => x.key === key);
   form = c ? { ...c, subs: [...(c.subs || [])], isNew: false }
-    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, isNew: true };
+    : { key: "", name: name || "", name_hi: "", short_line: "", icon: "shopping_cart", color: COLORS[0], subs: [], visible: false, allow_signup: true, needs_fssai: false, isNew: true };
   renderForm();
 }
 
@@ -611,6 +626,7 @@ function renderForm() {
       <span class="chip add" onclick="addSub()">＋ Add</span></div>
     <div class="row"><div><b>Show to customers</b><span>Off = draft</span></div><button class="tog ${f.visible ? "on" : ""}" onclick="setF('visible', ${!f.visible})"></button></div>
     <div class="row" style="margin-top:0"><div><b>Allow shop sign-ups</b><span>Shops can pick this type</span></div><button class="tog ${f.allow_signup ? "on" : ""}" onclick="setF('allow_signup', ${!f.allow_signup})"></button></div>
+    <div class="row"><div><b>Food category, FSSAI required</b><span>Shops of this type must give a 14-digit FSSAI number</span></div><button class="tog ${f.needs_fssai ? "on" : ""}" onclick="setF('needs_fssai', ${!f.needs_fssai})"></button></div>
     <div class="note"><b>Cards are made automatically</b> from name + icon + colour — app home, Categories, seller sign-up &amp; website.</div>
     <div class="msg" id="fm"></div>
     <button class="btn pink full" onclick="saveForm()">Save category</button>
@@ -648,7 +664,7 @@ async function saveForm() {
   const key = f.isNew ? slug(f.name) : f.key;
   if (f.isNew && cats.some(c => c.key === key)) { m.className = "msg err"; m.textContent = `"${key}" already exists — edit that one instead.`; return; }
   const { error } = await db.rpc("admin_save_category", { p: { key, name: f.name.trim(), name_hi: f.name_hi, short_line: f.short_line, icon: f.icon,
-    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup } });
+    color: f.color, subs: f.subs, visible: f.visible, allow_signup: f.allow_signup, needs_fssai: !!f.needs_fssai } });
   if (error) { m.className = "msg err"; m.textContent = error.message; return; }
   closeForm(); loadCats();
 }
