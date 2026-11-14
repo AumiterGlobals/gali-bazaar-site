@@ -386,9 +386,22 @@ async function settingsPage() {
     <div class="sub" style="margin-top:8px">UPI ID for payments and GST details are changed in the admin app (Settings) — they need a confirmation step.</div>
     <div class="msg" id="st_m"></div><button class="btn pink" style="margin-top:12px" onclick="settingsSave()">Save</button></div>
     ${"nudges_on" in s ? `<div class="box" id="nudgeBox"><div class="sub">Loading nudges…</div></div>` : ""}
-    ${"launch_on" in s ? launchBox(s) : ""}`;
+    ${"launch_on" in s ? launchBox(s) : ""}
+    <div class="box"><h3>Unused KYC files</h3><div class="sub">Deletes KYC photos (PAN, Aadhaar, selfie, cheque) that no shop, delivery partner or sales partner uses any more — e.g. left after test data was cleaned. Photos of every existing account and anything uploaded in the last 24 hours are never touched.</div>
+      <div class="msg" id="kc_m"></div><button class="btn dark" style="margin-top:10px" onclick="kycClean(this)">Check unused KYC files</button></div>`;
   if ("nudges_on" in s) nudgesBox(s);
   if ("launch_on" in s) lbPrev();
+}
+async function kycClean(b) {
+  const call = async dry => { const { data, error } = await db.functions.invoke("push", { body: { action: "kyc_cleanup", dry } }); return error ? { ok: false, error: typeof niceErr === "function" ? niceErr(error) : error.message } : data; };
+  b.disabled = true; $("#kc_m").className = "msg"; $("#kc_m").textContent = "Checking…";
+  const d = await call(true); b.disabled = false;
+  if (!d?.ok) { $("#kc_m").className = "msg err"; $("#kc_m").textContent = d?.error || "Couldn't check"; return; }
+  if (!d.count) { $("#kc_m").className = "msg ok"; $("#kc_m").textContent = "Nothing to clean — every KYC file belongs to an account."; return; }
+  if (!confirm(`${d.count} unused KYC file${d.count === 1 ? "" : "s"} found. Delete ${d.count === 1 ? "it" : "them"} for good?`)) { $("#kc_m").textContent = ""; return; }
+  b.disabled = true; $("#kc_m").textContent = "Deleting…";
+  const r = await call(false); b.disabled = false;
+  $("#kc_m").className = "msg " + (r?.ok ? "ok" : "err"); $("#kc_m").textContent = r?.ok ? `Deleted ${r.removed} unused KYC file${r.removed === 1 ? "" : "s"}.` : (r?.error || "Couldn't delete");
 }
 // ---------- Launch banner on the customer Home (only customers with no orders see it) ----------
 function launchBox(s) {
