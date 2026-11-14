@@ -84,7 +84,7 @@ async function books() {
     db.from("pay_claims").select("*").eq("shop", S.id).eq("status", "APPROVED")]);
   const vq = await db.from("shop_vendors").select("*").eq("shop", S.id).order("name");
   BKD.vendors = vq.error ? null : vq.data || [];
-  const x = { orders: o.data || [], counter: cs.data || [], cns: cn.data || [], exps: ex.data || [], recs: rc.error ? [] : rc.data || [], claims: cl.data || [] };
+  const x = { orders: o.data || [], counter: cs.data || [], cns: cn.data || [], exps: (ex.data || []).filter(e => !e.cancelled_at), recs: rc.error ? [] : (rc.data || []).filter(r => !r.cancelled_at), claims: cl.data || [] };
   BKD.x = x; const es = BKD.es = bkBuild(x), f = BKD.from, to = BKD.to;
   const pl = bkNet(es, f, to), profit = -Object.entries(pl).filter(([a]) => bkNom(a)).reduce((s, [, v]) => s + v, 0);
   const ud = x.counter.filter(c => c.pay_mode === "CREDIT").map(c => ({ c, due: r2(c.total - x.recs.filter(r => r.sale_id === c.id).reduce((a, r) => a + Number(r.amount), 0) - x.cns.filter(n => n.sale_id === c.id && n.kind !== "REPLACEMENT").reduce((a, n) => a + Number(n.amount), 0)) }));
@@ -139,7 +139,7 @@ function bkShow() {
       const bold = /^[A-Z &]+$/.test(r[0]) && /[A-Z]/.test(r[0]) || /^Total/.test(r[0]);
       let act = "";
       if (BKD.tab === "udhaar") { const u = BKD.ud[i]; if (u && u.due > .009) act = `<button class="edit" onclick="bkCollect('${u.c.id}')">Collect</button>`; }
-      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Delete</button>` : ""}`; }
+      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Cancel</button>` : ""}`; }
       return `<tr>${r.map(v => `<td style="${num(v) ? "text-align:right;" : ""}${bold ? "font-weight:700" : ""}">${num(v) ? inr2(v) : esc(v)}</td>`).join("")}${["udhaar", "vend"].includes(BKD.tab) ? `<td style="white-space:nowrap">${act}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
     ${rows.length <= 1 ? '<div class="sub">Nothing here for this period.</div>' : ""}`;
 }
@@ -218,7 +218,13 @@ function bkPay(id) {
     closeDrawer(); books();
   };
 }
-async function bkDel(id) { if (!confirm("Delete this expense?")) return; const { error } = await db.from("shop_expenses").delete().eq("id", id); if (error) return toast(niceErr(error)); books(); }
+// finance entries are never deleted (update-61): a wrong expense is cancelled — kept for the records, left out of every total
+async function bkDel(id) {
+  const why = prompt("Cancel this expense? It stays in your records but is left out of every total.\n\nReason (e.g. entered twice):");
+  if (why === null) return;
+  const { error } = await db.from("shop_expenses").update({ cancelled_at: new Date().toISOString(), cancel_reason: why.trim() || "Cancelled" }).eq("id", id);
+  if (error) return toast(niceErr(error)); toast("Expense cancelled"); books();
+}
 
 function bkVendor(fromExpense) {
   const back = fromExpense ? $("#xv")?.value : "";
