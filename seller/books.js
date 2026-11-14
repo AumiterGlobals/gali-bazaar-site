@@ -6,7 +6,7 @@ const bkType = a => [BK.CASH, BK.BANK, BK.DEBT, BK.INGST].includes(a) ? "ASSET" 
 const bkNom = a => ["INCOME", "EXPENSE"].includes(bkType(a));
 const dupMsg = e => { const m = niceErr(e); return /no_dup_bill/.test(m) ? "This vendor invoice is already entered" : /no_dup_utr/.test(m) ? "This UTR is already entered" : m; };
 const r2 = v => Math.round(v * 100) / 100, f2 = v => Number(v || 0).toFixed(2);
-const bkDay = ts => { if (!ts) return ""; const d = new Date(ts); return isNaN(d) ? String(ts).slice(0, 10) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const bkDay = ts => { if (!ts) return ""; const d = new Date(ts); return isNaN(d) ? String(ts).slice(0, 10) : istIso(d); };
 const bkMoney = m => /^cash/i.test(m || "CASH") ? BK.CASH : BK.BANK;
 let BKD = { from: null, to: null, tab: "pl" };
 

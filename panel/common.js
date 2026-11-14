@@ -8,11 +8,21 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const inr = (n, d = 0) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: 0 });
 const inr2 = n => { const v = Number(n || 0); return v % 1 ? "₹" + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : inr(v); };
+/* ---- India time everywhere: dates/times are shown and "today" is worked out in IST, whatever the computer's own time zone ---- */
+const IST_MS = 19800000;
+const istIso = (t = Date.now()) => new Date(+new Date(t) + IST_MS).toISOString().slice(0, 10);   // "2026-11-14" in India
+const istD = s => { const d = new Date(s); return isNaN(d) ? d : new Date(+d + IST_MS); };       // read with getUTC*()
+(function () {   // toLocale*String default to India time
+  for (const k of ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]) {
+    const orig = Date.prototype[k];
+    Date.prototype[k] = function (loc, opt) { return orig.call(this, loc || "en-IN", Object.assign({ timeZone: "Asia/Kolkata" }, opt || {})); };
+  }
+})();
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const dmy = s => { if (!s) return "—"; const d = new Date(s); return isNaN(d) ? "—" : `${d.getDate()} ${MON[d.getMonth()]}`; };
-const dmyy = s => { if (!s) return "—"; const d = new Date(s); return isNaN(d) ? "—" : `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`; };
-const dt = s => { if (!s) return "—"; const d = new Date(s); return isNaN(d) ? "—" : `${d.getDate()} ${MON[d.getMonth()]}, ${d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`; };
-function fyStart(d = new Date()) { const y = d.getMonth() < 3 ? d.getFullYear() - 1 : d.getFullYear(); return new Date(y, 3, 1); }
+const dmy = s => { if (!s) return "—"; const d = istD(s); return isNaN(d) ? "—" : `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+const dmyy = s => { if (!s) return "—"; const d = istD(s); return isNaN(d) ? "—" : `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const dt = s => { if (!s) return "—"; const d = new Date(s), i = istD(s); return isNaN(d) ? "—" : `${i.getUTCDate()} ${MON[i.getUTCMonth()]}, ${d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`; };
+function fyStart(d = new Date()) { const i = istD(d), y = i.getUTCMonth() < 3 ? i.getUTCFullYear() - 1 : i.getUTCFullYear(); return new Date(y, 3, 1); }
 function fyLabel(d = new Date()) { const y = fyStart(d).getFullYear(); return `FY ${y}–${String(y + 1).slice(2)}`; }
 function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
 function makeClient(storageKey) { return supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey, persistSession: true, autoRefreshToken: true } }); }

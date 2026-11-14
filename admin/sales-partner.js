@@ -173,7 +173,7 @@ async function advicePdfAdmin(pid) { if (!window.advicePdf) await new Promise(ok
 // ---------- Form 16A upload (per partner, per quarter) ----------
 async function spF16() {
   const [sp, list] = await Promise.all([q("sales_people", "id,name,code,pan", x => x.not("pan", "is", null).order("name")), q("form16a", "*", x => x.order("uploaded_at", { ascending: false }))]);
-  const d0 = new Date(), y0 = d0.getMonth() < 3 ? d0.getFullYear() - 1 : d0.getFullYear(), fy = `${y0}-${String(y0 + 1).slice(2)}`;
+  const d0 = new Date(Date.now() + 19800000), y0 = d0.getUTCMonth() < 3 ? d0.getUTCFullYear() - 1 : d0.getUTCFullYear(), fy = `${y0}-${String(y0 + 1).slice(2)}`;
   $("#main").innerHTML = head("Sales team", "Upload Form 16A each quarter after TDS is filed — partners download it from their Payouts page") + spTabs("f16") + `<div class="box" style="max-width:640px">
     <label>SALES PARTNER</label><select class="in" id="fs">${sp.map(p => `<option value="${p.id}">${esc(p.name)} · ${esc(p.code)} · ${esc(p.pan)}</option>`).join("")}</select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px"><div><label>FINANCIAL YEAR</label><input class="in" id="ff" value="${esc(fy)}" placeholder="2026-27"></div><div><label>QUARTER</label><select class="in" id="fq"><option value="1">Q1 (Apr–Jun)</option><option value="2">Q2 (Jul–Sep)</option><option value="3">Q3 (Oct–Dec)</option><option value="4">Q4 (Jan–Mar)</option></select></div></div>

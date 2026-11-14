@@ -31,7 +31,7 @@ function fyClosePanel() {
 async function fyManage(shop, onChange) {
   FY.shop = shop; FY.onChange = onChange;
   await fyLoad(shop);
-  const now = new Date(), y = now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+  const now = istD(Date.now()), y = now.getUTCMonth() < 3 ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
   const has = s => FY.list.some(f => f.start_date === s);
   const sugg = !has(`${y}-04-01`) ? y : !has(`${y + 1}-04-01`) ? y + 1 : null;
   fyPanel(`<h2><span>Financial years</span><button class="x" onclick="fyClosePanel()" aria-label="Close">×</button></h2>
@@ -50,7 +50,7 @@ async function fyManage(shop, onChange) {
 }
 function fyForm(id, y) {
   const f = id ? FY.list.find(x => x.id === id) : null;
-  const yr = y || (new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear());
+  const yr = y || (istD(Date.now()).getUTCMonth() < 3 ? istD(Date.now()).getUTCFullYear() - 1 : istD(Date.now()).getUTCFullYear());
   const s = f ? f.start_date : `${yr}-04-01`, e = f ? f.end_date : `${yr + 1}-03-31`;
   fyPanel(`<h2><span>${f ? "Edit financial year" : "Add financial year"}</span><button class="x" onclick="fyManage(FY.shop, FY.onChange)" aria-label="Back">×</button></h2>
     <label>NAME</label><input class="in" id="fyL" value="${fyEsc(f ? f.label : `FY ${yr}-${String((yr + 1) % 100).padStart(2, "0")}`)}">

@@ -19,8 +19,8 @@ let catF = "all", catQ = "", ordTab = "new", retTab = "coming", drawerOpen = fal
 const route = () => location.pathname.replace(/^\/seller\/?/, "").replace(/\/$/, "");
 const go = p => { history.pushState({}, "", "/seller/" + (p ? p + "/" : "")); page(); };
 window.onpopstate = () => page();
-const localDay = x => { const d = new Date(x); return isNaN(d) ? "" : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const localDay = x => { const d = new Date(x); return isNaN(d) ? "" : istIso(d); };
+const todayStr = () => istIso();
 const ago = t => { const m = Math.round((Date.now() - new Date(t)) / 6e4); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 const short = o => "#" + (o.short_id || String(o.id).slice(0, 6).toUpperCase());
 const payable = o => { const kept = (o.items || []).filter(l => !(o.returned || []).includes(l.n)); return kept.length ? kept.reduce((a, l) => a + l.p * l.q, 0) + Number(o.fee || 0) : 0; };
@@ -214,7 +214,7 @@ function closeDrawer(silent) { const el = $("#panel"); if (!el) return; el.class
 
 // ================= Dashboard =================
 function dash() {
-  const t = todayStr(), hr = new Date().getHours();
+  const t = todayStr(), hr = istD(Date.now()).getUTCHours();
   const todayDone = D.orders.filter(o => o.status === "DELIVERED" && localDay(o.delivered_at || o.created_at) === t);
   const sales = todayDone.reduce((a, o) => a + saleOf(o), 0), news = D.orders.filter(o => o.status === "PLACED");
   const cashO = D.orders.filter(o => o.status === "DELIVERED" && o.pay_mode === "CASH" && o.delivered_by && o.delivered_by !== "Shop" && !o.cash_settled_at && o.rider);
@@ -775,7 +775,7 @@ async function saveSlots() {
 
 // ================= Bills & GST =================
 async function bills() {
-  const to = todayStr(), from = (() => { const d = new Date(); d.setDate(1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`; })();
+  const to = todayStr(), from = (() => istIso().slice(0, 8) + "01")();
   $("#main").innerHTML = head("Bills & GST", "Sales invoices (app orders + counter bills) and credit notes — downloads for your CA") + `
     <div class="bar2"><label style="margin:0">FROM</label><input class="in" type="date" id="bf" value="${from}" style="width:auto"><label style="margin:0">TO</label><input class="in" type="date" id="bt" value="${to}" style="width:auto">
       <button class="btn ghost" id="bgo" style="padding:9px 14px">Show</button></div><div id="bb"><div class="sub">Loading…</div></div>`;

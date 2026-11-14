@@ -4,7 +4,7 @@
 const TDS_SEC = { "194H": "2100", "194C": "2101", "194J": "2102", "194I": "2104", "194Q": "2105", "192": "2106", "194O": "2107" };
 const tdsHeads = () => AC.acc.filter(a => /^21\d\d$/.test(a.code));
 let AC = { tab: "reports", from: null, to: null, acc: [], parties: [] };
-const fy0 = (d = new Date()) => { const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return `${y}-04-01`; };
+const fy0 = (d = new Date()) => { const i = new Date(+d + 19800000), y = i.getUTCMonth() >= 3 ? i.getUTCFullYear() : i.getUTCFullYear() - 1; return `${y}-04-01`; };
 const n2 = v => Number(v || 0).toFixed(2);
 const inr2 = v => "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const drcr = v => v >= 0 ? `${inr2(v)} Dr` : `${inr2(-v)} Cr`;

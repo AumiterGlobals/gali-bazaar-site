@@ -203,7 +203,9 @@ async function courierLift(id) { const { error } = await db.from("profiles").upd
 
 // ---------------- shared ----------------
 const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
-const today = () => new Date().toISOString().slice(0, 10);
+const istIso = (t = Date.now()) => new Date(+new Date(t) + 19800000).toISOString().slice(0, 10);   // India date
+const istD = s => new Date(+new Date(s) + 19800000);
+const today = () => istIso();
 const live = s => s.kyc === "APPROVED" && s.sub_until && s.sub_until >= today() && !s.quality_hold;
 const score = s => { const c = s.kyc_report?.checks; if (!c?.length) return null; return Math.round(100 * c.filter(x => x.ok).length / c.length); };
 async function q(t, sel, mod) { let x = db.from(t).select(sel || "*"); if (mod) x = mod(x); const { data, error } = await x; if (error) throw error; return data || []; }
@@ -211,7 +213,7 @@ function head(title, sub, right = "") { return `<div class="top"><div><h1>${titl
 
 // ---------------- Dashboard ----------------
 async function dash() {
-  const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10), m0 = today().slice(0, 8) + "01";
+  const since = istIso(Date.now() - 6 * 864e5), m0 = today().slice(0, 8) + "01";
   const [shops, claims, orders, comm, sp] = await Promise.all([
     q("shops", "id,name,owner,type,kyc,kyc_report,sub_until,quality_hold,created_at,pan_name,referred_by"),
     q("pay_claims", "*", x => x.order("created_at", { ascending: false }).limit(300)),
@@ -222,16 +224,16 @@ async function dash() {
   const paidShops = new Set(claims.filter(c => c.status === "APPROVED" && (c.purpose || "PLAN") === "PLAN").map(c => c.shop));
   const act = shops.filter(live), trial = act.filter(s => !paidShops.has(s.id)), inact = shops.filter(s => s.kyc === "APPROVED" && !live(s));
   const month = claims.filter(c => c.status === "APPROVED" && c.paid_on >= m0).reduce((a, c) => a + Number(c.amount), 0);
-  const days = [...Array(7)].map((_, i) => new Date(Date.now() - (6 - i) * 864e5).toISOString().slice(0, 10));
+  const days = [...Array(7)].map((_, i) => istIso(Date.now() - (6 - i) * 864e5));
   const rev = days.map(d => claims.filter(c => c.status === "APPROVED" && c.paid_on === d).reduce((a, c) => a + Number(c.amount), 0));
   const kq = shops.filter(s => s.kyc === "PENDING");
-  const h = new Date().getHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const h = istD(Date.now()).getUTCHours(), hi = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const max = Math.max(1, ...rev), pts = rev.map((v, i) => `${10 + i * 80},${150 - v / max * 130}`).join(" ");
   const bySales = sp.map(p => ({ ...p, amt: comm.filter(c => c.sales === p.id).reduce((a, c) => a + Number(c.amount), 0), n: shops.filter(s => s.referred_by === p.id).length }));
   $("#main").innerHTML = head(`${hi}, Admin`, new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }) + " • All India") + `
   <div class="kpis">
     <div class="kpi"><span>Active shops</span><b>${act.length}</b><small style="color:#16A34A">${shops.filter(s => s.created_at >= since).length} joined this week</small></div>
-    <div class="kpi"><span>On free trial</span><b>${trial.length}</b><small style="color:#B45309">${trial.filter(s => s.sub_until <= new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)).length} end this week</small></div>
+    <div class="kpi"><span>On free trial</span><b>${trial.length}</b><small style="color:#B45309">${trial.filter(s => s.sub_until <= istIso(Date.now() + 7 * 864e5)).length} end this week</small></div>
     <div class="kpi"><span>Inactive</span><b>${inact.length}</b><small style="color:#BE185D">plan / trial ended</small></div>
     <div class="kpi"><span>Revenue this month</span><b>${inr(month)}</b><small style="color:#6B6380">approved payments</small></div>
     <div class="kpi"><span>Orders today</span><b>${orders.length}</b><small style="color:#6B6380">all shops</small></div></div>
@@ -606,7 +608,7 @@ async function complaints() {
 // ---------------- Festivals ----------------
 const FEST_KEYS = ["diwali","holi","eid","christmas","navratri","ganesh","india","sankranti","rakhi","chhath","igas","phooldei","harela","ghughutiya"];
 async function festivals() {
-  const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const today = istIso(Date.now() - 86400000);
   const { data, error } = await db.from("festivals").select("*").gte("day", today).order("day");
   if (error) throw error;
   const hasCols = (data || []).length === 0 || "show_chips" in data[0];
@@ -638,7 +640,7 @@ async function festSet(btn, id, col) {
 async function festAll(col, val) {
   if (!confirm(`${col === "show_chips" ? "Item chips" : "Festival look"} ${val ? "ON" : "OFF"} for every festival in the list?`)) return;
   window.FEST_QUIET = Date.now();
-  const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const since = istIso(Date.now() - 86400000);
   const { error } = await db.from("festivals").update({ [col]: val }).gte("day", since);
   if (error) return alert(error.message);
   document.querySelectorAll(`button.tog[onclick*="'${col}'"]`).forEach(b => b.classList.toggle("on", val));
@@ -787,9 +789,10 @@ async function saveForm() {
 
 start();
 </script>
-<script src="/panel/fy.js?v=1"></script>
-<script src="/admin/sales-partner.js?v=1795480000"></script>
-<script src="/admin/books.js?v=6">
+<script src="/panel/fy.js?v=1795530000"></script>
+<script>(function(){for(const k of ["toLocaleString","toLocaleDateString","toLocaleTimeString"]){const o=Date.prototype[k];Date.prototype[k]=function(l,p){return o.call(this,l||"en-IN",Object.assign({timeZone:"Asia/Kolkata"},p||{}))}}})();</script>
+<script src="/admin/sales-partner.js?v=1795530000"></script>
+<script src="/admin/books.js?v=1795530000">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
 async function supportPage() {

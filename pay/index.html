@@ -260,7 +260,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = new Date(Date.now() + 19800000).toISOString().slice(0, 10);   // India date
   const live = info.sub_until && info.sub_until >= todayStr;
   const sid = "ID GB-" + shop.slice(0, 6).toUpperCase();
   $("rtag").textContent = "Renewal for " + info.name;

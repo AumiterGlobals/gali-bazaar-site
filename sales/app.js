@@ -199,7 +199,7 @@ async function load() {
   D.com.forEach(c => { const b = byShop[c.shop] || (byShop[c.shop] = { earned: 0, last: null }); b.earned += Number(c.amount || 0); if (!b.last || c.created_at > b.last) b.last = c.created_at; });
   D.byShop = byShop;
 }
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => istIso();
 function shopState(s) {
   const live = s.sub_until && s.sub_until >= today();
   if (s.kyc !== "APPROVED") return "kyc";
@@ -245,8 +245,8 @@ function overview() {
   const live = D.shops.filter(s => shopState(s) === "live").length, follow = D.shops.filter(s => ["kyc", "expired"].includes(shopState(s)));
   // commission by month (Apr → Mar)
   const months = Array.from({ length: 12 }, (_, i) => { const d = new Date(fy.getFullYear(), 3 + i, 1); return { y: d.getFullYear(), m: d.getMonth(), v: 0 }; });
-  fyCom.forEach(c => { const d = new Date(c.created_at); const b = months.find(x => x.y === d.getFullYear() && x.m === d.getMonth()); if (b) b.v += Number(c.amount || 0); });
-  const nowI = months.findIndex(x => x.y === new Date().getFullYear() && x.m === new Date().getMonth());
+  fyCom.forEach(c => { const d = istD(c.created_at); const b = months.find(x => x.y === d.getUTCFullYear() && x.m === d.getUTCMonth()); if (b) b.v += Number(c.amount || 0); });
+  const nowI = months.findIndex(x => x.y === istD(Date.now()).getUTCFullYear() && x.m === istD(Date.now()).getUTCMonth());
   const shown = months.slice(0, Math.max(nowI + 1, 1)), max = Math.max(1, ...shown.map(x => x.v));
   const lim = t.threshold || 20000, credited = Number(t.fy_credited || 0) + Number(t.due || 0), over = credited > lim;
   const scale = Math.max(lim * 1.25, credited), pct = Math.min(100, credited / scale * 100), limPct = lim / scale * 100;
