@@ -446,15 +446,15 @@ function editItem(id) {
     <div id="phs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:8px"></div><div id="phn"></div>
     <label>ITEM NAME</label><input class="in" id="fn" value="${esc(i?.name || "")}" placeholder="e.g. Aashirvaad Whole Wheat Atta" autocomplete="off"><div id="msug"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CATEGORY</label><input class="in" id="fg" list="grps" value="${esc(i?.grp || "")}" placeholder="Atta &amp; Rice"><datalist id="grps">${[...new Set([...(CATM[S.type] || Object.values(CATM).flat()), ...groups])].map(g => `<option value="${esc(g)}">`).join("")}</datalist></div>
-      <div><label>PACK SIZE</label><div style="display:flex;gap:6px"><input class="in" id="fq" inputmode="decimal" style="flex:1;min-width:0" value="${esc(splitUnit(i?.unit)[0])}" placeholder="1">
-        <select class="in" id="fuu" style="flex:1;min-width:0">${(() => { const cu = splitUnit(i?.unit)[1] || "kg"; return [...new Set([...UNITS, cu])].map(u => `<option ${u === cu ? "selected" : ""}>${esc(u)}</option>`).join(""); })()}</select></div>
+      <div><label>${amountLabel(S.type)}</label><div style="display:flex;gap:6px"><input class="in" id="fq" inputmode="decimal" style="flex:1;min-width:0" value="${esc(splitUnit(i?.unit)[0])}" placeholder="1">
+        <select class="in" id="fuu" style="flex:1;min-width:0">${(() => { const cu = splitUnit(i?.unit)[1] || unitsFor(S.type)[0]; return [...new Set([...unitsFor(S.type), ...(i ? [cu] : [])])].map(u => `<option ${u === cu ? "selected" : ""}>${esc(u)}</option>`).join(""); })()}</select></div>
         <input type="hidden" id="fu" value="${esc(i?.unit || "")}"></div>
       <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${i?.mrp ?? ""}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${i ? i.price : ""}"></div></div>
     <div id="off"></div>
     ${!["food_fresh", "flowers"].includes(K.key) ? `<div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px;margin-top:12px"><div><b>Packaged item</b><span>Maker, net qty, MRP and country of origin are shown to customers</span></div><button class="tog ${F_.packaged ? "on" : ""}" id="fpk"></button></div>
     <div id="pkbox" style="display:${F_.packaged ? "block" : "none"}">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px"><div><label>MANUFACTURER / PACKER *</label><input class="in" id="fmk" value="${esc(i?.maker || "")}" placeholder="As on the pack"></div>
-        <div><label>NET QTY <span class="sub" style="text-transform:none;letter-spacing:0">— if not the pack size</span></label><input class="in" id="fnq" value="${esc(i?.net_qty && i.net_qty !== i.unit ? i.net_qty : "")}" placeholder="same as pack size"></div></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:10px"><div><label>MANUFACTURER / PACKER *</label><input class="in" id="fmk" value="${esc(i?.maker || "")}" placeholder="As on the pack"></div>
+        <div></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>COUNTRY OF ORIGIN</label><input class="in" id="fco" value="${esc(i?.country_of_origin || "India")}"></div>
         ${K.food ? `<div><label>FSSAI (ON PACK) *</label><input class="in" id="ffs" inputmode="numeric" maxlength="14" value="${esc(i?.fssai || "")}" placeholder="14 digits"></div>` : "<div></div>"}</div>
       ${K.food ? `<label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}">` : ""}</div>` : ""}
@@ -531,6 +531,14 @@ const CATM = { grocery: ["Atta & flours", "Rice", "Dal & pulses", "Oil & ghee", 
   food: ["Chaat", "Snacks", "Main course", "Roti & paratha", "Rice & biryani", "Thali", "Chinese", "South Indian", "Rolls & momos", "Pizza & burger", "Drinks", "Desserts"],
   stationery: ["Notebooks & registers", "Pens & pencils", "Art & craft", "Paper & files", "Office supplies", "Exam essentials", "School bags & boxes", "Gifts & toys"] };
 const UNITS = ["kg", "g", "L", "ml", "pc", "pack", "packet", "dozen", "box", "bottle", "jar", "pouch", "bunch", "plate", "pair", "set", "ream", "m"];
+// only real measures or counts that fit this kind of shop (same as the app)
+function unitsFor(t) {
+  const k = KIND().key;
+  return t === "footwear" ? ["pair"] : t === "garments" ? ["pc", "set", "pair"] : t === "stationery" ? ["pc", "set", "ream", "m", "g", "kg"]
+    : t === "fruitveg" || k === "food_fresh" ? ["kg", "g", "L", "ml", "pc", "dozen", "bunch"] : k === "food_cooked" ? ["kg", "g", "L", "ml", "pc", "plate"]
+    : k === "food_packed" ? ["kg", "g", "L", "ml", "pc", "dozen"] : ["pc", "set", "pair", "kg", "g", "L", "ml", "m"];
+}
+const amountLabel = t => t === "footwear" ? "PAIRS" : KIND().food ? "WEIGHT / VOLUME" : "NET QUANTITY";
 const splitUnit = u => { const m = String(u || "").match(/^\s*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z].*)?$/); return m ? [m[1], (m[2] || "").trim()] : ["", String(u || "").trim()]; };
 const NEED = () => S.type === "grocery" ? 3 : S.type === "fruitveg" ? 2 : 1;
 const PHL = () => S.type === "grocery" ? ["1. Front", "2. Maker / FSSAI", "3. Ingredients"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
@@ -609,7 +617,7 @@ async function saveItem() {
   const sl = F_.slots || localSlots().slots, miss = sl.filter(d => d.req && !(F_.ph[d.key]?.url || F_.ph[d.key]?.res));
   const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : miss.length ? `Add ${miss.map(d => d.label.toLowerCase()).join(", ")} photo`
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0"
-    : pk && !val("#fmk") ? "Packaged item: add the manufacturer / packer name" : pk && !val("#fnq") && !val("#fq") ? "Packaged item: add the pack size (e.g. 1 pair, 500 g)"
+    : pk && !val("#fmk") ? "Packaged item: add the manufacturer / packer name" : !vs.length && !(+val("#fq") > 0) ? `Add ${amountLabel(S.type).toLowerCase()} — a number, e.g. ${S.type === "footwear" ? "1 (pair)" : "500 (g)"}`
     : pk && !(+$("#fm").value > 0) && !vs.length ? "Packaged item: add the MRP" : pk && K.food && !/^[12][0-9]{13}$/.test(fssai) ? "Packaged food: add the 14-digit FSSAI number printed on the pack"
     : F_.needsBis && !bis ? "Add the BIS / ISI / R-number printed on the product" : bis && !/^[A-Z0-9/ .-]{6,20}$/.test(bis) ? "BIS / ISI / R-number: 6–20 letters or numbers, e.g. CM/L-1234567"
     : F_.courier && K.courier === "sealed" && !($("#fsl")?.checked && shelf >= 1) ? "Food by courier: only sealed packs that last at least 1 month" : null;
@@ -623,7 +631,7 @@ async function saveItem() {
     const imgs = Object.values(map);
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0] || null, images: imgs, photos: map, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days,
-      packaged: pk, maker: val("#fmk") || null, net_qty: pk ? val("#fnq") || ((val("#fq") ? val("#fq") + " " + ($("#fuu")?.value || "") : "").trim() || null) : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
+      packaged: pk, maker: val("#fmk") || null, net_qty: pk && !vs.length ? (val("#fq") + " " + ($("#fuu")?.value || "")).trim() : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
       courier_ok: !!F_.courier && K.courier !== "never", sealed: !!$("#fsl")?.checked, shelf_life_months: isNaN(shelf) ? null : shelf };
     if (K.food) { row.fssai = fssai || null; row.ingredients = val("#fin") || null; }
     if ($("#fch")) row.size_chart = $("#fch").value || null;
