@@ -91,11 +91,11 @@
   <div class="mtrial"><img src="/img/art/convenience_store.webp" alt=""><span><b><span class="td">14</span>-day free trial</b> — no card needed. Free for customers, always.</span></div></div>
   <div class="prices" id="prices"></div>
   <div class="pfeat"><span>0% commission on every order</span><span>Unlimited items + bulk upload</span><span>Your own delivery slots &amp; areas</span><span>Add your delivery staff</span><span>Complaints reach the shop</span><span>KYC-verified shop badge</span></div>
-  <p class="pnote">All plans include every feature • Pay securely by UPI on galibazaar.site • No auto-debit</p>
+  <p class="pnote">Prices include GST • All plans include every feature • Pay securely by UPI on galibazaar.site • No auto-debit</p>
 </div></section>
 <section class="fsec" style="padding-top:20px"><div class="wrap">
   <div class="cats-h"><h2>Questions shop owners ask</h2></div>
-  <div class="pfaq"><details open><summary>Is there any commission on orders?</summary><p>No. Gali Bazaar charges 0% commission — you only pay for your plan.</p></details><details open><summary>What happens after the free trial?</summary><p>Your shop becomes inactive (hidden from customers) until you choose a plan. We email you a reminder a day before.</p></details><details open><summary>How do I pay for a plan?</summary><p>On galibazaar.site by UPI — any UPI app or QR code. The invoice appears in your app.</p></details><details open><summary>Is there an auto-debit?</summary><p>No. You renew only when you choose to, using the link we email you.</p></details><details open><summary>Can I get a refund?</summary><p>Plans are not refundable once active. Failed or double payments are refunded in 5–7 working days.</p></details><details open><summary>Do customers pay anything?</summary><p>No — the app is always free for customers.</p></details></div>
+  <div class="pfaq"><details open><summary>Is there any commission on orders?</summary><p>No. Gali Bazaar charges 0% commission — you only pay for your plan.</p></details><details open><summary>What happens after the free trial?</summary><p>Your shop becomes inactive (hidden from customers) until you choose a plan. We email you a reminder a day before.</p></details><details open><summary>How do I pay for a plan?</summary><p>On galibazaar.site by UPI — any UPI app or QR code. A GST tax invoice appears in your app and seller panel.</p></details><details open><summary>Is there an auto-debit?</summary><p>No. You renew only when you choose to, using the link we email you.</p></details><details open><summary>Can I get a refund?</summary><p>Plans are not refundable once active. Failed or double payments are refunded in 5–7 working days.</p></details><details open><summary>Do customers pay anything?</summary><p>No — the app is always free for customers.</p></details></div>
 </div></section>
 </div>
 <footer class="df"><div class="wrap">
@@ -127,7 +127,7 @@ const nav=document.getElementById("nav");addEventListener("scroll",()=>nav.class
 <script>
 function drawPrices(price,disc){const inr=n=>"₹"+Number(n).toLocaleString("en-IN");const el=document.getElementById("prices");if(!el)return;
 el.innerHTML=[1,3,6,12].map(m=>{const d=+(disc[m]||0),a=Math.round(price*m*(100-d)/100);
-return `<div class="pr ${m===12?"best":""}">${m===12?'<span class="bv">BEST VALUE</span>':""}<h4>${m===1?"1 month":m+" months"}</h4><b>${inr(a)}</b><span>${inr(Math.round(a/m))} / month</span><em>${d?"Save "+d+"%":"Monthly"}</em><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Start free trial</a></div>`}).join("")}
+return `<div class="pr ${m===12?"best":""}">${m===12?'<span class="bv">BEST VALUE</span>':""}<h4>${m===1?"1 month":m+" months"}</h4><b>${inr(a)}</b><span>incl. GST · ${inr(Math.round(a/m))} / month</span><em>${d?"Save "+d+"%":"Monthly"}</em><a href="https://github.com/AumiterGlobals/gali-bazaar-site/releases/download/app/gali-bazaar.apk">Start free trial</a></div>`}).join("")}
 drawPrices(99,{1:0,3:10,6:15,12:20});
 fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=plan_price,plan_discounts,trial_days",{headers:{apikey:"sb_publishable_fImHal0lfTgi_3jCJ9w67Q_6-JB4US1"}})
 .then(r=>r.json()).then(j=>{const s=j&&j[0];if(!s)return;if(s.plan_price)drawPrices(s.plan_price,s.plan_discounts||{1:0,3:10,6:15,12:20});

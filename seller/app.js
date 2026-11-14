@@ -1,17 +1,18 @@
 // Gali Bazaar — Seller panel on the web (same shop + data as the seller app; RLS = only your shop).
 // Routes: /seller/login/  /seller/  /seller/orders/  /seller/catalog/  /seller/catalog/bulk/  /seller/returns/
-//         /seller/complaints/  /seller/staff/  /seller/slots/  /seller/bills/  /seller/shop/
+//         /seller/complaints/  /seller/staff/  /seller/slots/  /seller/bills/  /seller/shop/  /seller/plan/  /seller/support/
 const db = makeClient("gb-seller-auth");
 const BANNED = /(cigar|cigarette|bidi|beedi|gutkha|gutka|tobacco|tambaku|khaini|zarda|pan masala|paan masala|hookah|vape|e-cig|nicotine|snuff|beer|whisky|whiskey|vodka|\brum\b|wine|liquor|daru|sharab|सिगरेट|बीड़ी|बीडी|गुटखा|तंबाकू|तम्बाकू|खैनी|ज़र्दा|जर्दा|शराब|दारू)/i;
 const banWord = (...s) => { for (const x of s) { const m = x && String(x).match(BANNED); if (m) return /cig|bidi|beedi|gutk|tobac|tamba|khain|zard|masala|hookah|vape|nicot|snuff|सिग|बीड़|बीडी|गुट|तंब|तम्ब|खैन|ज़र्द|जर्द/i.test(m[0]) ? "tobacco" : "alcohol"; } return null; };
 const ICON = {
+  plan: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h4",
   support: "M4 12a8 8 0 0 1 16 0v5a2 2 0 0 1-2 2h-2v-6h4M4 13h4v6H6a2 2 0 0 1-2-2zM12 21h4",
   dash: "M3 11 12 4l9 7v9h-6v-6H9v6H3z", orders: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01", cat: "M4 9h16l-1.5-5h-13zM5 9v11h14V9M9 20v-6h6v6",
   ret: "M6 6l12 12M18 6 6 18", comp: "M3 6h18v12H3zM3 7l9 6 9-6", staff: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 7M22 21c0-3-2-5-4-5.6",
   slots: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", bills: "M6 3h9l4 4v14H6zM14 3v5h5", books: "M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM8 7h6M8 11h6", shop: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
 };
 const NAV = [["", "Dashboard", "dash"], ["orders", "Orders", "orders"], ["catalog", "Catalog", "cat"], ["returns", "Returns & cancelled", "ret"], ["complaints", "Complaints", "comp"],
-  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"], ["support", "Help & support", "support"]];
+  ["staff", "Delivery staff", "staff"], ["slots", "Slots & areas", "slots"], ["bills", "Bills & GST", "bills"], ["books", "Books & expenses", "books"], ["shop", "Shop & KYC", "shop"], ["plan", "Plan & invoices", "plan"], ["support", "Help & support", "support"]];
 const ico = (k, s = 19) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[k] || k}"/></svg>`;
 let S = null, me = null, D = { items: [], orders: [], riders: [], complaints: [], cns: [], slots: [], cov: [], festivals: [] };
 let catF = "all", catQ = "", ordTab = "new", retTab = "coming", drawerOpen = false;
@@ -187,7 +188,7 @@ function page() {
   const r = route();
   if (r === "catalog/bulk") return bulk();
   if (r === "catalog/new") { catalog(); return editItem(null); }
-  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop, support }[r.split("/")[0]] || dash)();
+  ({ "": dash, orders, catalog, returns, complaints, staff, slots, bills, books, shop, plan, support }[r.split("/")[0]] || dash)();
 }
 function drawer(html, wide) {
   const el = $("#panel"); el.innerHTML = html; el.classList.add("open"); el.style.width = wide ? "520px" : ""; document.body.classList.add("po"); drawerOpen = true;
@@ -947,6 +948,54 @@ boot();
 
 // ================= Help & support (chat with the Gali Bazaar team) =================
 let supTimer = null;
+// ================= Plan & invoices (GST tax invoices from Gali Bazaar) =================
+async function plan() {
+  $("#main").innerHTML = head("Plan & invoices", "Your Gali Bazaar plan payments and their GST tax invoices") + `<div class="box" id="plBox"><div class="sub">Loading…</div></div>`;
+  const [{ data: cl, error }, { data: st }] = await Promise.all([
+    db.from("pay_claims").select("*").eq("shop", S.id).order("paid_on", { ascending: false }),
+    db.from("settings").select("*").eq("id", 1).maybeSingle()]);
+  if (error) { $("#plBox").innerHTML = `<div class="msg err">${esc(niceErr(error))}</div>`; return; }
+  window._plan = { cl: cl || [], st: st || {} };
+  const ok = (cl || []).filter(c => c.status === "APPROVED"), pend = (cl || []).filter(c => c.status === "PENDING");
+  $("#plBox").outerHTML = `<div class="box"><b>${S.sub_until ? "Plan active till " + esc(S.sub_until) : "No plan yet"}</b>
+      <div class="sub" style="margin-top:4px">Plan prices on galibazaar.site include GST. Every payment gets a GST tax invoice${S.gstin ? " with your GSTIN " + esc(S.gstin) : " — add your GSTIN in Shop &amp; KYC to claim input tax credit"}.</div>
+      <a class="btn pink" style="margin-top:10px;display:inline-block" href="/pay/">Renew / pay</a></div>
+    ${pend.map(c => `<div class="box"><b>${inr(c.amount)} · ${esc(c.paid_on)} · UTR ${esc(c.utr)}</b><div class="sub">Being verified — the invoice comes once it's approved.</div></div>`).join("")}
+    <div class="box"><h3>Tax invoices</h3>${ok.length ? `<table><thead><tr><th>Invoice</th><th>Date</th><th>For</th><th style="text-align:right">Taxable</th><th style="text-align:right">GST</th><th style="text-align:right">Total</th><th></th></tr></thead><tbody>
+      ${ok.map(c => `<tr><td><b>${esc(c.inv_no || "—")}</b></td><td>${esc(c.paid_on)}</td><td>${c.purpose === "FEATURED" ? `Featured ${c.days} days` : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.period_from ? `<div class="sub" style="font-size:11.5px">${esc(c.period_from)} → ${esc(c.period_to)}</div>` : ""}</td>
+        <td style="text-align:right">${inr2(c.taxable ?? c.amount)}</td><td style="text-align:right">${inr2(Number(c.cgst || 0) + Number(c.sgst || 0) + Number(c.igst || 0))}</td><td style="text-align:right"><b>${inr2(c.amount)}</b></td>
+        <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="planInvoice('${c.id}')">View / print</button></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No invoices yet.</div>`}</div>`;
+}
+function planInvoice(id) {
+  const { cl, st } = window._plan, c = cl.find(x => x.id === id); if (!c) return;
+  const tax = Number(c.cgst || 0) + Number(c.sgst || 0) + Number(c.igst || 0), taxable = Number(c.taxable ?? c.amount), gst = tax > 0;
+  const rate = taxable ? Math.round(tax / taxable * 100) : 0, half = rate / 2, gstin = c.bill_gstin || S.gstin;
+  const sac = c.purpose === "FEATURED" ? "998365" : (st.plan_sac || "998439");
+  const desc = c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — ${c.months} month${c.months > 1 ? "s" : ""} listing &amp; order tools`;
+  const m = v => "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const row = (l, v, b) => `<tr><td>${l}</td><td style="text-align:right;${b ? "font-weight:700;font-size:16px" : ""}">${v}</td></tr>`;
+  const w = window.open("", "_blank"); if (!w) { alert("Allow pop-ups to view the invoice"); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(c.inv_no || "")}</title><style>
+    body{font-family:Poppins,Arial,sans-serif;color:#1D0F30;margin:0;padding:32px;max-width:760px}
+    .bar{height:6px;background:#6A1BB0;margin:-32px -32px 26px}.top{display:flex;justify-content:space-between;gap:20px}
+    h1{font-size:20px;margin:0}.mut{color:#6B6380;font-size:12.5px;line-height:1.5}.tag{background:#6A1BB0;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;height:fit-content}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:22px 0;background:#F7F4FB;border-radius:10px;padding:12px}.meta b{display:block;font-size:13px}
+    table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:#6B6380;border-bottom:1.5px solid #E6DEEC;padding:8px 6px}td{padding:8px 6px;font-size:13.5px;border-bottom:1px solid #F1ECF4}
+    .tot{width:320px;margin-left:auto;margin-top:12px}.btn{margin-top:22px;padding:10px 18px;border:0;border-radius:99px;background:#1D0F30;color:#fff;font:inherit;cursor:pointer}
+    @media print{.btn{display:none}}</style></head><body><div class="bar"></div>
+    <div class="top"><div><h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}<br>${esc(st.biz_email || "")}${st.biz_gstin ? `<br><b style="color:#1D0F30">GSTIN: ${esc(st.biz_gstin)}</b>` : ""}</div></div>
+      <div class="tag">${gst ? "TAX INVOICE" : "INVOICE"}</div></div>
+    <div class="meta"><div><span class="mut">Invoice no</span><b>${esc(c.inv_no || "—")}</b></div><div><span class="mut">Date</span><b>${esc(c.paid_on)}</b></div>
+      <div><span class="mut">UPI ref (UTR)</span><b>${esc(c.utr || "")}</b></div><div><span class="mut">Place of supply</span><b>${esc(c.place_of_supply || S.state || "")}</b></div></div>
+    <div class="mut">Billed to</div><b>${esc(S.name)}</b><div class="mut">${esc([S.addr, S.locality, S.city, S.state, S.pin].filter(Boolean).join(", "))}${gstin ? `<br><b style="color:#1D0F30">GSTIN: ${esc(gstin)}</b>` : ""}</div>
+    <table style="margin-top:18px"><thead><tr><th>Description</th><th>SAC</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody><tr><td>${desc}${c.period_from ? `<div class="mut">Period: ${esc(c.period_from)} to ${esc(c.period_to)}</div>` : ""}</td><td>${sac}</td><td style="text-align:right">${m(taxable)}</td></tr></tbody></table>
+    <table class="tot">${gst ? row("Taxable value", m(taxable)) + (Number(c.igst) > 0 ? row(`IGST @ ${rate}%`, m(c.igst)) : row(`CGST @ ${half}%`, m(c.cgst)) + row(`SGST @ ${half}%`, m(c.sgst))) : ""}${row("Total received", m(c.amount), true)}</table>
+    ${gst ? "" : `<p class="mut">Supplier not registered under GST; no GST charged.</p>`}
+    <p class="mut" style="margin-top:26px">Computer-generated invoice, no signature needed.</p><button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
+  w.document.close();
+}
+
 async function support() {
   $("#main").innerHTML = head("Help & support", "Chat with the Gali Bazaar team • app not working, payment issue, anything") + `
     <div class="box" style="max-width:760px;display:flex;flex-direction:column;height:min(70vh,640px);padding:0;overflow:hidden">
