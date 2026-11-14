@@ -342,7 +342,7 @@ async function settingsPage() {
 }
 // ---------- "Mann hai?" nudges: switch, limits, templates (with preview), this week's report ----------
 let NT = [];
-const ntFill = x => String(x || "").replaceAll("{item}", "Maggi 2-Minute Noodles 70 g").replaceAll("{shop}", "Sharma Kirana").replaceAll("{dist}", "400 m").replaceAll("{price}", "₹14");
+const ntFill = x => String(x || "").replaceAll("{item}", "Maggi 2-Minute Noodles 70 g").replaceAll("{shop}", "Sharma Kirana").replaceAll("{dist}", "lagbhag 1 km").replaceAll("{price}", "₹14");
 const ntPreview = t => `<div style="display:flex;gap:10px;background:#2A2433;border-radius:16px;padding:12px;max-width:420px"><span style="flex:none;width:26px;height:26px;border-radius:7px;background:#4B1C7A;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px">G</span>
   <div><div style="font-size:11px;color:#B9B1C9">Gali Bazaar · now</div><div style="color:#fff;font-weight:600;font-size:14px">${esc(ntFill(t.title) || "Title")}</div><div style="color:#E5E0EE;font-size:13px">${esc(ntFill(t.body) || "Body")}</div></div></div>`;
 async function nudgesBox(s) {
@@ -395,7 +395,7 @@ async function settingsSave() {
   const row = { plan_price: n("plan_price") || 99, trial_days: n("trial_days"), plan_discounts: { "1": 0, "3": n("d3"), "6": n("d6"), "12": n("d12") },
     feat_week_price: n("feat_week_price"), feat_month_price: n("feat_month_price"), biz_name: v("biz_name").trim(), biz_email: v("biz_email").trim(), app_link: v("app_link").trim(), auto_kyc: $("#st_auto").checked };
   if ($("#st_counter_min_customers")) { row.counter_min_customers = Math.max(0, n("counter_min_customers")); row.counter_min_shops = Math.max(0, n("counter_min_shops")); }
-  if ($("#st_terms_version")) { const tv = v("terms_version").trim(); if (!/^\d{4}-\d{2}-\d{2}$/.test(tv)) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Terms version must look like 2026-11-14"; return; } row.terms_version = tv; }
+  if ($("#st_terms_version")) { const tv = v("terms_version").trim(); if (!/^\d{4}-\d{2}-\d{2}(\.\d+)?$/.test(tv)) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Terms version must look like 2026-11-14 (or 2026-11-14.2 for a second change that day)"; return; } row.terms_version = tv; }
   const { error } = await db.from("settings").update(row).eq("id", 1);
   $("#st_m").className = "msg " + (error ? "err" : "ok"); $("#st_m").textContent = error ? error.message : "Saved";
 }

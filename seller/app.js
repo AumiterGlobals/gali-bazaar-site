@@ -69,6 +69,8 @@ async function notSeller(email) {
 const RET = () => { const c = (D.cats || []).find(x => x.key === S.type), t = S.type;
   const d = c && c.max_return_days != null ? c.max_return_days : (["sweets", "food", "fruitveg"].includes(t) ? 0 : t === "grocery" ? 3 : 30);
   return { max: Math.max(0, Math.min(30, d)), refund: c && c.allow_refund != null ? !!c.allow_refund : t !== "grocery" }; };
+// address points are approximate → never an exact distance
+const approxKm = k => k < 0.5 ? "just" : k <= 1 ? "about 1 km" : `about ${Math.round(k)} km`;
 const FOOD = () => (D.cats || []).some(c => c.key === S.type && c.needs_fssai) || (!(D.cats || []).length && ["grocery", "fruitveg", "sweets", "food"].includes(S.type));
 const TONE = {};
 function tone(k) { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
@@ -256,7 +258,7 @@ async function sendLink(b) {
 function orderTable(list, compact) {
   const riderName = id => D.riders.find(r => r.id === id)?.name;
   return `<table><thead><tr><th>ORDER</th><th>CUSTOMER</th><th class="hm">ITEMS</th><th>TOTAL</th><th class="hm">SLOT</th><th>STATUS</th><th></th></tr></thead><tbody>${list.map(o => `<tr style="cursor:pointer" onclick="if(event.target.closest('button'))return;openOrder('${o.id}')">
-    <td><b>${short(o)}</b><br><span class="sub">${ago(o.created_at)}</span></td><td><b>${esc(o.cust_name)}</b>${o.outside ? `<br><span class="pill warn">Outside area • ${Number(o.outside_km || 0).toFixed(1)} km</span>` : ""}</td>
+    <td><b>${short(o)}</b><br><span class="sub">${ago(o.created_at)}</span></td><td><b>${esc(o.cust_name)}</b>${o.outside ? `<br><span class="pill warn">${approxKm(Number(o.outside_km || 0)) === "just" ? "Just outside area" : "Outside area • " + approxKm(Number(o.outside_km || 0))}</span>` : ""}</td>
     <td class="hm">${(o.items || []).length} item${(o.items || []).length === 1 ? "" : "s"}</td><td><b>${inr(o.total)}</b></td><td class="hm">${esc(o.slot_label || "")}${o.slot_date && o.slot_date !== todayStr() ? `<br><span class="sub">${dmy(o.slot_date)}</span>` : ""}</td>
     <td>${pill(o)}${o.pin_locked ? `<br><span class="pill bad">PIN locked</span>` : ""}${o.rider && !compact ? `<br><span class="sub">🛵 ${esc(riderName(o.rider) || "")}</span>` : ""}</td>
     <td style="white-space:nowrap">${actions(o)}</td></tr>`).join("")}</tbody></table>`;
@@ -290,7 +292,7 @@ function assign(id, from) {
   const o = findO(id), ok = D.riders.filter(r => r.active !== false && (!r.join_status || r.join_status === "ACTIVE"));
   drawer(`<h2><span>${from === "PLACED" ? "Accept" : "Delivery partner for"} ${short(o)}</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <div class="sub">${esc(o.cust_name)} • ${inr(o.total)} • ${esc(o.slot_label || "")}</div>
-    ${o.outside ? `<div class="warnline">Customer is ${Number(o.outside_km || 0).toFixed(1)} km outside your areas. Accept only if you can deliver.</div>` : ""}
+    ${o.outside ? `<div class="warnline">Customer is ${approxKm(Number(o.outside_km || 0))} outside your areas. Accept only if you can deliver.</div>` : ""}
     <label>WHO WILL DELIVER?</label>
     ${ok.map(r => `<div class="row" style="cursor:pointer" onclick="doAssign('${id}','${from}','${r.id}')"><div><b>🛵 ${esc(r.name)}</b><span>${esc(r.phone || "")}${r.kyc !== "APPROVED" ? " • KYC " + esc(String(r.kyc).toLowerCase()) : ""}</span></div><span class="mini dk">Choose</span></div>`).join("") || `<div class="sub">No delivery partners yet — add them in Delivery staff.</div>`}
     <div class="row" style="cursor:pointer" onclick="doAssign('${id}','${from}','self')"><div><b>🙋 I'll deliver myself</b><span>You'll use the app's delivery screen (PIN check)</span></div><span class="mini">Choose</span></div>
