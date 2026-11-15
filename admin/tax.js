@@ -28,11 +28,11 @@ async function taxPage() {
     <div class="box"><h3>Deductor</h3><div style="display:flex;gap:10px;flex-wrap:wrap">
       ${f("tan", "TAN", s.tan, "e.g. MRTA12345B")}${f("deductor_name", "Deductor name", s.deductor_name)}</div></div>
     <div class="box"><h3>E-commerce TDS on shop sales</h3>
-      ${chk("ecom_tds_on", "TDS on — on the 1st, last month's sales are worked out and a TDS recovery note goes to each shop", s.ecom_tds_on)}
+      ${chk("ecom_tds_on", "TDS on — on the 1st, last month's sales are worked out and a TDS recovery note goes to each shop", s.ecom_tds_on ?? true)}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
         ${f("ecom_tds_rate", "Rate %", s.ecom_tds_rate, "0.1", "number")}${f("ecom_tds_no_pan_rate", "Rate % without PAN", s.ecom_tds_no_pan_rate, "5", "number")}
         ${f("ecom_tds_threshold", "Individual / HUF yearly threshold ₹", s.ecom_tds_threshold, "500000", "number")}</div>
-      ${chk("ecom_tds_catch_up", "Catch-up: in the month an individual / HUF crosses the threshold, TDS on the whole year so far (off = only on the part above the threshold)", s.ecom_tds_catch_up)}
+      ${chk("ecom_tds_catch_up", "Catch-up (on): in the month an individual / HUF crosses ₹5 lakh, TDS on the whole year's sales so far (off = only on the part above the threshold)", s.ecom_tds_catch_up ?? true)}
       <div class="sub" style="margin-top:8px">Firm, company, LLP, trust etc. (PAN 4th letter not P / H): from the first rupee. Food Corner is left out (customers call the shop). Sales = delivered orders − credit notes.</div></div>
     <div class="box"><h3>Sales-partner commission</h3>${chk("comm_tds_first_rupee", "TDS from the first payout", s.comm_tds_first_rupee ?? true)}</div>
     <button class="btn pink" onclick="taxSave()">Save</button><span id="tx_m" style="margin-left:10px"></span>
@@ -88,6 +88,7 @@ async function taxReports() {
         ${chal.map(c => `<tr><td>${txMon(c.month)}</td><td>${kindL(c.kind)}</td><td style="text-align:right">${inr(c.amount)}</td><td>${esc(c.paid_on)}</td><td>${esc(c.bsr)}</td><td>${esc(c.serial)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
     <div class="box"><h3>Statements for the CA</h3>
       <div class="sub">Sent by email automatically: the 1st (TDS + GST draft), the 9th (GST final, late entries marked) and after each quarter (TDS return data). Send again any time:</div>
+      <div class="sub" style="margin-top:8px;color:#B26A00"><b>Form 140 (quarterly return data):</b> Columns ka order CA se ek baar check karwa lein.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px"><input class="in" type="month" id="st_m" style="width:170px">
         <button class="btn ghost" onclick="taxSend('draft')">Email draft</button><button class="btn ghost" onclick="taxSend('final')">Email final</button><button class="btn ghost" onclick="taxSend('quarter')">Email quarter (ending this month)</button></div>
       ${runs.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>File</th><th>Sent</th><th style="text-align:right">TDS</th><th style="text-align:right">GST</th></tr></thead><tbody>
@@ -95,6 +96,7 @@ async function taxReports() {
           <td style="text-align:right">${inr(r.tds || 0)}</td><td style="text-align:right">${inr(r.gst || 0)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
     <div class="box"><h3>Form 131 certificates (from TRACES)</h3>
       <div class="sub">Download each shop's certificate from TRACES after the quarterly return, then upload it here — the shop sees it in Subscription &amp; bills → TDS.</div>
+      <div class="sub" style="margin-top:4px;color:#B26A00">TRACES se download kiya hua hi upload karein.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
         <select class="in" id="ce_s" style="min-width:200px">${shops.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>
         <input class="in" id="ce_fy" value="${fy}" style="width:90px" title="FY"><select class="in" id="ce_q" style="width:90px">${[1, 2, 3, 4].map(n => `<option value="${n}">Q${n}</option>`).join("")}</select>

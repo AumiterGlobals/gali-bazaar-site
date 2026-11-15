@@ -391,7 +391,8 @@ async function settingsPage() {
     ${f("feat_week_price", "TOP SPOT 1 WEEK ₹", s.feat_week_price, "number")}${f("feat_month_price", "TOP SPOT 1 MONTH ₹", s.feat_month_price, "number")}
     ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${"backup_email" in s ? f("backup_email", "ADMIN EMAIL (PAYMENT SCREENSHOT BACKUP)", s.backup_email || "") : ""}</div>
     ${"seller_terms_otp" in s ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F1ECF4"><b style="font-size:14px">Seller Terms signing</b>
-      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin:8px 0"><input type="checkbox" id="st_tos_otp" ${s.seller_terms_otp ? "checked" : ""}>Phone OTP to the shop's number (switch on only after Firebase phone sign-in is set up)</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin:8px 0"><input type="checkbox" id="st_tos_otp" ${s.seller_terms_otp ? "checked" : ""}>Phone OTP to the shop's number</label>
+      <div class="sub" style="margin:-4px 0 8px;color:#B26A00">Pehle Firebase → Authentication → Phone enable karo aur website domain Authorized domains me daalo, phir ON karo.</div>
       <div class="sub" style="margin:0 0 4px">FIREBASE WEB CONFIG (JSON, for OTP on the website — public, not a secret)</div>
       <textarea class="in" id="st_fbweb" rows="3" placeholder='{"apiKey":"…","authDomain":"…firebaseapp.com","projectId":"…"}'>${esc(s.firebase_web ? JSON.stringify(s.firebase_web) : "")}</textarea></div>` : ""}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px">${f("app_link", "APP DOWNLOAD LINK", s.app_link)}${"terms_version" in s ? f("terms_version", "TERMS VERSION (YYYY-MM-DD)", s.terms_version) : ""}</div>
     ${"counter_min_customers" in s ? `<div style="margin-top:12px"><label>SHOW WEBSITE COUNTER AFTER</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -497,7 +498,9 @@ async function settingsSave() {
     feat_week_price: n("feat_week_price"), feat_month_price: n("feat_month_price"), biz_name: v("biz_name").trim(), biz_email: v("biz_email").trim(), app_link: v("app_link").trim(), auto_kyc: $("#st_auto").checked };
   if ($("#st_backup_email")) row.backup_email = v("backup_email").trim() || null;
   if ($("#st_tos_otp")) { row.seller_terms_otp = $("#st_tos_otp").checked; const j = $("#st_fbweb").value.trim();
-    if (j) { try { row.firebase_web = JSON.parse(j); } catch (_) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Firebase web config must be JSON"; return; } } else row.firebase_web = null; }
+    if (j) { try { row.firebase_web = JSON.parse(j); } catch (_) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Firebase web config must be JSON"; return; } } else row.firebase_web = null;
+    if (row.seller_terms_otp && !(row.firebase_web && row.firebase_web.apiKey && row.firebase_web.authDomain)) {
+      $("#st_m").className = "msg err"; $("#st_m").textContent = "Phone OTP can't be switched on without the Firebase web config (apiKey + authDomain). Nothing was saved."; return; } }
   if ($("#st_counter_min_customers")) { row.counter_min_customers = Math.max(0, n("counter_min_customers")); row.counter_min_shops = Math.max(0, n("counter_min_shops")); }
   if ($("#st_terms_version")) { const tv = v("terms_version").trim(); if (!/^\d{4}-\d{2}-\d{2}(\.\d+)?$/.test(tv)) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Terms version must look like 2026-11-14 (or 2026-11-14.2 for a second change that day)"; return; } row.terms_version = tv; }
   const { error } = await db.from("settings").update(row).eq("id", 1);
@@ -851,7 +854,7 @@ start();
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/bank.js?v=1795800000"></script>
-<script src="/admin/tax.js?v=1795830000"></script>
+<script src="/admin/tax.js?v=1795850000"></script>
 <script src="/admin/books.js?v=1795530000">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";

@@ -34,7 +34,9 @@ const STATUS = { PLACED: ["New", "bad"], ACCEPTED: ["Packing", "warn"], OUT: ["O
 const pill = o => { const [l, c] = STATUS[o.status] || [o.status, "grey"]; return `<span class="pill ${c}">${l}</span>`; };
 const retLabel = i => i.ret_policy === "replace" && i.ret_days ? `Replacement • ${i.ret_days} days` : i.ret_policy === "return" && i.ret_days ? `Return & refund • ${i.ret_days} days` : "At door only";
 const daysLeft = () => S.sub_until ? Math.round((new Date(S.sub_until) - new Date(todayStr())) / 864e5) : null;
-const live = () => S.kyc === "APPROVED" && !S.quality_hold && (S.sub_until || "") >= todayStr();
+// same rule as the server's shop_live(): 5 days' grace after the plan ends, not paused for dues, not closed (update-71)
+const graceOk = () => { if (!S.sub_until) return false; const d = new Date(S.sub_until + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + 5); return d.toISOString().slice(0, 10) >= todayStr(); };
+const live = () => S.kyc === "APPROVED" && !S.quality_hold && !S.dues_paused && !S.closed && graceOk();
 
 // ================= boot =================
 async function boot() {
@@ -177,9 +179,12 @@ function refreshChrome() {
 function menu(o) { $(".side").classList.toggle("open", o); $("#scrim").classList.toggle("open", o); }
 // is the shop visible to customers? KYC approved + plan/trial running (+ not on hold)
 function shopStatusPill() {
-  const t = todayStr(), on = S.kyc === "APPROVED" && S.sub_until && S.sub_until >= t && !S.quality_hold && !S.delete_requested_at;
+  const t = todayStr(), on = live() && !S.delete_requested_at;
+  // three separate states: Closed · Paused · dues · Active
+  if (S.closed && !S.delete_requested_at) return `<span class="pill grey" style="margin-left:6px" title="You closed the shop — customers can't order until you open it">● Closed</span>`;
+  if (S.dues_paused && !S.delete_requested_at) return `<span class="pill bad" style="margin-left:6px;cursor:pointer" title="Plan / TDS dues not paid — pay to come back live" onclick="go('plan')">● Paused · dues</span>`;
   if (S.delete_requested_at) return `<span class="pill bad" style="margin-left:6px;cursor:pointer" title="Your delete request is with Gali Bazaar — customers can't see or order from your shop" onclick="go('shop')">● Hidden · delete request</span>`;
-  const why = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC being checked" : "KYC not done") : !S.sub_until || S.sub_until < t ? "plan ended" : S.quality_hold ? "on hold" : "";
+  const why = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC being checked" : "KYC not done") : !graceOk() ? "plan ended" : S.quality_hold ? "on hold" : "";
   return `<span class="pill ${on ? "ok" : "bad"}" style="margin-left:6px" title="Customers ${on ? "can" : "can't"} see your shop">${on ? "● Shop live on app" : "● Not live — " + why}</span>`;
 }
 function topRight(extra = "") {
@@ -245,7 +250,7 @@ function dash() {
       <div class="kpi"><span>Cash with staff</span><b class="or">${inr(cash)}</b><small>${who.length ? esc(who.join(", ")) + " • not handed over" : "All cash received"}</small></div>
       <div class="kpi"><span>Returns coming back</span><b class="pu">${back.length}</b><small>${inr(backV)} • check in</small></div>
     </div>
-    ${!live() ? `<div class="warnline" style="margin:0 0 16px">Your shop is hidden from customers: ${S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC is being checked." : "finish KYC in the app.") : S.quality_hold ? "paused for quality — reply to your complaints." : "plan ended — send yourself the renewal link below."}</div>` : ""}
+    ${!live() ? `<div class="warnline" style="margin:0 0 16px">Your shop is hidden from customers: ${S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC is being checked." : "finish KYC in the app.") : S.quality_hold ? "paused for quality — reply to your complaints." : S.dues_paused ? "paused for dues — pay in Subscription & bills." : S.closed ? "you closed the shop." : "plan ended — send yourself the renewal link below."}</div>` : ""}
     <div class="grid2">
       <div class="box"><h3>New orders <a href="/seller/orders/" onclick="event.preventDefault();go('orders')" style="float:right;color:#7C3AED;font-size:13px;text-decoration:none">All orders →</a></h3>
         ${news.length ? orderTable(news.slice(0, 8), true) : `<div class="sub" style="padding:18px 0">No new orders right now. New orders appear here by themselves.</div>`}</div>
@@ -1122,7 +1127,7 @@ function planDraw() {
   if (planTab === "bills") body = T(["Invoice", "Date", "For", "Taxable", "GST", "Total", ""], (b.invoices || []).map(i => `<tr><td><b>${esc(i.inv_no)}</b>${i.funded === "BALANCE" ? '<div class="sub" style="font-size:11.5px">Paid from balance</div>' : ""}</td><td>${dmy(i.inv_date)}</td>
       <td>${i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${dmy(i.period_from)} – ${dmy(i.period_to)}`}</td>${R(i.taxable)}${R(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<td style="text-align:right"><b>${inr2(i.total)}</b></td>
       <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="planInvoice('${i.id}')">View / PDF</button></td></tr>`));
-  if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 26AS / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
+  if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 168 / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
       T(["Month", "Sales", "Rate", "TDS", "Note", "Status"], tds.map(r => `<tr><td><b>${txMonth(r.month)}</b></td>${R(r.sales)}<td>${r.rate}%${r.entity === "NO_PAN" ? ' <span class="pill bad">no PAN</span>' : ""}</td>${R(r.tds)}
         <td>${esc(r.note_no || "")} <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="tdsNote('${r.month}')">View</button></td>
         <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`)) +
@@ -1167,7 +1172,7 @@ function tdsNote(month) {
       <tr><td class="mut">Sales month</td><td>${txMonth(r.month)}</td></tr><tr><td class="mut">Your sales through Gali Bazaar</td><td>${m(r.sales)}</td></tr>
       <tr><td class="mut">TDS rate</td><td>${r.rate}% — Income-tax Act 2025, s.393(1) Table Sl. 8(v)${r.entity === "NO_PAN" ? " (no PAN)" : ""}</td></tr>
       <tr><td class="mut"><b>TDS recovered from you</b></td><td><b style="font-size:16px">${m(r.tds)}</b></td></tr></table>
-    <p class="mut" style="margin-top:20px">Gali Bazaar deposits this TDS with the Income-tax department against your PAN; it shows in your Form 26AS / AIS and the quarterly certificate (Form 131). This note is not a tax invoice and carries no GST.</p>
+    <p class="mut" style="margin-top:20px">Gali Bazaar deposits this TDS with the Income-tax department against your PAN; it shows in your Form 168 / AIS and the quarterly certificate (Form 131). This note is not a tax invoice and carries no GST.</p>
     <button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
   w.document.close();
 }
