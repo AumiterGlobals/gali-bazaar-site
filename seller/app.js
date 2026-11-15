@@ -167,7 +167,10 @@ function shell() {
 }
 function refreshChrome() {
   const c = counts(), r = route().split("/")[0];
-  $("#snav").innerHTML = NAV.map(([k, l, i]) => { const n = k === "orders" ? c.neworders : k === "returns" ? c.ret : k === "complaints" ? c.comp : 0;
+  // Food Corner (update-70): orders are by phone — no orders, courier, returns, staff, slots or bills in the panel
+  const COOKED_HIDE = ["orders", "courier", "returns", "staff", "bills"];
+  $("#snav").innerHTML = NAV.filter(([k]) => !(COOKED() && COOKED_HIDE.includes(k))).map(([k, l, i]) => {
+    if (COOKED() && k === "catalog") l = "Menu"; if (COOKED() && k === "slots") l = "Areas you serve"; const n = k === "orders" ? c.neworders : k === "returns" ? c.ret : k === "complaints" ? c.comp : 0;
     return `<a data-k="${k}" href="/seller/${k ? k + "/" : ""}" class="${k === r ? "on" : ""}">${ico(i)}<span>${l}</span>${n ? `<span class="badge">${n}</span>` : ""}</a>`; }).join("");
   $$("#snav a").forEach(a => a.onclick = e => { e.preventDefault(); menu(false); go(a.dataset.k); });
 }
@@ -263,6 +266,7 @@ function dash() {
           <button class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" onclick="sendLink(this)">Send link</button></div>
       </div></div>`;
   rulesCard();   // IT Rules 2026: content-rules reminder every 3 months
+  cookedCard();  // Food Corner: calls this month
 }
 async function sendLink(b) {
   b.disabled = true; b.textContent = "Sending…";
@@ -397,6 +401,20 @@ function specPick(k) { specRead(); F_.specSet = k; const b = $("#specbox"); if (
 
 // 270, "270.00", 270.0 → "270"; 12.5 → "12.5" (form boxes show whole rupees without decimals)
 const numTxt = v => v == null || v === "" || isNaN(+v) ? "" : String(Math.round(+v * 100) / 100);
+
+// ================= Food Corner (update-70): listing + "Call to order" =================
+const COOKED = () => !!S && (((D.cats || []).find(c => c.key === S.type) || {}).call_only ?? S.type === "food");   // Food Corner (sweets / bakery keep orders)
+async function cookedCard() {
+  if (!COOKED()) return;
+  const { data: c } = await db.rpc("my_shop_calls"); const x = c || { month: 0, today: 0, last_month: 0 };
+  const m = $("#main"); if (!m || document.getElementById("callscard")) return;
+  const h = m.querySelector(".top");
+  const html = `<div class="box" id="callscard" style="background:#1D0F30;color:#fff;display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span style="font-size:28px">📞</span>
+    <div style="flex:1;min-width:220px"><div style="font-size:12.5px;color:#C9BEDC">Calls this month</div><div style="font-size:28px;font-weight:800">${x.month}</div>
+      <div style="font-size:12.5px;color:#C9BEDC;margin-top:4px">Customers see your menu and call you. Orders, payment, bills and delivery are yours, outside the app.</div></div>
+    <div style="text-align:right"><b>Today ${x.today}</b><div style="font-size:12px;color:#C9BEDC">Last month ${x.last_month}</div></div></div>`;
+  if (h) h.insertAdjacentHTML("afterend", html); else m.insertAdjacentHTML("afterbegin", html);
+}
 
 // ================= Content-rules reminder (update-69): shown for 30 days after each quarterly push, until "Got it" =================
 async function rulesCard() {
