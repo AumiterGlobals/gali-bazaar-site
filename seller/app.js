@@ -476,7 +476,7 @@ function editItem(id) {
     <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement"].concat(RET().refund ? ["Return & refund"] : []).map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
     ${RET().refund ? "" : `<div class="sub" style="font-size:12px;margin-top:4px">Replacement only for damaged or expired packs.</div>`}`}
     <div id="dw" style="display:none"><label>WITHIN HOW MANY DAYS OF DELIVERY? (1–${RET().max || 30})</label><input class="in" id="fd" inputmode="numeric" value="${Math.min(i?.ret_days || 7, RET().max || 30)}"></div>
-    ${RET().max === 0 ? "" : `<label>WARRANTY IN MONTHS (OPTIONAL)</label><input class="in" id="fwm" inputmode="numeric" maxlength="3" value="${i?.warranty_months || ""}" placeholder="e.g. 12 for 1 year" oninput="this.value=this.value.replace(/\\D/g,'')">
+    ${RET().max === 0 || KIND().food ? "" : `<label>WARRANTY IN MONTHS (OPTIONAL)</label><input class="in" id="fwm" inputmode="numeric" maxlength="3" value="${i?.warranty_months || ""}" placeholder="e.g. 12 for 1 year" oninput="this.value=this.value.replace(/\\D/g,'')">
     <div class="sub" style="font-size:12px;margin:4px 0 8px">Your shop's own warranty, from the delivery date. Customers see it on the item and the bill. While any sold item is under warranty, Gali Bazaar checks with you before your shop can be deleted.</div>`}
     ${COURIER_SHOP() ? (K.courier === "never" ? `<div class="note" style="margin-top:10px">Fresh items: local delivery only.</div>` : `<div class="row" style="border:1.5px solid ${F_.courier ? "#6A1BB0" : "#EEE7F6"};border-radius:16px;padding:12px 14px;margin-top:10px" id="crow"><div><b>📦 Can go by courier</b><span>${K.courier === "sealed" ? "Only sealed packets that last at least 1 month (namkeen, biscuits, soan papdi…)." : "Customers in your courier area can order it"}</span></div><button class="tog ${F_.courier ? "on" : ""}" id="fcr"></button></div>
       ${K.courier === "sealed" ? `<div id="sealbox" style="display:${F_.courier ? "grid" : "none"};grid-template-columns:1fr 1fr;gap:10px;align-items:end"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13.5px;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="fsl" ${F_.sealed ? "checked" : ""}> Sealed pack</label>
@@ -545,11 +545,12 @@ const UNITS = ["kg", "g", "L", "ml", "pc", "pack", "packet", "dozen", "box", "bo
 // only real measures or counts that fit this kind of shop (same as the app)
 function unitsFor(t) {
   const k = KIND().key;
-  return t === "footwear" ? ["pair"] : t === "garments" ? ["pc", "set", "pair"] : t === "stationery" ? ["pc", "set", "ream", "m", "g", "kg"]
+  return t === "footwear" ? ["pair", "set", "nos"] : t === "garments" ? ["pc", "nos", "set", "pair"] : t === "stationery" ? ["pc", "nos", "set", "ream", "m", "g", "kg"]
     : t === "fruitveg" || k === "food_fresh" ? ["kg", "g", "L", "ml", "pc", "dozen", "bunch"] : k === "food_cooked" ? ["kg", "g", "L", "ml", "pc", "plate"]
-    : k === "food_packed" ? ["kg", "g", "L", "ml", "pc", "dozen"] : ["pc", "set", "pair", "kg", "g", "L", "ml", "m"];
+    : k === "food_packed" ? ["kg", "g", "L", "ml", "pc", "dozen"] : ["pc", "nos", "set", "pair", "kg", "g", "L", "ml", "m"];
 }
-const amountLabel = t => t === "footwear" ? "PAIRS" : KIND().food ? "WEIGHT / VOLUME" : "NET QUANTITY";
+// always "Qty": a number, with the unit (kg, g, L, pair, set, nos…) picked next to it
+const amountLabel = t => "QTY";
 const splitUnit = u => { const m = String(u || "").match(/^\s*([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z].*)?$/); return m ? [m[1], (m[2] || "").trim()] : ["", String(u || "").trim()]; };
 const NEED = () => S.type === "grocery" ? 3 : S.type === "fruitveg" ? 2 : 1;
 const PHL = () => S.type === "grocery" ? ["1. Front", "2. Maker / FSSAI", "3. Ingredients"] : NEED() === 2 ? ["1. Photo", "2. Photo"] : ["Photo"];
