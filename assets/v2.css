@@ -68,18 +68,3 @@ footer.df{background:#1E1A1C!important}
 #why h2 span,.why h2 span{color:var(--brand)!important;background:none!important;-webkit-text-fill-color:currentColor}
 .st .si{background:var(--brand-soft)!important;color:var(--brand)!important}
 .st small{color:var(--brand)!important}
-/* app screens: keep their true shape (the width/height attributes must not stretch them) */
-.shot img{height:auto!important;aspect-ratio:1179/2556;object-fit:cover;object-position:top}
-.shot{box-shadow:0 24px 60px rgba(30,26,28,.10)}
-@media (max-width:900px){
-  .shots{gap:0;justify-content:center;padding:8px 0 0}
-  .shot{width:min(300px,74vw);border-radius:32px}
-  .shot img{border-radius:24px;aspect-ratio:1179/2100}   /* top of the screen only, like a phone peeking up */
-  .shot.s2{display:none}                                   /* one clear screen on a phone, not two squeezed ones */
-}
-@media (max-width:760px){
-  .hero .cta{flex-direction:column;align-items:stretch;gap:10px}
-  .hero .cta .btn{justify-content:center;width:100%}
-  .hero .cta .btn-gp .t{display:none}.hero .cta .btn-gp .one{display:inline}
-}
-.st small{text-transform:none;letter-spacing:0}
