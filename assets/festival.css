@@ -11,7 +11,9 @@ html.gbf-on.gbf-dark nav#nav a:not(.logo):not(.btn),html.gbf-on.gbf-dark nav#nav
 html.gbf-on .hero{position:relative;background:linear-gradient(180deg,var(--fest-top) 0%,var(--fest-mid) 55%,var(--fest-low) 100%)!important;isolation:isolate}
 html.gbf-on.gbf-dark .hero h1,html.gbf-on.gbf-dark .hero p,html.gbf-on.gbf-dark .hero .lead{color:#fff}
 .gbf-scene{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
-.gbf-scene svg{position:absolute;inset:0;width:100%;height:100%}
+.gbf-scene svg,.gbf-scene .gbf-l{position:absolute;left:-12px;right:-12px;bottom:-12px;width:calc(100% + 24px);height:auto;aspect-ratio:1260/520;will-change:transform;transition:transform .25s ease-out}
+@media (max-width:760px){.gbf-scene .gbf-l{width:calc(160% + 24px);left:-30%}}
+.gbf-scene canvas.gbf-p{position:absolute;inset:0;width:100%;height:100%}
 .gbf-deco-row{position:absolute;right:4%;top:14px;font-size:26px;letter-spacing:6px;pointer-events:none;z-index:2}
 .gbf-deco-row span{display:inline-block;animation:gbf-swing 2.8s ease-in-out infinite alternate}
 .gbf-deco-row span:nth-child(2n){animation-direction:alternate-reverse}
@@ -35,3 +37,16 @@ html.gbf-on.gbf-dark .hero .stats span{color:rgba(255,255,255,.75)}
 html.gbf-on.gbf-dark .hero .btn-sell{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.06)}
 html.gbf-on.gbf-dark .hero a[href="/help/install/"]{color:#FFD27A}
 html.gbf-on.gbf-dark .hero .stats b{filter:brightness(1.25)}
+
+/* mobile: decorations would sit on the "Launching soon" pill — hide them there */
+@media (max-width:760px){.gbf-deco-row{display:none}}
+/* dark festival header: menu icon and links in white */
+html.gbf-on.gbf-dark .menu-btn{color:#fff}
+html.gbf-on.gbf-dark .menu-btn svg{stroke:#fff}
+/* dark themes: the coloured words in the hero title turn gold for contrast */
+html.gbf-on.gbf-dark .hero h1{color:#fff}
+html.gbf-on.gbf-dark .hero h1 .o{background:linear-gradient(90deg,#FFE7A3 0%,#FFC94A 60%,#FFB020 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+html.gbf-on.gbf-dark .hero h1 .p{background:linear-gradient(90deg,#FFF1C9 0%,#FFD27A 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (prefers-reduced-motion:reduce){.gbf-scene .gbf-l{transition:none;transform:none!important}.gbf-scene canvas.gbf-p{display:none}}
+html.gbf-on.gbf-dark .hero a[href="/help/install/"]{color:#FFD27A!important}
+html.gbf-on.gbf-dark .hero .lead,html.gbf-on.gbf-dark .hero .stats{text-shadow:0 1px 8px rgba(0,0,0,.45)}

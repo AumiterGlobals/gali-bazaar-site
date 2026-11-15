@@ -373,3 +373,7 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
 
 /* Food Corner = listing + call (update-70) */
 .fcbadge{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:#fff;color:#E0306F;margin:2px 0 8px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+/* category cards: text and badges always above the 3D art (mobile) */
+.cat h3,.cat p,.cat .ctag,.cat .fcbadge{position:relative;z-index:2}
+.cat img{z-index:1}
+@media(max-width:640px){.cat .ctag,.cat .fcbadge{font-size:10.5px;padding:3px 8px}.cat.dyn img,.cat img{width:58px;right:8px;bottom:6px;opacity:.95}.cat.dyn{padding-bottom:58px}}
