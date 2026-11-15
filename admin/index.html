@@ -85,7 +85,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["payments","Payments"],["bank","Bank statement"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -158,7 +158,7 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage };
   tdBanner().catch(() => {});
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
@@ -291,12 +291,16 @@ async function docs(id) {
 function claimTable(list, shops, featured) {
   if (!list.length) return "";
   const nm = id => esc(shops.find(s => s.id === id)?.name || "Shop");
-  return `<table><thead><tr><th>SHOP</th><th>${featured ? "DAYS" : "PLAN"}</th><th>AMOUNT</th><th>STATUS</th>${featured || list.some(c => c.status === "PENDING") ? "<th></th>" : ""}</tr></thead><tbody>${list.map(c => `<tr>
+  return `<table><thead><tr><th>SHOP</th><th>${featured ? "DAYS" : "PLAN"}</th><th>AMOUNT</th><th>STATUS</th>${featured || list.some(c => ["PENDING", "NOT_FOUND"].includes(c.status)) ? "<th></th>" : ""}</tr></thead><tbody>${list.map(c => `<tr>
     <td>${nm(c.shop)}<br><span class="sub">UTR ${esc(c.utr)}</span></td><td>${featured ? (c.days || "") + " days" : c.months + " month" + (c.months > 1 ? "s" : "")}</td><td><b>${inr(c.amount)}</b></td>
-    <td><span class="pill ${c.status === "APPROVED" ? "ok" : c.status === "PENDING" ? "warn" : "bad"}">${c.status === "APPROVED" ? "Paid" : c.status === "PENDING" ? "Check" : "Rejected"}</span></td>
-    ${c.status === "PENDING" ? `<td style="white-space:nowrap"><button class="mini dk" onclick="claimOk('${c.id}')">Approve</button><button class="mini" onclick="claimNo('${c.id}')">Decline</button></td>` : (featured ? "<td></td>" : "")}</tr>`).join("")}</tbody></table>`;
+    <td><span class="pill ${c.status === "APPROVED" ? "ok" : c.status === "PENDING" ? "warn" : "bad"}">${c.status === "APPROVED" ? (c.verified_by === "BANK" ? "Verified · bank" : "Verified") : c.status === "PENDING" ? "Checking" : c.status === "NOT_FOUND" ? `Not found${c.not_found_count > 1 ? " ×" + c.not_found_count : ""}` : "Rejected"}</span>
+      ${c.inv_no ? `<div class="sub" style="font-size:11.5px">${esc(c.inv_no)}</div>` : ""}${c.verify_reason && c.verified_by === "ADMIN" ? `<div class="sub" style="font-size:11.5px">${esc(c.verify_reason)}</div>` : ""}</td>
+    ${["PENDING", "NOT_FOUND"].includes(c.status) ? `<td style="white-space:nowrap">${c.shot_url && !c.shot_deleted_at ? `<button class="mini" onclick="claimShot('${esc(c.shot_url)}')">Screenshot</button>` : ""}<button class="mini dk" onclick="claimOk('${c.id}')">Mark verified</button><button class="mini" onclick="claimNo('${c.id}')">Decline</button></td>` : (featured || list.some(x => ["PENDING", "NOT_FOUND"].includes(x.status)) ? "<td></td>" : "")}</tr>`).join("")}</tbody></table>`;
 }
-async function claimOk(id) { const { error } = await db.rpc("approve_claim", { p_claim: id }); if (error) alert(error.message); else go(page); }
+// update-72: verifying by hand needs a reason (logged); the bank statement page verifies automatically
+async function claimOk(id) { const r = prompt("Why are you marking this verified? (e.g. seen in the bank app on 15 Nov) — this is logged"); if (!r) return;
+  const { error } = await db.rpc("admin_mark_verified", { p_claim: id, p_reason: r }); if (error) alert(error.message); else go(page); }
+async function claimShot(p) { const { data } = await db.storage.from("plan-shots").createSignedUrl(p, 600); if (data?.signedUrl) window.open(data.signedUrl); else alert("Screenshot not found (it may be in the nightly backup email)"); }
 async function claimNo(id) { const r = prompt("Reason (the shop sees this)"); if (!r) return; const { error } = await db.from("pay_claims").update({ status: "REJECTED", reason: r }).eq("id", id); if (error) alert(error.message); else go(page); }
 
 // ---------------- Sellers ----------------
@@ -385,7 +389,7 @@ async function settingsPage() {
     ${f("plan_price", "PLAN PRICE ₹ / MONTH", s.plan_price, "number")}${f("trial_days", "FREE TRIAL (DAYS)", s.trial_days, "number")}
     ${f("d3", "3 MONTHS % OFF", d["3"] ?? 10, "number")}${f("d6", "6 MONTHS % OFF", d["6"] ?? 15, "number")}${f("d12", "12 MONTHS % OFF", d["12"] ?? 20, "number")}
     ${f("feat_week_price", "TOP SPOT 1 WEEK ₹", s.feat_week_price, "number")}${f("feat_month_price", "TOP SPOT 1 MONTH ₹", s.feat_month_price, "number")}
-    ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${f("app_link", "APP DOWNLOAD LINK", s.app_link)}${"terms_version" in s ? f("terms_version", "TERMS VERSION (YYYY-MM-DD)", s.terms_version) : ""}</div>
+    ${f("biz_name", "BUSINESS NAME (INVOICES)", s.biz_name)}${f("biz_email", "BUSINESS EMAIL", s.biz_email)}${"backup_email" in s ? f("backup_email", "ADMIN EMAIL (PAYMENT SCREENSHOT BACKUP)", s.backup_email || "") : ""}${f("app_link", "APP DOWNLOAD LINK", s.app_link)}${"terms_version" in s ? f("terms_version", "TERMS VERSION (YYYY-MM-DD)", s.terms_version) : ""}</div>
     ${"counter_min_customers" in s ? `<div style="margin-top:12px"><label>SHOW WEBSITE COUNTER AFTER</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input class="in" id="st_counter_min_customers" type="number" min="0" style="width:90px" value="${esc(s.counter_min_customers)}"> customers and
       <input class="in" id="st_counter_min_shops" type="number" min="0" style="width:90px" value="${esc(s.counter_min_shops)}"> shops</div>
@@ -487,6 +491,7 @@ async function settingsSave() {
   const v = k => $("#st_" + k).value, n = k => +v(k) || 0;
   const row = { plan_price: n("plan_price") || 99, trial_days: n("trial_days"), plan_discounts: { "1": 0, "3": n("d3"), "6": n("d6"), "12": n("d12") },
     feat_week_price: n("feat_week_price"), feat_month_price: n("feat_month_price"), biz_name: v("biz_name").trim(), biz_email: v("biz_email").trim(), app_link: v("app_link").trim(), auto_kyc: $("#st_auto").checked };
+  if ($("#st_backup_email")) row.backup_email = v("backup_email").trim() || null;
   if ($("#st_counter_min_customers")) { row.counter_min_customers = Math.max(0, n("counter_min_customers")); row.counter_min_shops = Math.max(0, n("counter_min_shops")); }
   if ($("#st_terms_version")) { const tv = v("terms_version").trim(); if (!/^\d{4}-\d{2}-\d{2}(\.\d+)?$/.test(tv)) { $("#st_m").className = "msg err"; $("#st_m").textContent = "Terms version must look like 2026-11-14 (or 2026-11-14.2 for a second change that day)"; return; } row.terms_version = tv; }
   const { error } = await db.from("settings").update(row).eq("id", 1);
@@ -501,7 +506,7 @@ async function blockedPage() {
 }
 async function payments() {
   const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "PLAN").order("created_at", { ascending: false }).limit(200)), q("shops", "id,name")]);
-  $("#main").innerHTML = head("Payments", `${claims.filter(c => c.status === "PENDING").length} waiting to be checked`) + `<div class="box">${claimTable(claims, shops, false) || '<div class="sub">No payments yet.</div>'}</div>`;
+  $("#main").innerHTML = head("Payments", `${claims.filter(c => c.status === "PENDING").length} waiting to be checked · ${claims.filter(c => c.status === "NOT_FOUND").length} not found`, `<button class="btn" onclick="go('bank')">Upload bank statement</button>`) + `<div class="box">${claimTable(claims, shops, false) || '<div class="sub">No payments yet.</div>'}</div>`;
 }
 async function featured() {
   const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "FEATURED").order("created_at", { ascending: false }).limit(100)), q("shops", "id,name,featured_until")]);
@@ -839,6 +844,7 @@ start();
 <script src="/admin/sales-partner.js?v=1795530000"></script>
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
+<script src="/admin/bank.js?v=1795800000"></script>
 <script src="/admin/books.js?v=1795530000">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";

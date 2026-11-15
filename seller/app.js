@@ -1096,7 +1096,7 @@ function planDraw() {
       T(["Note", "Date", "Details", "Amount"], tds.map(l => `<tr><td><b>${esc(l.doc_no || "")}</b></td><td>${dmy(l.at)}</td><td>${esc(l.note || "")}</td>${R(-l.amount)}</tr>`));
   if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmy(c.paid_on)}</td><td>${esc(c.utr)}</td>
       <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
-      <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : c.status)}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
+      <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
   if (planTab === "stmt") body = T(["Date", "Entry", "Doc no", "Amount", "Balance"], (b.statement || []).map(l => `<tr><td>${dmy(l.at)}</td><td>${esc(KIND_L[l.kind] || l.kind)}<div class="sub" style="font-size:11.5px">${esc(l.note || "")}</div></td>
       <td>${esc(l.doc_no || "")}</td><td style="text-align:right;color:${l.amount < 0 ? "#C62828" : "#12A866"}">${l.amount < 0 ? "– " : "+ "}${inr2(Math.abs(l.amount))}</td>${R(l.running)}</tr>`));
   $("#main").innerHTML = head("Subscription & bills", "Your plan with Gali Bazaar — bills, TDS notes, payments and statement") + `
@@ -1109,6 +1109,10 @@ function planDraw() {
         <a class="btn pink" href="/pay/?shop=${S.id}&months=1">Pay / renew</a>
         ${q1 && bal >= Number(q1.amount) ? `<button class="btn" onclick="useBalance()">Use balance for plan</button>` : ""}</div></div>
     <div class="sub" style="margin:-4px 0 12px">Plans renew on the 1st of every month (first month pro-rata). Pay by the 5th — unpaid shops are paused on the 6th and come back as soon as the payment is verified. Extra money stays as balance.</div>
+    ${(b.payments || []).filter(c => c.status === "NOT_FOUND").map(c => `<div class="box" style="background:#FDE7EE;border-color:#F6B9CC;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px"><b style="color:#B0144F">Payment not found — ${inr(c.amount)} · UTR ${esc(c.utr)}</b>
+      <div class="sub" style="color:#6B1233">Payment not found in our bank statement — please check your bank statement and the UTR, then update it.</div></div>
+      <a class="btn pink" href="/pay/?shop=${S.id}&fix=1">Update UTR</a></div>`).join("")}
     ${pend.map(c => `<div class="box"><b>${inr(c.amount)} · ${dmy(c.paid_on)} · UTR ${esc(c.utr)}</b><div class="sub">Being checked with our bank statement — the invoice comes on the day it's verified.</div></div>`).join("")}
     <div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab("bills", "Bills", (b.invoices || []).length)}${tab("tds", "TDS", tds.length)}${tab("pay", "Payments", (b.payments || []).length)}${tab("stmt", "Statement", 0)}
       <span style="flex:1"></span><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="planXlsx()">Excel</button><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="print()">PDF</button></div>${body}</div>`;

@@ -80,6 +80,20 @@ h3{font-size:18px;margin:44px 0 16px;font-weight:600}
 .utr button{background:#1D0F30;color:#fff;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
 .utr button:disabled{opacity:.6}
 .paid{display:block;font-size:12px;color:var(--muted);margin-top:8px}
+/* update-72: payment details form */
+.pf{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.pf label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.pf .full{grid-column:1/-1}
+.pf input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #E6DEEC;border-radius:12px;font:inherit;font-size:14.5px;font-weight:500;background:#fff}
+.pf input:focus{outline:none;border-color:#8B5CF6}
+.shot{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1.5px dashed #D9CCEA;border-radius:12px;cursor:pointer;font-size:13.5px;background:#FBF9FD}
+.shot.ok{border-style:solid;border-color:#12A866;background:#EEFBF4;color:#0B7A47}
+.shot input{display:none}
+.sendbtn{width:100%;margin-top:12px;background:#1D0F30;color:#fff;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:600;font-size:15px;cursor:pointer}
+.sendbtn:disabled{opacity:.6}
+.fixcard{background:#FDE7EE;border:1px solid #F6B9CC;border-radius:16px;padding:16px;margin-bottom:14px}
+.fixcard h3{margin:0 0 4px;font-size:15.5px;color:#B0144F}
+.fixcard p{margin:0 0 10px;font-size:13px;line-height:1.5;color:#6B1233}
 .done{max-width:430px;margin:20px auto;text-align:center;position:relative}
 .tick{width:110px;height:110px;border-radius:50%;background:#D7F5E6;display:grid;place-items:center;margin:20px auto 22px}
 .tick div{width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,#22C55E,#12A866);display:grid;place-items:center;color:#fff;box-shadow:0 10px 24px #12A86655}
@@ -199,12 +213,18 @@ h3{font-size:18px;margin:44px 0 16px;font-weight:600}
       <div class="upibox">
         <div id="qr"></div>
         <div class="upiid">Scan with any UPI app · UPI ID <code id="upi">—</code></div>
-        <div class="utr"><input id="utr" inputmode="numeric" placeholder="UTR / UPI reference no." autocomplete="off"><button id="send">Verify</button></div>
-        <span class="paid">After paying, copy the 12-digit UTR from your UPI app and tap Verify. Paid on <input id="date" type="date" style="border:0;background:none;font:inherit;color:inherit"></span>
+        <span class="paid" style="margin:4px 0 12px">After paying, fill these from your UPI app. We check every payment with our bank statement — the tax invoice comes on the day it's verified.</span>
+        <div class="pf">
+          <div class="full"><label for="utr">UTR / UPI reference no.</label><input id="utr" inputmode="numeric" placeholder="12-digit UTR" autocomplete="off"></div>
+          <div><label for="amt">Amount paid (₹)</label><input id="amt" inputmode="numeric" placeholder="0"></div>
+          <div><label for="date">Paid on</label><input id="date" type="date"></div>
+          <label class="shot full" id="shotBox"><svg class="ic"><use href="#i-upload"/></svg><span id="shotTxt">Add payment screenshot</span><input id="shot" type="file" accept="image/*"></label>
+        </div>
+        <button class="sendbtn" id="send">Send for checking</button>
         <div id="msg"></div>
       </div>
       <a class="pay" id="upiLink" href="#"><svg class="ic"><use href="#i-shield"/></svg><span id="upiLabel">Pay securely</span></a>
-      <div class="fine">Pay in your UPI app, then enter the UTR above</div>
+      <div class="fine">Pay in your UPI app, then enter the UTR, amount, date and screenshot above</div>
     </div>
   </div>
 
@@ -334,9 +354,40 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   draw();
   ready = true;
   show("vPlans");
+  // update-72: payments not found in our bank statement — correct the UTR / amount / date here
+  if ((info.fix || []).length) {
+    const box = document.createElement("div");
+    box.innerHTML = info.fix.map(c => `<div class="fixcard" id="fx${c.id}"><h3>Payment not found — ${inr(c.amount)}</h3>
+      <p>Payment not found in our bank statement — please check your bank statement and the UTR, then update it.</p>
+      <div class="pf"><div class="full"><label>UTR / UPI reference no.</label><input class="fu" value="${esc(c.utr)}"></div>
+        <div><label>Amount paid (₹)</label><input class="fa" inputmode="numeric" value="${c.amount}"></div><div><label>Paid on</label><input class="fd" type="date" value="${c.paid_on}" max="${todayStr}"></div></div>
+      <button class="sendbtn" onclick="fixPay('${c.id}')">Update and check again</button><div class="fm"></div></div>`).join("");
+    $("vPlans").prepend(box);
+  }
+  window.fixPay = async id => {
+    const el = $("fx" + id), m = el.querySelector(".fm");
+    try { await rpc("fix_payment", { p_claim: id, p_utr: el.querySelector(".fu").value, p_amount: +el.querySelector(".fa").value, p_paid_on: el.querySelector(".fd").value });
+      el.innerHTML = `<h3 style="color:#0B7A47">Updated — we'll check it again</h3><p style="color:#0B7A47">You'll get a notification and email when it's verified.</p>`; el.style.background = "#EEFBF4"; el.style.borderColor = "#BFEBD3"; }
+    catch (e) { m.innerHTML = `<div class="note err">${esc(e.message)}</div>`; }
+  };
+  // screenshot → JPEG under 150 KB
+  let shotBlob = null;
+  const toJpeg = file => new Promise((ok, bad) => { const im = new Image(); im.onload = async () => {
+    let w = im.width, h = im.height, sc = Math.min(1, 1400 / Math.max(w, h));
+    for (let i = 0; i < 8; i++) {
+      const c = document.createElement("canvas"); c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+      for (const qy of [0.8, 0.65, 0.5]) { const b = await new Promise(r => c.toBlob(r, "image/jpeg", qy)); if (b && b.size <= 150 * 1024) return ok(b); }
+      sc *= 0.75;
+    }
+    bad(new Error("Screenshot is too large — please crop it"));
+  }; im.onerror = () => bad(new Error("Please choose an image")); im.src = URL.createObjectURL(file); });
+  $("shot").onchange = async e => { const f = e.target.files[0]; if (!f) return;
+    try { shotBlob = await toJpeg(f); $("shotTxt").textContent = "Screenshot added · " + Math.round(shotBlob.size / 1024) + " KB"; $("shotBox").classList.add("ok"); }
+    catch (er) { shotBlob = null; $("msg").innerHTML = `<div class="note err">${esc(er.message)}</div>`; } };
 
   document.querySelectorAll(".goPay").forEach(b => b.onclick = () => {
-    show("vCheckout");
+    show("vCheckout"); $("amt").value = amt;
     if (!upi) $("msg").innerHTML = '<div class="note err">Payment is not set up yet. Please write to support@galibazaar.site.</div>';
   });
   $("back").onclick = () => show("vPlans");
@@ -344,17 +395,21 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   $("send").onclick = async () => {
     $("msg").innerHTML = ""; const b = $("send"); b.disabled = true; b.textContent = "…";
     try {
-      await rpc("submit_utr", { p_shop: shop, p_utr: $("utr").value, p_months: months, p_paid_on: $("date").value,
-        p_purpose: featured ? "FEATURED" : "PLAN", p_days: featured ? days : null });
+      if (!shotBlob) throw new Error("Please add the payment screenshot");
+      const path = `${shop}/${Date.now()}.jpg`;
+      const up = await fetch(`${SUPABASE_URL}/storage/v1/object/plan-shots/${path}`, { method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "image/jpeg" }, body: shotBlob });
+      if (!up.ok) throw new Error("Couldn't upload the screenshot — please try again");
+      await rpc("submit_payment", { p_shop: shop, p_utr: $("utr").value, p_amount: +$("amt").value, p_paid_on: $("date").value, p_shot: path,
+        p_months: months, p_purpose: featured ? "FEATURED" : "PLAN", p_days: featured ? days : null });
       const colors = ["#FFC21A", "#EF287B", "#8B5CF6", "#12A866"];
       const conf = Array.from({ length: 10 }, (_, i) => `<span class="conf" style="background:${colors[i % 4]};left:${i % 2 ? 72 + Math.random() * 22 : 4 + Math.random() * 22}%;top:${10 + Math.random() * 120}px;transform:rotate(${Math.random() * 90 - 45}deg)"></span>`).join("");
       $("vDone").innerHTML = `<div class="done">${conf}
         <div class="tick"><div><svg class="ic"><use href="#i-check"/></svg></div></div>
-        <h2>Payment received</h2>
-        <span class="okpill">${esc(info.name)} will be Active after the check</span>
+        <h2>Payment sent for checking</h2>
+        <span class="okpill">We check it with our bank statement — usually within a day</span>
         <div class="rec">
           <div><span>${featured ? "Top spot" : "Plan"}</span><b>${esc(label)}</b></div>
-          <div><span>Amount paid</span><b>${inr(amt)}</b></div>
+          <div><span>Amount paid</span><b>${inr(+$("amt").value)}</b></div>
           <div><span>Valid till</span><b>${fmt(till)}</b></div>
           <div><span>UTR</span><b>${esc($("utr").value.trim())}</b></div>
         </div>
@@ -365,7 +420,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
     } catch (e) {
       $("msg").innerHTML = `<div class="note err">${esc(e.message)}</div>`;
     }
-    b.disabled = false; b.textContent = "Verify";
+    b.disabled = false; b.textContent = "Send for checking";
   };
 })();
 </script>
