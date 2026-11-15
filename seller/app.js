@@ -1127,11 +1127,11 @@ function planDraw() {
   if (planTab === "bills") body = T(["Invoice", "Date", "For", "Taxable", "GST", "Total", ""], (b.invoices || []).map(i => `<tr><td><b>${esc(i.inv_no)}</b>${i.funded === "BALANCE" ? '<div class="sub" style="font-size:11.5px">Paid from balance</div>' : ""}</td><td>${dmy(i.inv_date)}</td>
       <td>${i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${dmy(i.period_from)} – ${dmy(i.period_to)}`}</td>${R(i.taxable)}${R(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<td style="text-align:right"><b>${inr2(i.total)}</b></td>
       <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="planInvoice('${i.id}')">View / PDF</button></td></tr>`));
-  if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 168 / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
+  if (planTab === "tds") body = tdsQuarters() + `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 168 / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
       T(["Month", "Sales", "Rate", "TDS", "Note", "Status"], tds.map(r => `<tr><td><b>${txMonth(r.month)}</b></td>${R(r.sales)}<td>${r.rate}%${r.entity === "NO_PAN" ? ' <span class="pill bad">no PAN</span>' : ""}</td>${R(r.tds)}
         <td>${esc(r.note_no || "")} <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="tdsNote('${r.month}')">View</button></td>
         <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`)) +
-      ((window._plan.certs || []).length ? `<h3 style="margin-top:16px">Form 131 certificates</h3>${window._plan.certs.map(c => `<button class="btn ghost" style="margin:4px 6px 0 0" onclick="tdsCert('${esc(c.path)}')">FY ${esc(c.fy)} · Q${c.quarter} · PDF</button>`).join("")}` : "");
+      "";
   if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmy(c.paid_on)}</td><td>${esc(c.utr)}</td>
       <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
       <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
@@ -1156,9 +1156,29 @@ function planDraw() {
       <span style="flex:1"></span><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="planXlsx()">Excel</button><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="print()">PDF</button></div>${body}</div>`;
 }
 async function tdsCert(p) { const { data } = await db.storage.from("tds-certs").createSignedUrl(p, 600); if (data?.signedUrl) window.open(data.signedUrl); else toast("Couldn't open the certificate"); }
+// one card per quarter (newest first), only quarters with TDS: deposit, return and Form 131 status
+const QTR = { 1: ["Apr–Jun", "31 Jul", "15 Aug"], 2: ["Jul–Sep", "31 Oct", "15 Nov"], 3: ["Oct–Dec", "31 Jan", "15 Feb"], 4: ["Jan–Mar", "31 May", "15 Jun"] };
+function tdsQuarters() {
+  const qs = ((window._plan.tx || {}).quarters || []).filter(q => +q.tds > 0);
+  if (!qs.length) return "";
+  return qs.map(q => { const [mon, ret, cert] = QTR[q.quarter], y0 = 2000 + +q.fy.slice(0, 2), yr = q.quarter === 4 ? y0 + 1 : y0;
+    const fy = `${y0}-${String(y0 + 1).slice(2)}`, deps = (q.deposited || []).map(dmy).join(", ");
+    return `<div class="box" style="margin:0 0 12px;background:#FBF9FD"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+      <h3 style="margin:0;flex:1">Q${q.quarter} · ${mon} ${yr} <span class="sub" style="font-weight:500">(FY ${fy})</span></h3>
+      <span class="sub" style="margin:0">Sales <b>${inr2(q.sales)}</b> · TDS <b>${inr2(q.tds)}</b></span></div>
+      <div style="display:grid;gap:6px;margin-top:10px;font-size:13.5px">
+        <div>Deposited: ${q.all_deposited && deps ? `<b style="color:#12A866">✓ ${deps}</b>` : deps ? `${deps} <span style="color:#B26A00">· ⏳ rest pending</span>` : '<span style="color:#B26A00">⏳ Not deposited yet</span>'}</div>
+        <div>Return: ${q.return_filed_on ? `<b style="color:#12A866">✓ Filed ${dmy(q.return_filed_on)}</b>` : `<span style="color:#B26A00">⏳ Return due ${ret} ${q.quarter === 4 || q.quarter === 3 ? y0 + 1 : y0}</span>`}</div>
+        <div>Form 131: ${q.cert ? `<button class="btn ghost" style="padding:5px 12px;font-size:12.5px" onclick="tdsCert('${esc(q.cert)}')">Download PDF</button>` : `<span class="sub" style="margin:0">Comes by ~${cert} ${q.quarter === 1 || q.quarter === 2 ? y0 : y0 + 1}</span>`}</div>
+        <div class="sub" style="margin:0">Form 168 / AIS should show ${inr2(q.tds)} — if it doesn't, tell us in Help &amp; support.</div></div></div>`; }).join("");
+}
 const txMonth = d => new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 function tdsNote(month) {
-  const { tx, st } = window._plan, r = (tx.months || []).find(x => x.month === month); if (!r) return;
+  const { tx, st, b } = window._plan, r = (tx.months || []).find(x => x.month === month); if (!r) return;
+  const noteDate = String(r.created_at || "").slice(0, 10);
+  const due = (() => { const d = new Date(noteDate + "T00:00:00Z"); d.setUTCDate((st.pay_due_day || 5)); return d.toISOString().slice(0, 10); })();
+  const paidOn = r.status === "RECOVERED" ? ((b.statement || []).filter(l => l.kind === "PAYMENT" || l.kind === "CREDIT_NOTE").map(l => l.at).filter(d => d >= noteDate).sort()[0] || "") : "";
+  const addr = [S.addr, S.locality, S.city, S.state, S.pin].filter(Boolean).join(", ");
   const m = v => "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const w = window.open("", "_blank"); if (!w) { alert("Allow pop-ups to view the note"); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>TDS note ${esc(r.note_no)}</title><style>
@@ -1166,12 +1186,15 @@ function tdsNote(month) {
     h1{font-size:20px;margin:0}.mut{color:#6B6380;font-size:12.5px;line-height:1.5}table{width:100%;border-collapse:collapse;margin-top:18px}
     td{padding:9px 6px;font-size:13.5px;border-bottom:1px solid #F1ECF4}.btn{margin-top:22px;padding:10px 18px;border:0;border-radius:99px;background:#1D0F30;color:#fff;font:inherit;cursor:pointer}
     @media print{.btn{display:none}}</style></head><body><div class="bar"></div>
-    <div style="display:flex;justify-content:space-between;gap:20px"><div><h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}${st.biz_gstin ? `<br>GSTIN: ${esc(st.biz_gstin)}` : ""}${st.tan ? `<br>TAN: ${esc(st.tan)}` : ""}</div></div>
+    <div style="display:flex;justify-content:space-between;gap:20px"><div>${WORDMARK}<h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}${st.biz_gstin ? `<br>GSTIN: ${esc(st.biz_gstin)}` : ""}${st.tan ? `<br>TAN: ${esc(st.tan)}` : ""}</div></div>
       <div style="background:#6A1BB0;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;height:fit-content">TDS RECOVERY NOTE</div></div>
-    <table><tr><td class="mut">Note no</td><td><b>${esc(r.note_no)}</b></td></tr><tr><td class="mut">To</td><td><b>${esc(S.name)}</b> · PAN ${esc(r.pan || "not given")}</td></tr>
+    <table><tr><td class="mut">Note no</td><td><b>${esc(r.note_no)}</b></td></tr><tr><td class="mut">Note date</td><td>${dmy(noteDate)}</td></tr>
+      <tr><td class="mut">To</td><td><b>${esc(S.name)}</b> · PAN ${esc(r.pan || "not given")}<br><span class="mut">${esc(addr)}</span></td></tr>
       <tr><td class="mut">Sales month</td><td>${txMonth(r.month)}</td></tr><tr><td class="mut">Your sales through Gali Bazaar</td><td>${m(r.sales)}</td></tr>
       <tr><td class="mut">TDS rate</td><td>${r.rate}% — Income-tax Act 2025, s.393(1) Table Sl. 8(v)${r.entity === "NO_PAN" ? " (no PAN)" : ""}</td></tr>
-      <tr><td class="mut"><b>TDS recovered from you</b></td><td><b style="font-size:16px">${m(r.tds)}</b></td></tr></table>
+      <tr><td class="mut"><b>TDS recovered from you</b></td><td><b style="font-size:16px">${m(r.tds)}</b></td></tr>
+      <tr><td class="mut">Pay by</td><td>${dmy(due)}</td></tr>
+      <tr><td class="mut">Status</td><td>${r.status === "RECOVERED" ? `<b style="color:#12A866">Paid${paidOn ? " on " + dmy(paidOn) : ""}</b>` : '<b style="color:#B26A00">Pending</b>'}</td></tr></table>
     <p class="mut" style="margin-top:20px">Gali Bazaar deposits this TDS with the Income-tax department against your PAN; it shows in your Form 168 / AIS and the quarterly certificate (Form 131). This note is not a tax invoice and carries no GST.</p>
     <button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
   w.document.close();
@@ -1192,6 +1215,23 @@ function planXlsx() {
   add("Statement", (b.statement || []).map(l => ({ Date: l.at, Entry: KIND_L[l.kind] || l.kind, "Doc no": l.doc_no || "", Details: l.note || "", Amount: +l.amount, Balance: +l.running })));
   XLSX.writeFile(wb, `Gali-Bazaar-subscription-${S.name.replace(/[^A-Za-z0-9]+/g, "-")}.xlsx`);
 }
+// ---- shared for plan invoice / TDS note (update-71/73) ----
+const GST_CODE = { "jammu and kashmir": "01", "himachal pradesh": "02", "punjab": "03", "chandigarh": "04", "uttarakhand": "05", "haryana": "06", "delhi": "07",
+  "rajasthan": "08", "uttar pradesh": "09", "bihar": "10", "sikkim": "11", "arunachal pradesh": "12", "nagaland": "13", "manipur": "14", "mizoram": "15", "tripura": "16",
+  "meghalaya": "17", "assam": "18", "west bengal": "19", "jharkhand": "20", "odisha": "21", "chhattisgarh": "22", "madhya pradesh": "23", "gujarat": "24",
+  "dadra and nagar haveli and daman and diu": "26", "maharashtra": "27", "karnataka": "29", "goa": "30", "lakshadweep": "31", "kerala": "32", "tamil nadu": "33",
+  "puducherry": "34", "andaman and nicobar islands": "35", "telangana": "36", "andhra pradesh": "37", "ladakh": "38" };
+const posLabel = st => st ? `${st}${GST_CODE[String(st).trim().toLowerCase()] ? " (" + GST_CODE[String(st).trim().toLowerCase()] + ")" : ""}` : "";
+function amtWords(v) {   // "Rupees One Hundred Twenty and Fifty Paise Only" — Indian numbering, same as the app PDF
+  const o = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"],
+    t = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const two = n => n < 20 ? o[n] : t[Math.floor(n / 10)] + (n % 10 ? " " + o[n % 10] : ""), three = n => [n >= 100 ? o[Math.floor(n / 100)] + " Hundred" : "", n % 100 ? two(n % 100) : ""].filter(Boolean).join(" ");
+  const p = Math.round(Number(v) * 100); let r = Math.floor(p / 100); const ps = p % 100;
+  const parts = [], cr = Math.floor(r / 1e7); r %= 1e7; const lk = Math.floor(r / 1e5); r %= 1e5; const th = Math.floor(r / 1000), rest = r % 1000;
+  if (cr) parts.push(three(cr) + " Crore"); if (lk) parts.push(two(lk) + " Lakh"); if (th) parts.push(two(th) + " Thousand"); if (rest) parts.push(three(rest));
+  return "Rupees " + (parts.join(" ") || "Zero") + (ps ? " and " + two(ps) + " Paise" : "") + " Only";
+}
+const WORDMARK = `<div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:6px"><span style="color:#6A1BB0">गली</span> <span style="color:#111111">Bazaar</span><span style="color:#F0287A">.</span></div>`;
 function planInvoice(id) {
   const { b, st } = window._plan, v = (b.invoices || []).find(x => x.id === id); if (!v) return;
   const pc = (b.payments || []).find(x => x.id === v.claim);
@@ -1211,14 +1251,15 @@ function planInvoice(id) {
     table{width:100%;border-collapse:collapse}th{text-align:left;font-size:12px;color:#6B6380;border-bottom:1.5px solid #E6DEEC;padding:8px 6px}td{padding:8px 6px;font-size:13.5px;border-bottom:1px solid #F1ECF4}
     .tot{width:320px;margin-left:auto;margin-top:12px}.btn{margin-top:22px;padding:10px 18px;border:0;border-radius:99px;background:#1D0F30;color:#fff;font:inherit;cursor:pointer}
     @media print{.btn{display:none}}</style></head><body><div class="bar"></div>
-    <div class="top"><div><h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}<br>${esc(st.biz_email || "")}${st.biz_gstin ? `<br><b style="color:#1D0F30">GSTIN: ${esc(st.biz_gstin)}</b>` : ""}</div></div>
+    <div class="top"><div>${WORDMARK}<h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}<br>${esc(st.biz_email || "")}${st.biz_gstin ? `<br><b style="color:#1D0F30">GSTIN: ${esc(st.biz_gstin)}</b>` : ""}</div></div>
       <div class="tag">${gst ? "TAX INVOICE" : "INVOICE"}</div></div>
     <div class="meta"><div><span class="mut">Invoice no</span><b>${esc(c.inv_no || "—")}</b></div><div><span class="mut">Date</span><b>${esc(c.paid_on)}</b></div>
-      <div><span class="mut">UPI ref (UTR)</span><b>${esc(c.utr || "")}</b></div><div><span class="mut">Place of supply</span><b>${esc(c.place_of_supply || S.state || "")}</b></div></div>
+      <div><span class="mut">UPI ref (UTR)</span><b>${esc(c.utr || "")}</b></div><div><span class="mut">Place of supply</span><b>${esc(posLabel(c.place_of_supply || S.state || ""))}</b></div></div>
     <div class="mut">Billed to</div><b>${esc(S.name)}</b><div class="mut">${esc([S.addr, S.locality, S.city, S.state, S.pin].filter(Boolean).join(", "))}${gstin ? `<br><b style="color:#1D0F30">GSTIN: ${esc(gstin)}</b>` : ""}</div>
     <table style="margin-top:18px"><thead><tr><th>Description</th><th>SAC</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody><tr><td>${desc}${c.period_from ? `<div class="mut">Period: ${esc(c.period_from)} to ${esc(c.period_to)}</div>` : ""}</td><td>${sac}</td><td style="text-align:right">${m(taxable)}</td></tr></tbody></table>
     <table class="tot">${gst ? row("Taxable value", m(taxable)) + (Number(c.igst) > 0 ? row(`IGST @ ${rate}%`, m(c.igst)) : row(`CGST @ ${half}%`, m(c.cgst)) + row(`SGST @ ${half}%`, m(c.sgst))) : ""}${row("Total received", m(c.amount), true)}</table>
+    <p style="text-align:right;font-weight:600;font-size:13px;margin:8px 0 0">Amount in words: ${amtWords(c.amount)}</p>
     ${gst ? "" : `<p class="mut">Supplier not registered under GST; no GST charged.</p>`}
     <p class="mut" style="margin-top:26px">Computer-generated invoice, no signature needed.</p><button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
   w.document.close();

@@ -57,19 +57,24 @@ function bkMapForm() {
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
       ${sel("bk_date", "Date", pick("date", /^(txn |transaction |value )?date/i))}
       ${sel("bk_cr", "Credit / deposit amount", pick("cr", /credit|deposit|cr amount|^cr$/i))}
+      ${sel("bk_dr", "Debit / withdrawal amount (TDS challans)", pick("dr", /debit|withdraw|dr amount|^dr$/i), true)}
       ${sel("bk_ref", "UTR / reference no.", pick("ref", /ref|utr|chq|cheque/i), true)}
       ${sel("bk_nar", "Narration / description", pick("nar", /narration|description|particular|remark/i), true)}</div>
     <button class="btn pink" style="margin-top:14px" onclick="bkGo()">Check payments</button><div id="bkMsg"></div></div>`;
 }
 
 async function bkGo() {
-  const c = id => +$("#" + id).value, map = { date: c("bk_date"), cr: c("bk_cr"), ref: c("bk_ref"), nar: c("bk_nar") };
-  ["date", "cr", "ref", "nar"].forEach(k => map[k + "_name"] = BK.head[map[k]] ?? "");
-  const rows = BK.rows.map(r => ({ date: bkDate(r[map.date]), amount: bkNum(r[map.cr]), ref: map.ref >= 0 ? String(r[map.ref] ?? "") : "",
-    narration: map.nar >= 0 ? String(r[map.nar] ?? "") : "" })).filter(r => r.date && r.amount > 0);   // credit rows only
+  const c = id => +$("#" + id).value, map = { date: c("bk_date"), cr: c("bk_cr"), dr: c("bk_dr"), ref: c("bk_ref"), nar: c("bk_nar") };
+  ["date", "cr", "dr", "ref", "nar"].forEach(k => map[k + "_name"] = BK.head[map[k]] ?? "");
+  const base = r => ({ date: bkDate(r[map.date]), ref: map.ref >= 0 ? String(r[map.ref] ?? "") : "", narration: map.nar >= 0 ? String(r[map.nar] ?? "") : "" });
+  const credits = BK.rows.map(r => ({ ...base(r), type: "CR", amount: bkNum(r[map.cr]) })).filter(r => r.date && r.amount > 0);
+  // debits: only our own tax payments (TDS challans) are sent — nothing else leaves this computer
+  const TAX = /(TAX|CBDT|ITD|TDS|CIN|TIN-?NSDL|E-?PAY)/i;
+  const debits = map.dr >= 0 ? BK.rows.map(r => ({ ...base(r), type: "DR", amount: bkNum(r[map.dr]) })).filter(r => r.date && r.amount > 0 && TAX.test(r.narration + " " + r.ref)) : [];
+  const rows = credits.concat(debits);
   if (!rows.length) { $("#bkMsg").innerHTML = `<div class="msg err">No credit rows found — check the Date and Credit columns.</div>`; return; }
   const ds = rows.map(r => r.date).sort(), from = ds[0], to = ds[ds.length - 1];
-  if (!confirm(`${rows.length} credit rows from ${from} to ${to}. Check seller payments now?`)) return;
+  if (!confirm(`${credits.length} credit rows${debits.length ? ` + ${debits.length} tax payments` : ""} from ${from} to ${to}. Check payments now?`)) return;
   await db.rpc("admin_save_bank_map", { p_map: map }); BK.map = map;
   const { data, error } = await db.rpc("admin_bank_statement", { p_from: from, p_to: to, p_rows: rows });
   BK.rows = []; $("#bkFile").value = ""; $("#bkMap").innerHTML = "";   // nothing of the file is kept here either
@@ -79,7 +84,7 @@ async function bkGo() {
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px">
       <div class="box" style="flex:1;min-width:160px;margin:0;background:#EEFBF4"><div class="sub" style="margin:0">Verified</div><div style="font-size:26px;font-weight:800;color:#0B7A47">${ok.length}</div></div>
       <div class="box" style="flex:1;min-width:160px;margin:0;background:#FDE7EE"><div class="sub" style="margin:0">Not found (seller told)</div><div style="font-size:26px;font-weight:800;color:#B0144F">${nf.length}</div></div>
-      <div class="box" style="flex:1;min-width:160px;margin:0"><div class="sub" style="margin:0">Credit rows read</div><div style="font-size:26px;font-weight:800">${data.credit_rows}</div></div></div>
+      <div class="box" style="flex:1;min-width:160px;margin:0"><div class="sub" style="margin:0">TDS challans matched</div><div style="font-size:26px;font-weight:800">${data.tds_challans || 0}</div></div></div>
     ${ok.length ? `<table><thead><tr><th>UTR</th><th style="text-align:right">Amount</th><th>Result</th></tr></thead><tbody>${ok.map(x => `<tr><td>${esc(x.utr)}</td><td style="text-align:right">${inr(x.amount)}</td><td><span class="pill ok">Verified · invoice sent</span></td></tr>`).join("")}
       ${nf.map(x => `<tr><td>${esc(x.utr)}</td><td style="text-align:right">${inr(x.amount)}</td><td><span class="pill bad">Not found${x.times > 1 ? " ×" + x.times : ""}</span></td></tr>`).join("")}</tbody></table>`
       : nf.length ? `<table><tbody>${nf.map(x => `<tr><td>${esc(x.utr)}</td><td style="text-align:right">${inr(x.amount)}</td><td><span class="pill bad">Not found${x.times > 1 ? " ×" + x.times : ""}</span></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No seller payment was waiting for these dates.</div>`}

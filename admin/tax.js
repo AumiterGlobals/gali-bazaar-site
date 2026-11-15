@@ -72,6 +72,7 @@ async function taxReports() {
   const [{ data: due }, chal, runs, certs, shops] = await Promise.all([db.rpc("tds_challans_due"), q("tds_challans", "*", x => x.order("month", { ascending: false }).limit(24)),
     q("statement_runs", "*", x => x.order("sent_at", { ascending: false }).limit(12)), q("tds_certificates", "*", x => x.order("created_at", { ascending: false }).limit(50)),
     q("shops", "id,name", x => x.eq("kyc", "APPROVED").order("name"))]);
+  const rets = await q("tds_returns", "*", x => x.order("fy", { ascending: false }).limit(16));
   const kindL = k => k === "ecom" ? "E-commerce TDS (shops)" : "Commission TDS (sales partners)";
   const fy = (() => { const d = new Date(); const y = d.getMonth() < 3 ? d.getFullYear() - 1 : d.getFullYear(); return `${String(y).slice(2)}-${String(y + 1).slice(2)}`; })();
   $("#txMore").innerHTML = `
@@ -83,9 +84,15 @@ async function taxReports() {
         <input class="in" id="ch_d${i}" type="date" style="width:150px" title="Challan date">
         <input class="in" id="ch_b${i}" placeholder="BSR (7 digits)" style="width:130px">
         <input class="in" id="ch_s${i}" placeholder="Serial no." style="width:110px">
-        <button class="btn pink" onclick="taxChallan(${i},'${d.month}','${d.kind}')">Save</button></div>`).join("")}
-      ${chal.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>Type</th><th style="text-align:right">Amount</th><th>Date</th><th>BSR</th><th>Serial</th></tr></thead><tbody>
-        ${chal.map(c => `<tr><td>${txMon(c.month)}</td><td>${kindL(c.kind)}</td><td style="text-align:right">${inr(c.amount)}</td><td>${esc(c.paid_on)}</td><td>${esc(c.bsr)}</td><td>${esc(c.serial)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
+        <input class="in" id="ch_u${i}" placeholder="Bank UTR (optional)" style="width:170px">
+        <label class="btn ghost" style="cursor:pointer;margin:0" title="The challan receipt PDF — BSR, serial and bank reference are read from it">Receipt PDF<input type="file" accept="application/pdf" id="ch_f${i}" style="display:none" onchange="taxReceipt(${i})"></label>
+        <button class="btn pink" onclick="taxChallan(${i},'${d.month}','${d.kind}')">Save</button><span class="sub" id="ch_m${i}" style="margin:0;width:100%"></span></div>`).join("")}
+      ${chal.length ? `<div style="overflow:auto"><table style="margin-top:12px"><thead><tr><th>Month</th><th>Type</th><th style="text-align:right">Amount</th><th>Challan date</th><th>BSR</th><th>Serial</th><th>Bank UTR</th><th>Receipt</th></tr></thead><tbody>
+        ${chal.map(c => `<tr><td>${txMon(c.month)}</td><td>${kindL(c.kind)}</td><td style="text-align:right">${inr(c.amount)}</td><td>${esc(c.paid_on)}</td><td>${esc(c.bsr)}</td><td>${esc(c.serial)}</td>
+          <td>${c.bank_matched ? `<b>${esc(c.bank_utr || "")}</b> <span class="pill ok">✓ matched</span>`
+            : `${c.bank_utr ? `<b>${esc(c.bank_utr)}</b> <span class="pill grey">manual</span>` : `<input class="in" id="cu_${c.id}" placeholder="Enter bank UTR" style="width:150px;margin:0"> <button class="btn ghost" style="padding:6px 10px" onclick="taxUtr('${c.id}')">Save</button>`}
+               <div class="sub" style="margin:2px 0 0;color:#B0144F">Not matched with the bank statement</div>`}</td>
+          <td>${c.receipt_path ? `<button class="btn ghost" style="padding:6px 10px" onclick="taxOpen('${esc(c.receipt_path)}')">PDF</button>` : "—"}</td></tr>`).join("")}</tbody></table></div>` : ""}</div>
     <div class="box"><h3>Statements for the CA</h3>
       <div class="sub">Sent by email automatically: the 1st (TDS + GST draft), the 9th (GST final, late entries marked) and after each quarter (TDS return data). Send again any time:</div>
       <div class="sub" style="margin-top:8px;color:#B26A00"><b>Form 140 (quarterly return data):</b> Columns ka order CA se ek baar check karwa lein.</div>
@@ -94,6 +101,13 @@ async function taxReports() {
       ${runs.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>File</th><th>Sent</th><th style="text-align:right">TDS</th><th style="text-align:right">GST</th></tr></thead><tbody>
         ${runs.map(r => `<tr><td>${txMon(r.month)}</td><td>${r.stage === "final" ? "Final" : r.stage === "quarter" ? "Quarter" : "Draft"}</td><td>${new Date(r.sent_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</td>
           <td style="text-align:right">${inr(r.tds || 0)}</td><td style="text-align:right">${inr(r.gst || 0)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
+    <div class="box"><h3>Quarterly TDS return (Form 140)</h3>
+      <div class="sub">After filing, enter the date and token no. — shops see only the filed date on their TDS cards.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
+        <input class="in" id="rt_fy" value="${fy}" style="width:90px" title="FY"><select class="in" id="rt_q" style="width:150px">${[[1, "Q1 · Apr–Jun"], [2, "Q2 · Jul–Sep"], [3, "Q3 · Oct–Dec"], [4, "Q4 · Jan–Mar"]].map(([n, l]) => `<option value="${n}">${l}</option>`).join("")}</select>
+        <input class="in" id="rt_d" type="date" style="width:160px" title="Filed on"><input class="in" id="rt_t" placeholder="Token no." style="width:160px">
+        <button class="btn pink" onclick="taxReturn()">Save</button></div>
+      ${rets.length ? `<table style="margin-top:12px"><thead><tr><th>FY</th><th>Quarter</th><th>Filed on</th><th>Token no.</th></tr></thead><tbody>${rets.map(r => `<tr><td>${esc(r.fy)}</td><td>Q${r.quarter}</td><td>${esc(r.filed_on)}</td><td>${esc(r.token_no || "—")}</td></tr>`).join("")}</tbody></table>` : ""}</div>
     <div class="box"><h3>Form 131 certificates (from TRACES)</h3>
       <div class="sub">Download each shop's certificate from TRACES after the quarterly return, then upload it here — the shop sees it in Subscription &amp; bills → TDS.</div>
       <div class="sub" style="margin-top:4px;color:#B26A00">TRACES se download kiya hua hi upload karein.</div>
@@ -105,14 +119,45 @@ async function taxReports() {
 }
 async function taxChallan(i, month, kind) {
   const { error } = await db.rpc("admin_tds_challan", { p_month: month, p_kind: kind, p_amount: +$("#ch_a" + i).value, p_paid_on: $("#ch_d" + i).value || null,
-    p_bsr: $("#ch_b" + i).value, p_serial: $("#ch_s" + i).value });
+    p_bsr: $("#ch_b" + i).value, p_serial: $("#ch_s" + i).value, p_utr: $("#ch_u" + i).value || null, p_receipt: TX.receipt?.[i] || null });
   if (error) return alert(error.message); taxPage(); taxBanner();
 }
+// challan receipt PDF: saved with the challan; BSR, serial, date, amount and the bank reference / UTR are read from its text and filled in
+async function taxReceipt(i) {
+  const f = $("#ch_f" + i).files[0], m = $("#ch_m" + i); if (!f) return;
+  if (f.size > 2 * 1024 * 1024) return alert("PDF must be under 2 MB");
+  m.textContent = "Reading the receipt…";
+  const path = `challans/${Date.now()}-${f.name.replace(/[^A-Za-z0-9.]+/g, "-")}`;
+  const up = await db.storage.from("tds-certs").upload(path, f, { contentType: "application/pdf", upsert: false });
+  if (up.error) { m.textContent = up.error.message; return; }
+  (TX.receipt = TX.receipt || {})[i] = path;
+  let text = "";
+  try {
+    if (!window.pdfjsLib) await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"; s.onload = ok; s.onerror = bad; document.head.append(s); });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+    const pdf = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
+    for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) text += " " + (await (await pdf.getPage(p)).getTextContent()).items.map(x => x.str).join(" ");
+  } catch (_) { m.textContent = "Receipt saved — couldn't read its text, fill the fields by hand"; return; }
+  const get = re => (text.match(re) || [])[1] || "";
+  const set = (id, v) => { if (v && !$("#" + id).value) $("#" + id).value = v; };
+  set("ch_b" + i, get(/BSR\s*code\s*:?\s*(\d{7})/i));
+  set("ch_s" + i, get(/Challan\s*(?:Serial\s*)?No\.?\s*:?\s*(\d{1,5})\b/i));
+  set("ch_u" + i, get(/(?:Bank\s*Reference\s*(?:No\.?|Number)?|UTR(?:\s*No\.?)?|Bank\s*Ref\.?\s*No\.?)\s*:?\s*([A-Za-z0-9]{6,30})/i));
+  const dt = get(/(?:Tender|Deposit|Payment)\s*Date\s*:?\s*(\d{2}[\/-]\d{2}[\/-]\d{4}|\d{2}-[A-Za-z]{3}-\d{4})/i);
+  if (dt && !$("#ch_d" + i).value && typeof bkDate === "function") { const iso = bkDate(dt); if (iso) $("#ch_d" + i).value = iso; }
+  m.textContent = "Receipt saved · " + ($("#ch_u" + i).value ? "bank reference found: " + $("#ch_u" + i).value : "bank reference not found in the PDF — type it if you have it");
+}
+async function taxUtr(id) { const { error } = await db.rpc("admin_tds_challan_utr", { p_id: id, p_utr: $("#cu_" + id).value }); if (error) return alert(error.message); taxPage(); }
+async function taxOpen(p) { const { data } = await db.storage.from("tds-certs").createSignedUrl(p, 600); if (data?.signedUrl) window.open(data.signedUrl); }
 async function taxSend(stage) {
   const m = $("#st_m").value; if (!m) return alert("Pick the month");
   const { data, error } = await db.functions.invoke("push", { body: { action: "monthly_statements", stage, month: m } });
   if (error || !data?.ok) return alert("Couldn't send: " + (error?.message || data?.note || "check the admin email in Settings"));
   alert("Sent to the admin email"); taxPage();
+}
+async function taxReturn() {
+  const { error } = await db.rpc("admin_tds_return", { p_fy: $("#rt_fy").value.trim(), p_quarter: +$("#rt_q").value, p_filed_on: $("#rt_d").value || null, p_token: $("#rt_t").value });
+  if (error) return alert(error.message); taxPage();
 }
 async function taxCert() {
   const f = $("#ce_f").files[0]; if (!f) return alert("Choose the PDF"); if (f.size > 2 * 1024 * 1024) return alert("PDF must be under 2 MB");
