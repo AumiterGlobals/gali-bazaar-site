@@ -4,10 +4,14 @@ const CTYPE = (t, m) => t === "one_time" ? "One-time" : t === "period" ? `First 
 const CTYPE_HI = (t, m) => t === "one_time" ? "एक बार" : t === "period" ? `पहले ${m} महीने` : "स्थायी";
 const r2 = x => Math.round(x * 100) / 100;
 const mny = x => "₹" + Number(x || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-// worked example from the live plan price: ₹99 → GST ₹15.10 → ₹83.90 → 20% = ₹16.78
-// … → TDS 2% = ₹0.34 → you get ₹16.44 (live plan price, GST, % and TDS rate; TDS to the paisa, update-77)
-function cExample(price, gst, pct, tdsRate) { const after = r2(price / (1 + gst / 100)), com = r2(after * pct / 100), tds = r2(com * (tdsRate ?? 2) / 100);
-  return { price, gst: r2(price - after), after, com, tdsRate: tdsRate ?? 2, tds, net: r2(com - tds) }; }
+// worked example from the live plan price: ₹99 → GST ₹15.10 → ₹83.90 → 20% = ₹16.78 per shop;
+// monthly payout (update-78): 10 shops × ₹16.78 = ₹167.80 → TDS 2% = ₹3.36 → ₹3 (whole rupees, on the month's total) → ₹164.80
+function cExample(price, gst, pct, tdsRate, shops = 10) { const after = r2(price / (1 + gst / 100)), com = r2(after * pct / 100), rate = tdsRate ?? 2;
+  const tot = r2(com * shops), tdsRaw = r2(tot * rate / 100), tds = Math.round(tot * rate / 100);
+  return { price, gst: r2(price - after), after, com, shops, tot, tdsRate: rate, tdsRaw, tds, net: r2(tot - tds) }; }
+const rup = x => "₹" + Math.round(Number(x || 0)).toLocaleString("en-IN");
+const TDS_LINE = "TDS is rounded to the nearest rupee; it is worked out on each month's payout, not on each shop.";
+const TDS_LINE_HI = "TDS पूरे रुपये में गोल किया जाता है; यह हर महीने के कुल पेमेंट पर बनता है, हर दुकान पर अलग नहीं।";
 
 // ---------- 9a. "How your commission works" — every sign-in until the current text + this person's % / type is accepted ----------
 function commissionText(S, hi) {
@@ -17,27 +21,29 @@ function commissionText(S, hi) {
   const EN = [
     [`Your commission: ${S.pct}% · ${CTYPE(t, m)}.`, ""],
     ["It is calculated on the plan amount after GST.", `Plan prices include ${S.gst_rate || 18}% GST, which goes to the government. We first take out GST, then pay ${S.pct}% of the rest.`],
-    ["Example:", `a shop pays ₹${e.price} → GST ${mny(e.gst)} → amount after GST ${mny(e.after)} → your commission ${S.pct}% = ${mny(e.com)} → TDS ${e.tdsRate}% = ${mny(e.tds)} → you get <b>${mny(e.net)}</b>.`],
+    ["Example:", `a shop pays ₹${e.price} → GST ${mny(e.gst)} → amount after GST ${mny(e.after)} → your commission ${S.pct}% = ${mny(e.com)}.`],
+    ["Monthly payout:", `${e.shops} shops × ${mny(e.com)} = ${mny(e.tot)} → TDS ${e.tdsRate}% = ${mny(e.tdsRaw)} → ${rup(e.tds)} (rounded to the rupee) → you get <b>${mny(e.net)}</b>. ${TDS_LINE}`],
     ["You earn only when a shop that joined with your code pays for a plan,", "and the payment is approved. No commission on customer orders, featured listings, refunds or free trials."],
     [`${CTYPE(t, m)}:`, typeLine + "."],
     ["Your code works and commission is paid only after your KYC", "(PAN, Aadhaar, selfie, bank, UPI) is approved."],
-    ["Payouts:", "we pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 393(1) (earlier 194H): 2% with PAN from the first payout. If PAN is missing or invalid, TDS is deducted as the law requires. TDS is shown in your Form 168 / AIS; Form 131 (earlier Form 16A) is given every quarter."],
+    ["Payouts:", "once a month, all your due commission together. We pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 393(1) (earlier 194H): 2% with PAN from the first payout. If PAN is missing or invalid, TDS is deducted as the law requires. TDS is shown in your Form 168 / AIS; Form 131 (earlier Form 16A) is given every quarter."],
     ["If a plan payment is refunded,", "its commission is cancelled, or adjusted in your next payout if it was already paid."],
     ["No referring your own shop, and no fake shops.", "These lead to blocking and loss of unpaid commission."],
     ["Gali Bazaar may change the %, type or rules with notice.", "Changes apply only to future payments, and you'll see this screen again."]];
   const HI = [
     [`आपका कमीशन: ${S.pct}% · ${CTYPE_HI(t, m)}।`, ""],
     ["कमीशन GST हटाने के बाद की रक़म पर बनता है।", `प्लान के दाम में ${S.gst_rate || 18}% GST शामिल है जो सरकार को जाता है। पहले GST हटाते हैं, फिर बाकी का ${S.pct}% देते हैं।`],
-    ["उदाहरण:", `दुकान ₹${e.price} देती है → GST ${mny(e.gst)} → GST के बाद ${mny(e.after)} → आपका कमीशन ${S.pct}% = ${mny(e.com)} → TDS ${e.tdsRate}% = ${mny(e.tds)} → आपको <b>${mny(e.net)}</b>।`],
+    ["उदाहरण:", `दुकान ₹${e.price} देती है → GST ${mny(e.gst)} → GST के बाद ${mny(e.after)} → आपका कमीशन ${S.pct}% = ${mny(e.com)}।`],
+    ["महीने का पेमेंट:", `${e.shops} दुकानें × ${mny(e.com)} = ${mny(e.tot)} → TDS ${e.tdsRate}% = ${mny(e.tdsRaw)} → ${rup(e.tds)} (पूरे रुपये में) → आपको <b>${mny(e.net)}</b>। ${TDS_LINE_HI}`],
     ["कमाई सिर्फ़ तब, जब आपके कोड से जुड़ी दुकान प्लान ख़रीदे", "और पेमेंट अप्रूव हो। ग्राहक ऑर्डर, फ़ीचर्ड लिस्टिंग, रिफ़ंड या फ़्री ट्रायल पर कमीशन नहीं।"],
     [`${CTYPE_HI(t, m)}:`, typeLine + "।"],
     ["आपका कोड और कमीशन KYC के बाद ही", "(PAN, आधार, सेल्फ़ी, बैंक, UPI) अप्रूव होने पर चालू होता है।"],
-    ["पेमेंट:", "आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 393(1) (पहले 194H): पहले पेमेंट से ही PAN के साथ 2%। PAN न हो या ग़लत हो तो क़ानून के अनुसार TDS कटेगा। TDS आपके Form 168 / AIS में दिखेगा; Form 131 (पहले Form 16A) हर तिमाही मिलेगा।"],
+    ["पेमेंट:", "महीने में एक बार, सारा बकाया कमीशन एक साथ, आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 393(1) (पहले 194H): पहले पेमेंट से ही PAN के साथ 2%। PAN न हो या ग़लत हो तो क़ानून के अनुसार TDS कटेगा। TDS आपके Form 168 / AIS में दिखेगा; Form 131 (पहले Form 16A) हर तिमाही मिलेगा।"],
     ["प्लान पेमेंट रिफ़ंड हुआ तो", "उसका कमीशन रद्द होगा, या अगर दे दिया गया था तो अगले पेमेंट में घटेगा।"],
     ["अपनी दुकान रेफ़र करना या नक़ली दुकानें मना हैं।", "ऐसा करने पर ब्लॉक और बकाया कमीशन ख़त्म।"],
     ["Gali Bazaar सूचना देकर %, प्रकार या नियम बदल सकता है।", "बदलाव सिर्फ़ आगे के पेमेंट पर लागू होंगे, और यह स्क्रीन फिर दिखेगी।"]];
   return (hi ? HI : EN).map((x, i) => `<div style="display:flex;gap:10px;margin:10px 0"><b style="color:#6A1BB0;width:22px;flex:none">${i + 1}.</b><div><b>${x[0]}</b> ${x[1]}</div></div>`).join("")
-    + `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">${[[hi ? "प्लान (GST सहित)" : "Plan (incl. GST)", "₹" + e.price], [hi ? "GST हटाया" : "GST taken out", mny(e.gst)], [hi ? "GST के बाद" : "After GST", mny(e.after)], [`${hi ? "आपका कमीशन" : "Your commission"} (${S.pct}%)`, mny(e.com)], [`TDS (${e.tdsRate}%${hi ? ", PAN के साथ" : ", with PAN"})`, "− " + mny(e.tds)], [hi ? "आपको मिलेगा" : "You get", mny(e.net)]].map(r => `<tr><td style="padding:5px 0;border-bottom:1px solid #EEE7F6">${r[0]}</td><td style="text-align:right;border-bottom:1px solid #EEE7F6"><b>${r[1]}</b></td></tr>`).join("")}</table>`;
+    + `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">${[[hi ? "प्लान (GST सहित)" : "Plan (incl. GST)", "₹" + e.price], [hi ? "GST हटाया" : "GST taken out", mny(e.gst)], [hi ? "GST के बाद" : "After GST", mny(e.after)], [`${hi ? "आपका कमीशन" : "Your commission"} (${S.pct}%)`, mny(e.com)], [hi ? `${e.shops} दुकानें, एक महीना` : `${e.shops} shops in a month`, mny(e.tot)], [`TDS (${e.tdsRate}%${hi ? ", PAN के साथ" : ", with PAN"}) ${mny(e.tdsRaw)} → ${hi ? "पूरे रुपये" : "rounded"}`, "− " + rup(e.tds)], [hi ? "आपको मिलेगा" : "You get", mny(e.net)]].map(r => `<tr><td style="padding:5px 0;border-bottom:1px solid #EEE7F6">${r[0]}</td><td style="text-align:right;border-bottom:1px solid #EEE7F6"><b>${r[1]}</b></td></tr>`).join("")}</table>`;
 }
 function commissionGate(S, onOut) {
   return new Promise(res => {
@@ -192,7 +198,7 @@ async function payoutsPage() {
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">${[["Earned", S.earned], ["TDS", S.tds], ["Received", S.received], ["Due", S.due]].map(([k, v]) => `<div><div style="font-size:12px;opacity:.8">${k}</div><b style="font-size:20px">${mny(v)}</b></div>`).join("")}</div></div>
     ${S.bank_hold ? `<div class="warnline">Bank details under review — payouts are on hold until we check them.</div>` : ""}
     <div class="box">${D.pay.length ? D.pay.map(p => `<div class="row" style="align-items:flex-start"><div style="flex:1"><b>${dmyy(p.pdate)}</b> <span class="sub" style="margin:0">${esc(p.advice_no || "")}</span>
-        <span>Gross ${mny(p.gross)} · TDS ${mny(p.tds)} · ${esc(p.mode || "—")}<br>UTR ${esc(p.utr || p.ref || "—")}</span>
+        <span>Gross ${mny(p.gross)} · TDS ${rup(p.tds)} · ${esc(p.mode || "—")}<br>UTR ${esc(p.utr || p.ref || "—")}</span>
         <a href="#" style="color:#6A1BB0;font-size:13px;font-weight:600" onclick="poDetails('${p.id}');return false">View details</a><div id="pd_${p.id}"></div></div>
         <div style="text-align:right"><b style="color:#16A34A">Net ${mny(p.net)}</b><br><button class="btn pink" style="margin-top:8px;padding:8px 14px" onclick="advicePdf('${p.id}')">⇩ PDF</button></div></div>`).join("")
       : `<div class="sub">No payouts yet.</div>`}</div>
@@ -237,7 +243,7 @@ async function advicePdf(id, dbc) {
   }
   y += 4; doc.line(L, y, R, y); y += 20;
   const tot = (k, v, b) => { doc.setFont("helvetica", b ? "bold" : "normal"); doc.setFontSize(b ? 12 : 10); doc.text(k, 300, y); doc.text(v, R, y, { align: "right" }); y += b ? 20 : 16; };
-  tot("Gross commission", rs(a.gross)); Number(a.tds) > 0 ? tot(`TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}%`, "- " + rs(a.tds)) : tot("TDS", "nil"); tot("Net paid", rs(a.net), true);
+  tot("Gross commission", rs(a.gross)); Number(a.tds) > 0 ? tot(`TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}% (rounded to the rupee)`, "- " + rs(Math.round(Number(a.tds)))) : tot("TDS", "nil"); tot("Net paid", rs(a.net), true);
   y += 6; doc.setFillColor(232, 248, 239); doc.roundedRect(L, y, R - L, 28, 6, 6, "F"); doc.setFontSize(10); doc.setFont("helvetica", "bold");
   doc.text(`Payment: ${a.mode || "—"} · UTR ${a.utr || "—"} · ${a.date}`, L + 10, y + 18); y += 48;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(110, 99, 128);

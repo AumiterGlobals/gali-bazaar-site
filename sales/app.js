@@ -253,7 +253,7 @@ function overview() {
   $("#main").innerHTML = head(`Hi ${esc((me.name || "").split(" ")[0])} 👋`, `${fyLabel()} • ${me.commission_pct}% of every plan amount after GST`) + (D.sum ? statusStrip(D.sum) + codeCard(D.sum) : "") + `
     <div class="kpis k4">
       <div class="kpi"><span>Earned this year</span><b>${inr2(earned)}</b><small>${fyCom.length} commission${fyCom.length === 1 ? "" : "s"}</small></div>
-      <div class="kpi"><span>Pending payout</span><b class="or">${inr2(due)}</b><small>${dueN ? `TDS ≈ ${inr2(t.tds || 0)} • you get ≈ ${inr2(t.net ?? due)}` : "Nothing pending"}</small></div>
+      <div class="kpi"><span>Pending payout</span><b class="or">${inr2(due)}</b><small>${dueN ? `Paid once a month • TDS ≈ ₹${Math.round(t.tds || 0)} • you get ≈ ${inr2(t.net ?? due)}` : "Nothing pending"}</small></div>
       <div class="kpi"><span>Paid out (net)</span><b class="gr">${inr2(paidNet)}</b><small>after ${inr2(paidTds)} TDS</small></div>
       <div class="kpi"><span>Shops joined</span><b class="pu">${D.shops.length}</b><small>${live} live • ${follow.length} need follow-up</small></div>
     </div>
@@ -262,7 +262,7 @@ function overview() {
         <div class="bars">${shown.map((x, i) => `<div class="b ${i === nowI ? "now" : ""}"><em>${x.v ? inr(x.v) : ""}</em><i style="height:${Math.max(4, x.v / max * 170)}px"></i><span>${MON[x.m]}</span></div>`).join("")}</div></div>
       <div>
         <div class="box"><h3>TDS this year</h3>
-          ${first ? `<div class="sub" style="margin-top:4px">TDS <b>${t.rate_pan ?? 2}%</b> from the first payout (with PAN); <b>${t.rate_no_pan ?? 20}%</b> if PAN is missing. Commission this year <b>${inr2(credited)}</b>${t.tds_done ? ` · TDS cut so far <b>${inr2(t.tds_done)}</b>` : ""}.</div>`
+          ${first ? `<div class="sub" style="margin-top:4px">TDS <b>${t.rate_pan ?? 2}%</b> from the first payout (with PAN); <b>${t.rate_no_pan ?? 20}%</b> if PAN is missing. Commission this year <b>${inr2(credited)}</b>${t.tds_done ? ` · TDS cut so far <b>₹${Math.round(t.tds_done)}</b>` : ""}.</div><div class="sub" style="margin-top:4px">Paid once a month with all your due commission. TDS is rounded to the nearest rupee; it is worked out on each month's payout, not on each shop.</div>`
           : `${over ? `<span class="pill warn" style="float:right;margin-top:-30px">Limit crossed</span>` : ""}
           <div class="tdsbar"><i class="${over ? "over" : ""}" style="width:${pct}%;--lim:${(limPct / pct * 100).toFixed(1)}%"></i><u style="left:${limPct}%"></u></div>
           <div class="lims"><span>₹0</span><span>${inr(lim)} limit</span><span>${inr(credited)}</span></div>
@@ -308,14 +308,14 @@ function payouts() {
   const name = id => D.shops.find(s => s.id === id)?.name || "Shop";
   $("#main").innerHTML = head("Every payout with gross, TDS and what you got", `Admin sends payouts to ${esc(me.upi || "your UPI")}`) + `
     <div class="kpis k4">
-      <div class="kpi pend"><span style="color:#B45309;font-weight:600">Pending (next payout)</span><b>${inr2(dueAmt)}</b><small>${due.length} commission${due.length === 1 ? "" : "s"} • TDS ≈ ${inr2(t.tds || 0)} • you get ≈ ${inr2(t.net ?? dueAmt)}</small></div>
+      <div class="kpi pend"><span style="color:#B45309;font-weight:600">Pending (next payout)</span><b>${inr2(dueAmt)}</b><small>${due.length} commission${due.length === 1 ? "" : "s"} • paid once a month • TDS ≈ ₹${Math.round(t.tds || 0)} • you get ≈ ${inr2(t.net ?? dueAmt)}</small></div>
       <div class="kpi"><span>Paid out this year (gross)</span><b>${inr2(gross)}</b><small>${fyPay.length} payout${fyPay.length === 1 ? "" : "s"}</small></div>
-      <div class="kpi"><span>TDS cut this year</span><b style="color:#DC2626">${inr2(tds)}</b><small>${t.rate || 2}% • ${t.has_pan ? "PAN added" : "no PAN (20%)"}</small></div>
+      <div class="kpi"><span>TDS cut this year</span><b style="color:#DC2626">₹${Math.round(tds)}</b><small>${t.rate || 2}% • ${t.has_pan ? "PAN added" : "no PAN (20%)"}</small></div>
       <div class="kpi"><span>Got in hand (net)</span><b class="gr">${inr2(net)}</b><small>to ${esc(me.upi || "your UPI")}</small></div>
     </div>
     <div class="grid2">
       <div class="box"><h3>Payouts <button class="mini" style="float:right" id="dl">⇩ Download TDS summary</button></h3>${D.pay.length ? `<table><thead><tr><th>DATE</th><th>GROSS</th><th>TDS</th><th>NET</th><th class="hm">UPI REF</th><th class="hm"></th></tr></thead><tbody>${D.pay.map(p => `<tr>
-        <td><b>${dmyy(p.pdate)}</b></td><td>${inr2(p.gross)}</td><td style="color:${Number(p.tds) ? "#DC2626" : "inherit"}">${inr2(p.tds)}</td><td><b style="color:#16A34A">${inr2(p.net)}</b></td><td class="hm">${esc(p.ref || "—")}</td><td class="hm"><span class="pill ok">PAID</span></td></tr>`).join("")}</tbody></table>`
+        <td><b>${dmyy(p.pdate)}</b></td><td>${inr2(p.gross)}</td><td style="color:${Number(p.tds) ? "#DC2626" : "inherit"}">₹${Math.round(Number(p.tds || 0))}</td><td><b style="color:#16A34A">${inr2(p.net)}</b></td><td class="hm">${esc(p.ref || "—")}</td><td class="hm"><span class="pill ok">PAID</span></td></tr>`).join("")}</tbody></table>`
         : `<div class="sub">No payouts yet.</div>`}</div>
       <div class="box"><h3>Commission entries <span style="float:right">${D.com.filter(c => inFy(c.created_at)).length} this year</span></h3>${D.com.length ? `<table><thead><tr><th>DATE</th><th>SHOP</th><th class="hm">PLAN</th><th>AMOUNT</th><th></th></tr></thead><tbody>${D.com.map(c => `<tr>
         <td>${dmy(c.created_at)}</td><td><b>${esc(name(c.shop))}</b></td><td class="hm">${inr(c.base_amount)} · ${c.pct}%</td><td><b>${inr2(c.amount)}</b></td><td><span class="pill ${c.status === "PAID" ? "grey" : "warn"}">${c.status === "PAID" ? "PAID" : "DUE"}</span></td></tr>`).join("")}</tbody></table>`

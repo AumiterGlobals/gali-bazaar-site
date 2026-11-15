@@ -121,14 +121,14 @@ async function spKycDo(id, ok) {
   closeForm(); sales();
 }
 
-// ---------- pay commission: tick dues → TDS preview → mode, UTR, date, screenshot ----------
+// ---------- pay commission: once a month, every due entry together → TDS on the total (whole rupees) → mode, UTR, date, screenshot ----------
 async function spPay() {
   const [sp, due] = await Promise.all([q("sales_people", "id,name,code,kyc,bank_hold,status,upi"), q("commissions", "*", x => x.eq("status", "DUE").order("created_at"))]);
   const by = sp.map(p => ({ p, list: due.filter(c => c.sales === p.id) })).filter(x => x.list.length);
-  $("#main").innerHTML = head("Sales team", "Pay due commission — every payout needs the bank UTR") + spTabs("pay") + (by.length ? by.map(({ p, list }) => {
+  $("#main").innerHTML = head("Sales team", "Monthly payout — all due commission together, TDS on the total (whole rupees); every payout needs the bank UTR") + spTabs("pay") + (by.length ? by.map(({ p, list }) => {
     const sum = list.reduce((a, c) => a + Number(c.amount), 0), blocked = p.kyc !== "APPROVED" ? "KYC not approved" : p.bank_hold ? "Bank change waiting for approval" : p.status === "blocked" ? "Blocked" : "";
     return `<div class="box"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b>${esc(p.name)}</b> <span class="sub" style="margin:0">${esc(p.code)}</span></div><b style="color:#6D28D9">${mny2(sum)} due</b>
-      ${blocked ? `<span class="pill bad">${blocked}</span>` : `<button class="btn pink" style="padding:9px 14px" onclick="spPayOpen('${p.id}')">Pay</button>`}</div>
+      ${blocked ? `<span class="pill bad">${blocked}</span>` : `<button class="btn pink" style="padding:9px 14px" onclick="spPayOpen('${p.id}')">Pay this month</button>`}</div>
       <div class="sub" style="margin-top:4px">${list.length} entr${list.length === 1 ? "y" : "ies"}${list.some(c => c.kind === "ADJUST") ? " · includes refund adjustment" : ""}</div></div>`;
   }).join("") : `<div class="box"><div class="sub">Nothing due right now.</div></div>`);
   window._SPP = { sp, due };
@@ -136,27 +136,28 @@ async function spPay() {
 async function spPayOpen(id) {
   const { sp, due } = window._SPP, p = sp.find(x => x.id === id), list = due.filter(c => c.sales === id), shops = await q("shops", "id,name");
   const { data: b } = await db.rpc("admin_sales_bank", { p_sales: id, p_full: false });
-  sheet("Pay " + esc(p.name), `<div class="sub">${b ? `${esc(b.holder)} · ${esc(b.masked)} · ${esc(b.ifsc)}` : ""} ${p.upi ? " · UPI " + esc(p.upi) : ""}</div>
+  sheet("Monthly payout · " + esc(p.name), `<div class="sub">${b ? `${esc(b.holder)} · ${esc(b.masked)} · ${esc(b.ifsc)}` : ""} ${p.upi ? " · UPI " + esc(p.upi) : ""}</div>
     <div style="margin-top:10px">${list.map(c => `<label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#1D0F30;font-weight:500;border-bottom:1px solid #F4F0FA;padding:7px 0;margin:0">
-      <input type="checkbox" class="pc" value="${c.id}" ${c.kind === "ADJUST" ? "checked disabled" : "checked"}><span style="flex:1">${esc(shops.find(s => s.id === c.shop)?.name || "Shop")}${c.kind === "ADJUST" ? " · refund adjustment" : ""}<br><span class="sub" style="margin:0">${(c.created_at || "").slice(0, 10)} · ${c.plan_amount != null ? `plan ${mny2(c.plan_amount)} → after GST ${mny2(c.taxable)}` : ""} · ${c.pct}%</span></span><b>${mny2(c.amount)}</b></label>`).join("")}</div>
+      <span style="flex:1">${esc(shops.find(s => s.id === c.shop)?.name || "Shop")}${c.kind === "ADJUST" ? " · refund adjustment" : ""}<br><span class="sub" style="margin:0">${(c.created_at || "").slice(0, 10)} · ${c.plan_amount != null ? `plan ${mny2(c.plan_amount)} → after GST ${mny2(c.taxable)}` : ""} · ${c.pct}%</span></span><b>${mny2(c.amount)}</b></label>`).join("")}</div>
     <div id="tdsv" style="background:#F6F2FB;border-radius:14px;padding:12px 14px;margin:12px 0"></div>
     <label>MODE</label><select class="in" id="pm"><option>IMPS</option><option>NEFT</option><option>RTGS</option><option>UPI</option></select>
     <label>UTR / UPI REFERENCE (FROM YOUR BANK)</label><input class="in" id="pu" style="text-transform:uppercase" autocomplete="off">
     <label>PAYMENT DATE</label><input class="in" id="pd" type="date" value="${new Date(Date.now() + 19800000).toISOString().slice(0, 10)}">
     <label>BANK SCREENSHOT (OPTIONAL)</label><input class="in" id="ps" type="file" accept="image/*">
     <div class="msg" id="pmm"></div><button class="btn pink full" id="pgo">Record payout &amp; send advice</button>
-    <div class="sub" style="font-size:11.5px">Pay from your bank app first, then record it here. The partner gets a notification, an email and a PDF advice.</div>`);
-  const ids = () => [...document.querySelectorAll(".pc")].filter(i => i.checked).map(i => i.value);
+    <div class="sub" style="font-size:11.5px">One payout a month with every due entry — single commissions can't be paid on their own. Pay from your bank app first, then record it here. The partner gets a notification, an email and a PDF advice (gross, TDS, net).</div>`);
+  const ids = () => list.map(c => c.id);
   const prev = async () => {
     const { data, error } = await db.rpc("admin_tds_preview", { p_sales: id, p_ids: ids() });
-    $("#tdsv").innerHTML = error ? `<span class="err">${esc(spErr(error))}</span>` : `<div style="display:flex;justify-content:space-between"><span>Gross</span><b>${mny2(data.gross)}</b></div>
-      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}%` : Number(data.threshold) > 0 ? `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})` : "(nil)"}</span><b>− ${mny2(data.tds)}</b></div>
+    $("#tdsv").innerHTML = error ? `<span class="err">${esc(spErr(error))}</span>` : `${data.paid_this_month ? `<div class="warnline" style="margin-bottom:8px">Already paid this month (${esc(data.last_advice || "")} on ${esc(data.last_paid || "")}). Payouts go once a month — record this only if it is really due now.</div>` : ""}
+      <div style="display:flex;justify-content:space-between"><span>All due commission (${data.count ?? list.length} entr${(data.count ?? list.length) === 1 ? "y" : "ies"})</span><b>${mny2(data.gross)}</b></div>
+      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}% = ${mny2(data.gross * data.rate / 100)} → rounded to the rupee` : Number(data.threshold) > 0 ? `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})` : "(nil)"}</span><b>− ₹${Math.round(data.tds)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;margin-top:4px"><span><b>Pay this</b></span><b style="color:#16A34A">${mny2(data.net)}</b></div>${data.has_pan ? "" : `<div class="warnline">No PAN — higher TDS rate</div>`}`;
   };
-  document.querySelectorAll(".pc").forEach(i => i.onchange = prev); prev();
+  prev();
   $("#pgo").onclick = async () => {
     const m = $("#pmm"), utr = $("#pu").value.replace(/\s/g, "").toUpperCase();
-    if (!ids().length) { m.className = "msg err"; m.textContent = "Tick at least one entry"; return; }
+    if (!ids().length) { m.className = "msg err"; m.textContent = "Nothing due"; return; }
     if (!/^[A-Z0-9]{6,30}$/.test(utr)) { m.className = "msg err"; m.textContent = "Enter the UTR / reference from your bank (6–30 letters or numbers)"; return; }
     $("#pgo").disabled = true; let shot = null;
     const file = $("#ps").files[0];
@@ -168,7 +169,7 @@ async function spPayOpen(id) {
     window._SPP.due = window._SPP.due.filter(c => !ids().includes(c.id)); setTimeout(spPay, 50);
   };
 }
-async function advicePdfAdmin(pid) { if (!window.advicePdf) await new Promise(ok => { const s = document.createElement("script"); s.src = "/sales/partner.js?v=1795480000"; s.onload = ok; document.head.appendChild(s); }); advicePdf(pid, db); }
+async function advicePdfAdmin(pid) { if (!window.advicePdf) await new Promise(ok => { const s = document.createElement("script"); s.src = "/sales/partner.js?v=1796030000"; s.onload = ok; document.head.appendChild(s); }); advicePdf(pid, db); }
 
 // ---------- Form 131 (earlier Form 16A) upload (per partner, per quarter) ----------
 async function spF16() {
