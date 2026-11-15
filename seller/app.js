@@ -173,7 +173,8 @@ function refreshChrome() {
 function menu(o) { $(".side").classList.toggle("open", o); $("#scrim").classList.toggle("open", o); }
 // is the shop visible to customers? KYC approved + plan/trial running (+ not on hold)
 function shopStatusPill() {
-  const t = todayStr(), on = S.kyc === "APPROVED" && S.sub_until && S.sub_until >= t && !S.quality_hold;
+  const t = todayStr(), on = S.kyc === "APPROVED" && S.sub_until && S.sub_until >= t && !S.quality_hold && !S.delete_requested_at;
+  if (S.delete_requested_at) return `<span class="pill bad" style="margin-left:6px;cursor:pointer" title="Your delete request is with Gali Bazaar — customers can't see or order from your shop" onclick="go('shop')">● Hidden · delete request</span>`;
   const why = S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC being checked" : "KYC not done") : !S.sub_until || S.sub_until < t ? "plan ended" : S.quality_hold ? "on hold" : "";
   return `<span class="pill ${on ? "ok" : "bad"}" style="margin-left:6px" title="Customers ${on ? "can" : "can't"} see your shop">${on ? "● Shop live on app" : "● Not live — " + why}</span>`;
 }
@@ -397,7 +398,7 @@ function drawCat() {
     <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
     <td class="hm">${i.mrp ? `<s style="color:#8E84A8">${inr(i.mrp)}</s>` : "—"}</td><td><b>${(i.variants || []).length ? i.variants.map(v => `${esc(v.n)} ${inr(v.p)}`).join("<br>") : inr(i.price)}</b></td>
-    <td style="white-space:nowrap">${fei(i)}</td><td style="white-space:nowrap"><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button>${i.stock_qty != null ? `<div class="sub" style="margin:2px 0 0;font-size:11.5px;${lowI(i) ? "color:#8A5A00;font-weight:700" : ""}">${i.stock_qty} left</div>` : ""}</td>
+    <td style="white-space:nowrap">${fei(i)}</td><td style="white-space:nowrap"><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button>${i.stock_qty != null ? (lowI(i) && i.in_stock ? `<div style="margin:3px 0 0"><span style="display:inline-block;background:#FFEDD5;color:#C2410C;font-weight:700;font-size:11px;border-radius:20px;padding:1px 8px">${i.stock_qty} left</span></div>` : `<div class="sub" style="margin:2px 0 0;font-size:11.5px">${i.stock_qty} left</div>`) : ""}</td>
     <td class="hm">${retLabel(i)}</td><td><button class="edit" onclick="editItem('${i.id}')">Edit</button></td></tr>`).join("")}</tbody></table>`
     : `<div class="sub" style="padding:18px 0">${D.items.length ? "No items match." : "No items yet. Add one, or upload your whole catalogue from Excel."}</div>`;
 }
@@ -924,7 +925,7 @@ const SDT = [
   "Download your records first: Bills → Excel and Books → Excel here (the app saves everything in one Excel file). Keep them for GST (72 months) and income tax (6–7 years) — Gali Bazaar keeps no copy of your books; only your customers' copies of their own bills stay.",
   "Your request goes to Gali Bazaar. While we check it, your shop is hidden from customers and takes no new orders. You can cancel the request any time before it is done.",
   "We delete the shop only when no order is open, no complaint is open, the return / exchange time of every order is over, and every paid order that was cancelled has its refund recorded. We also check store credit (\"Adjust in next order\") and items still under your warranty — settle these with your customers first.",
-  "After deletion your books, counter sales, expenses, items, photos and delivery-staff access go. KYC is kept locked for 180 days as the law requires, then deleted. It can't be brought back. We email you when it is done.",
+  "When it is approved, we email you the final copy of your records as Excel (including anything after your request, such as refunds and credit notes). Then your books, counter sales, expenses, items, photos and delivery-staff access go. KYC is kept locked for 180 days as the law requires, then deleted. It can't be brought back.",
   "Gali Bazaar keeps only its own records with you — plan payments and its invoices to you — as its tax law needs.",
 ];
 function sdList(c) {
@@ -943,7 +944,7 @@ async function sdBox(openForm) {
   if (r && (r.status === "PENDING" || r.status === "APPROVED")) {
     box.style.cssText = "background:#FFF7E6;border:1px solid #F5D08A";
     box.innerHTML = `<h3 style="color:#92400E">🗑 Delete request sent <span>${new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span></h3>
-      <div class="sub" style="margin:0 0 6px">Gali Bazaar is checking your shop. It is hidden from customers and takes no new orders meanwhile. We delete it when the checks below are clear, and email you.</div>
+      <div class="sub" style="margin:0 0 6px">Gali Bazaar is checking your shop. It is hidden from customers and takes no new orders meanwhile. When the checks below are clear, we email you the final copy of your records (Excel) and delete the shop.</div>
       ${sdList(chk)}${r.status === "PENDING" ? `<button class="btn ghost" style="margin-top:12px" onclick="sdCancel()">Cancel request</button>` : ""}`;
     return;
   }
@@ -963,13 +964,13 @@ async function sdSend() {
   if (!$("#sdx").checked || !$("#sda").checked) return toast("Tick both boxes to send the request");
   const { error } = await db.rpc("request_shop_delete", { p_terms: "seller-delete-2026-11-15.9", p_excel: true, p_reason: $("#sdr").value.trim() });
   if (error) return toast(niceErr(error));
-  toast("Request sent · Gali Bazaar will check your shop"); sdBox();
+  toast("Request sent · Gali Bazaar will check your shop"); S.delete_requested_at = new Date().toISOString(); shell(); page();
 }
 async function sdCancel() {
   if (!confirm("Cancel the delete request? Your shop shows to customers and takes orders again.")) return;
   const { error } = await db.rpc("cancel_shop_delete_request");
   if (error) return toast(niceErr(error));
-  toast("Request cancelled · your shop is open again"); sdBox();
+  toast("Request cancelled · your shop is open again"); S.delete_requested_at = null; shell(); page();
 }
 async function saveShopForm() {
   const v = k => $("#sh_" + k).value.trim(), n = k => v(k) === "" ? null : +v(k), m = $("#shm");

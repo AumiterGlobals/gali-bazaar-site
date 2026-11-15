@@ -52,13 +52,13 @@ async function deletesPage() {
 }
 
 async function sdApprove(id) {
-  if (!confirm("Delete this shop now?\n\nThe server runs the checks again, then deletes the shop, its books and its staff access. Customers keep their bills. The seller gets an email. This can't be undone.")) return;
+  if (!confirm("Delete this shop now?\n\nThe server runs the checks again, emails the seller the final Excel of all records, then deletes the shop, its books and its staff access. Customers keep their bills. This can't be undone.")) return;
   const { data, error } = await db.functions.invoke("push", { body: { action: "approve_shop_delete", request_id: id, confirm_warn: !!SD.warn[id] } });
   let msg = null;
   if (error) { try { msg = (await error.context.json()).error; } catch (e) { msg = error.message; } }
   else if (!data?.ok) msg = data?.error || "Couldn't delete the shop";
   if (msg) return alert(msg);
-  alert("Shop deleted · the seller has been emailed.");
+  alert("Shop deleted · the final Excel was emailed to the seller.");
   deletesPage();
 }
 
