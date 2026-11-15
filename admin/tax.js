@@ -66,3 +66,68 @@ async function taxRun() {
   const { data, error } = await db.rpc("admin_tds_run", { p_month: m + "-01" }); if (error) return alert(error.message);
   alert(`${data} shop${data === 1 ? "" : "s"} got a TDS note`); taxPage();
 }
+
+// ---------------- update-74: challans, monthly / quarterly files, Form 131 certificates ----------------
+async function taxReports() {
+  const [{ data: due }, chal, runs, certs, shops] = await Promise.all([db.rpc("tds_challans_due"), q("tds_challans", "*", x => x.order("month", { ascending: false }).limit(24)),
+    q("statement_runs", "*", x => x.order("sent_at", { ascending: false }).limit(12)), q("tds_certificates", "*", x => x.order("created_at", { ascending: false }).limit(50)),
+    q("shops", "id,name", x => x.eq("kyc", "APPROVED").order("name"))]);
+  const kindL = k => k === "ecom" ? "E-commerce TDS (shops)" : "Commission TDS (sales partners)";
+  const fy = (() => { const d = new Date(); const y = d.getMonth() < 3 ? d.getFullYear() - 1 : d.getFullYear(); return `${String(y).slice(2)}-${String(y + 1).slice(2)}`; })();
+  $("#txMore").innerHTML = `
+    <div class="box" ${(due || []).length ? 'style="border:2px solid #E5484D;background:#FFF5F6"' : ""}><h3>TDS challans</h3>
+      ${(due || []).length ? `<div class="sub" style="color:#B0144F;margin-bottom:10px">Enter the challan once you have paid — the banner stays until then.</div>` : `<div class="sub">All challans entered ✓</div>`}
+      ${(due || []).map((d, i) => `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;padding:10px 0;border-top:1px solid #F1ECF4">
+        <div style="min-width:220px;flex:1"><b>${kindL(d.kind)} · ${txMon(d.month)}</b><div class="sub" style="margin:2px 0 0">TDS ${inr(d.tds)} · deposit by ${esc(d.due_by)}</div></div>
+        <input class="in" id="ch_a${i}" type="number" value="${d.tds}" style="width:110px" title="Amount">
+        <input class="in" id="ch_d${i}" type="date" style="width:150px" title="Challan date">
+        <input class="in" id="ch_b${i}" placeholder="BSR (7 digits)" style="width:130px">
+        <input class="in" id="ch_s${i}" placeholder="Serial no." style="width:110px">
+        <button class="btn pink" onclick="taxChallan(${i},'${d.month}','${d.kind}')">Save</button></div>`).join("")}
+      ${chal.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>Type</th><th style="text-align:right">Amount</th><th>Date</th><th>BSR</th><th>Serial</th></tr></thead><tbody>
+        ${chal.map(c => `<tr><td>${txMon(c.month)}</td><td>${kindL(c.kind)}</td><td style="text-align:right">${inr(c.amount)}</td><td>${esc(c.paid_on)}</td><td>${esc(c.bsr)}</td><td>${esc(c.serial)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
+    <div class="box"><h3>Statements for the CA</h3>
+      <div class="sub">Sent by email automatically: the 1st (TDS + GST draft), the 9th (GST final, late entries marked) and after each quarter (TDS return data). Send again any time:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px"><input class="in" type="month" id="st_m" style="width:170px">
+        <button class="btn ghost" onclick="taxSend('draft')">Email draft</button><button class="btn ghost" onclick="taxSend('final')">Email final</button><button class="btn ghost" onclick="taxSend('quarter')">Email quarter (ending this month)</button></div>
+      ${runs.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>File</th><th>Sent</th><th style="text-align:right">TDS</th><th style="text-align:right">GST</th></tr></thead><tbody>
+        ${runs.map(r => `<tr><td>${txMon(r.month)}</td><td>${r.stage === "final" ? "Final" : r.stage === "quarter" ? "Quarter" : "Draft"}</td><td>${new Date(r.sent_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</td>
+          <td style="text-align:right">${inr(r.tds || 0)}</td><td style="text-align:right">${inr(r.gst || 0)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
+    <div class="box"><h3>Form 131 certificates (from TRACES)</h3>
+      <div class="sub">Download each shop's certificate from TRACES after the quarterly return, then upload it here — the shop sees it in Subscription &amp; bills → TDS.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
+        <select class="in" id="ce_s" style="min-width:200px">${shops.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>
+        <input class="in" id="ce_fy" value="${fy}" style="width:90px" title="FY"><select class="in" id="ce_q" style="width:90px">${[1, 2, 3, 4].map(n => `<option value="${n}">Q${n}</option>`).join("")}</select>
+        <input class="in" id="ce_f" type="file" accept="application/pdf" style="max-width:240px"><button class="btn pink" onclick="taxCert()">Upload</button></div>
+      ${certs.length ? `<table style="margin-top:12px"><tbody>${certs.map(c => `<tr><td>${esc(shops.find(s => s.id === c.shop)?.name || "Shop")}</td><td>FY ${esc(c.fy)} · Q${c.quarter}</td><td>${new Date(c.created_at).toLocaleDateString("en-IN")}</td></tr>`).join("")}</tbody></table>` : ""}</div>`;
+}
+async function taxChallan(i, month, kind) {
+  const { error } = await db.rpc("admin_tds_challan", { p_month: month, p_kind: kind, p_amount: +$("#ch_a" + i).value, p_paid_on: $("#ch_d" + i).value || null,
+    p_bsr: $("#ch_b" + i).value, p_serial: $("#ch_s" + i).value });
+  if (error) return alert(error.message); taxPage(); taxBanner();
+}
+async function taxSend(stage) {
+  const m = $("#st_m").value; if (!m) return alert("Pick the month");
+  const { data, error } = await db.functions.invoke("push", { body: { action: "monthly_statements", stage, month: m } });
+  if (error || !data?.ok) return alert("Couldn't send: " + (error?.message || data?.note || "check the admin email in Settings"));
+  alert("Sent to the admin email"); taxPage();
+}
+async function taxCert() {
+  const f = $("#ce_f").files[0]; if (!f) return alert("Choose the PDF"); if (f.size > 2 * 1024 * 1024) return alert("PDF must be under 2 MB");
+  const shop = $("#ce_s").value, fy = $("#ce_fy").value.trim(), qn = +$("#ce_q").value, path = `${shop}/form131-${fy}-Q${qn}.pdf`;
+  const up = await db.storage.from("tds-certs").upload(path, f, { contentType: "application/pdf", upsert: false });
+  if (up.error) return alert(up.error.message);
+  const { error } = await db.from("tds_certificates").insert({ shop, fy, quarter: qn, path }); if (error) return alert(error.message);
+  taxPage();
+}
+// the banner also covers a TDS challan that hasn't been entered
+const _taxBanner0 = taxBanner;
+taxBanner = async function () {
+  await _taxBanner0();
+  if (document.getElementById("taxbar")) return;
+  const { data } = await db.rpc("tds_challans_due"); if (!data || !data.length) return;
+  const b = document.createElement("div"); b.id = "taxbar"; document.body.prepend(b);
+  b.style.cssText = "position:sticky;top:0;z-index:49;background:#B0144F;color:#fff;padding:9px 16px;font-weight:600;cursor:pointer;font-size:14px";
+  b.onclick = () => go("tax");
+  b.textContent = `TDS challan not entered: ${data.map(d => `${d.kind === "ecom" ? "e-commerce" : "commission"} ${txMon(d.month)} ${inr(d.tds)} (by ${d.due_by})`).join(" · ")}`;
+};

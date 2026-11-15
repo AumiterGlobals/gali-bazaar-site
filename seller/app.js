@@ -1077,8 +1077,9 @@ async function plan() {
   $("#main").innerHTML = head("Subscription & bills", "Your plan with Gali Bazaar — bills, TDS notes, payments and statement") + `<div class="box" id="plBox"><div class="sub">Loading…</div></div>`;
   const [{ data: b, error }, { data: st }, { data: tx }] = await Promise.all([db.rpc("my_billing", { p_shop: S.id }), db.from("settings").select("*").eq("id", 1).maybeSingle(),
     db.rpc("shop_tds", { p_shop: S.id })]);
+  const { data: certs } = await db.from("tds_certificates").select("*").eq("shop", S.id).order("fy", { ascending: false });
   if (error || !b) { $("#plBox").innerHTML = `<div class="msg err">${esc(error ? niceErr(error) : "Not available yet")}</div>`; return; }
-  window._plan = { b, st: st || {}, tx: tx || { months: [] } };
+  window._plan = { b, st: st || {}, tx: tx || { months: [] }, certs: certs || [] };
   planDraw();
 }
 function planDraw() {
@@ -1096,7 +1097,8 @@ function planDraw() {
   if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 26AS / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
       T(["Month", "Sales", "Rate", "TDS", "Note", "Status"], tds.map(r => `<tr><td><b>${txMonth(r.month)}</b></td>${R(r.sales)}<td>${r.rate}%${r.entity === "NO_PAN" ? ' <span class="pill bad">no PAN</span>' : ""}</td>${R(r.tds)}
         <td>${esc(r.note_no || "")} <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="tdsNote('${r.month}')">View</button></td>
-        <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`));
+        <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`)) +
+      ((window._plan.certs || []).length ? `<h3 style="margin-top:16px">Form 131 certificates</h3>${window._plan.certs.map(c => `<button class="btn ghost" style="margin:4px 6px 0 0" onclick="tdsCert('${esc(c.path)}')">FY ${esc(c.fy)} · Q${c.quarter} · PDF</button>`).join("")}` : "");
   if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmy(c.paid_on)}</td><td>${esc(c.utr)}</td>
       <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
       <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
@@ -1120,6 +1122,7 @@ function planDraw() {
     <div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab("bills", "Bills", (b.invoices || []).length)}${tab("tds", "TDS", tds.length)}${tab("pay", "Payments", (b.payments || []).length)}${tab("stmt", "Statement", 0)}
       <span style="flex:1"></span><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="planXlsx()">Excel</button><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="print()">PDF</button></div>${body}</div>`;
 }
+async function tdsCert(p) { const { data } = await db.storage.from("tds-certs").createSignedUrl(p, 600); if (data?.signedUrl) window.open(data.signedUrl); else toast("Couldn't open the certificate"); }
 const txMonth = d => new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 function tdsNote(month) {
   const { tx, st } = window._plan, r = (tx.months || []).find(x => x.month === month); if (!r) return;
