@@ -1075,14 +1075,15 @@ const dmy = d => d ? new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDate
 const KIND_L = { PAYMENT: "Payment received", INVOICE: "Plan invoice", BALANCE_USED: "Plan paid from balance", TDS_NOTE: "TDS recovery note", CREDIT_NOTE: "Credit note", OPENING: "Opening balance" };
 async function plan() {
   $("#main").innerHTML = head("Subscription & bills", "Your plan with Gali Bazaar — bills, TDS notes, payments and statement") + `<div class="box" id="plBox"><div class="sub">Loading…</div></div>`;
-  const [{ data: b, error }, { data: st }] = await Promise.all([db.rpc("my_billing", { p_shop: S.id }), db.from("settings").select("*").eq("id", 1).maybeSingle()]);
+  const [{ data: b, error }, { data: st }, { data: tx }] = await Promise.all([db.rpc("my_billing", { p_shop: S.id }), db.from("settings").select("*").eq("id", 1).maybeSingle(),
+    db.rpc("shop_tds", { p_shop: S.id })]);
   if (error || !b) { $("#plBox").innerHTML = `<div class="msg err">${esc(error ? niceErr(error) : "Not available yet")}</div>`; return; }
-  window._plan = { b, st: st || {} };
+  window._plan = { b, st: st || {}, tx: tx || { months: [] } };
   planDraw();
 }
 function planDraw() {
   const { b } = window._plan, bal = Number(b.balance || 0), pay = Number(b.pay_now || 0);
-  const tds = (b.statement || []).filter(l => l.kind === "TDS_NOTE");
+  const tds = (window._plan.tx.months || []).filter(r => +r.tds > 0);
   const pend = (b.payments || []).filter(c => c.status === "PENDING");
   const q1 = (b.quotes || []).find(q => q.months === 1);
   const tab = (k, l, n) => `<button class="btn ${planTab === k ? "" : "ghost"}" style="padding:7px 14px;font-size:13px" onclick="planTab='${k}';planDraw()">${l}${n ? ` · ${n}` : ""}</button>`;
@@ -1092,8 +1093,10 @@ function planDraw() {
   if (planTab === "bills") body = T(["Invoice", "Date", "For", "Taxable", "GST", "Total", ""], (b.invoices || []).map(i => `<tr><td><b>${esc(i.inv_no)}</b>${i.funded === "BALANCE" ? '<div class="sub" style="font-size:11.5px">Paid from balance</div>' : ""}</td><td>${dmy(i.inv_date)}</td>
       <td>${i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${dmy(i.period_from)} – ${dmy(i.period_to)}`}</td>${R(i.taxable)}${R(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<td style="text-align:right"><b>${inr2(i.total)}</b></td>
       <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="planInvoice('${i.id}')">View / PDF</button></td></tr>`));
-  if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">TDS we deposit with the Income-tax department on your sales (e-commerce TDS). It is recovered from you by a separate note — no GST on it. The credit shows in your Form 26AS / AIS; the certificate (Form 131) is in your Account.</div>` +
-      T(["Note", "Date", "Details", "Amount"], tds.map(l => `<tr><td><b>${esc(l.doc_no || "")}</b></td><td>${dmy(l.at)}</td><td>${esc(l.note || "")}</td>${R(-l.amount)}</tr>`));
+  if (planTab === "tds") body = `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 26AS / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
+      T(["Month", "Sales", "Rate", "TDS", "Note", "Status"], tds.map(r => `<tr><td><b>${txMonth(r.month)}</b></td>${R(r.sales)}<td>${r.rate}%${r.entity === "NO_PAN" ? ' <span class="pill bad">no PAN</span>' : ""}</td>${R(r.tds)}
+        <td>${esc(r.note_no || "")} <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="tdsNote('${r.month}')">View</button></td>
+        <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`));
   if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmy(c.paid_on)}</td><td>${esc(c.utr)}</td>
       <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
       <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
@@ -1117,6 +1120,26 @@ function planDraw() {
     <div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab("bills", "Bills", (b.invoices || []).length)}${tab("tds", "TDS", tds.length)}${tab("pay", "Payments", (b.payments || []).length)}${tab("stmt", "Statement", 0)}
       <span style="flex:1"></span><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="planXlsx()">Excel</button><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="print()">PDF</button></div>${body}</div>`;
 }
+const txMonth = d => new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+function tdsNote(month) {
+  const { tx, st } = window._plan, r = (tx.months || []).find(x => x.month === month); if (!r) return;
+  const m = v => "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const w = window.open("", "_blank"); if (!w) { alert("Allow pop-ups to view the note"); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>TDS note ${esc(r.note_no)}</title><style>
+    body{font-family:Poppins,Arial,sans-serif;color:#1D0F30;margin:0;padding:32px;max-width:760px}.bar{height:6px;background:#6A1BB0;margin:-32px -32px 26px}
+    h1{font-size:20px;margin:0}.mut{color:#6B6380;font-size:12.5px;line-height:1.5}table{width:100%;border-collapse:collapse;margin-top:18px}
+    td{padding:9px 6px;font-size:13.5px;border-bottom:1px solid #F1ECF4}.btn{margin-top:22px;padding:10px 18px;border:0;border-radius:99px;background:#1D0F30;color:#fff;font:inherit;cursor:pointer}
+    @media print{.btn{display:none}}</style></head><body><div class="bar"></div>
+    <div style="display:flex;justify-content:space-between;gap:20px"><div><h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}${st.biz_gstin ? `<br>GSTIN: ${esc(st.biz_gstin)}` : ""}${st.tan ? `<br>TAN: ${esc(st.tan)}` : ""}</div></div>
+      <div style="background:#6A1BB0;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;height:fit-content">TDS RECOVERY NOTE</div></div>
+    <table><tr><td class="mut">Note no</td><td><b>${esc(r.note_no)}</b></td></tr><tr><td class="mut">To</td><td><b>${esc(S.name)}</b> · PAN ${esc(r.pan || "not given")}</td></tr>
+      <tr><td class="mut">Sales month</td><td>${txMonth(r.month)}</td></tr><tr><td class="mut">Your sales through Gali Bazaar</td><td>${m(r.sales)}</td></tr>
+      <tr><td class="mut">TDS rate</td><td>${r.rate}% — Income-tax Act 2025, s.393(1) Table Sl. 8(v)${r.entity === "NO_PAN" ? " (no PAN)" : ""}</td></tr>
+      <tr><td class="mut"><b>TDS recovered from you</b></td><td><b style="font-size:16px">${m(r.tds)}</b></td></tr></table>
+    <p class="mut" style="margin-top:20px">Gali Bazaar deposits this TDS with the Income-tax department against your PAN; it shows in your Form 26AS / AIS and the quarterly certificate (Form 131). This note is not a tax invoice and carries no GST.</p>
+    <button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
+  w.document.close();
+}
 async function useBalance() {
   if (!confirm("Pay next month's plan from your balance? The invoice is issued today.")) return;
   const { data, error } = await db.rpc("use_balance_for_plan", { p_months: 1 });
@@ -1128,7 +1151,7 @@ function planXlsx() {
   const wb = XLSX.utils.book_new(), add = (n, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: "Nothing yet" }]), n);
   add("Bills", (b.invoices || []).map(i => ({ "Invoice no": i.inv_no, Date: i.inv_date, For: i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${i.period_from} to ${i.period_to}`,
     SAC: i.sac, "Place of supply": i.place_of_supply, GSTIN: i.bill_gstin || "", Taxable: +i.taxable, CGST: +i.cgst, SGST: +i.sgst, IGST: +i.igst, Total: +i.total, "Paid from": i.funded === "BALANCE" ? "Balance" : "Payment" })));
-  add("TDS", (b.statement || []).filter(l => l.kind === "TDS_NOTE").map(l => ({ Note: l.doc_no, Date: l.at, Details: l.note, Amount: -l.amount })));
+  add("TDS", (window._plan.tx.months || []).filter(r => +r.tds > 0).map(r => ({ Month: r.month, "Sales": +r.sales, "Rate %": +r.rate, TDS: +r.tds, "Note no": r.note_no, Status: r.status === "RECOVERED" ? "Paid" : "Pending" })));
   add("Payments", (b.payments || []).map(c => ({ Date: c.paid_on, UTR: c.utr, Amount: +c.amount, Status: c.status === "APPROVED" ? "Verified" : c.status, Invoice: c.inv_no || "" })));
   add("Statement", (b.statement || []).map(l => ({ Date: l.at, Entry: KIND_L[l.kind] || l.kind, "Doc no": l.doc_no || "", Details: l.note || "", Amount: +l.amount, Balance: +l.running })));
   XLSX.writeFile(wb, `Gali-Bazaar-subscription-${S.name.replace(/[^A-Za-z0-9]+/g, "-")}.xlsx`);
