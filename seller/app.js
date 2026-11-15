@@ -1159,7 +1159,7 @@ boot();
 let supTimer = null;
 // ================= Subscription & bills (update-71): balance / pending, bills, TDS notes, payments, statement =================
 let planTab = "bills";
-const dmy = d => d ? new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+const dmyFull = d => d ? new Date(String(d).slice(0, 10) + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 const KIND_L = { PAYMENT: "Payment received", INVOICE: "Plan invoice", BALANCE_USED: "Plan paid from balance", TDS_NOTE: "TDS recovery note", CREDIT_NOTE: "Credit note", OPENING: "Opening balance" };
 async function plan() {
   $("#main").innerHTML = head("Subscription & bills", "Your plan with Gali Bazaar — bills, TDS notes, payments and statement") + `<div class="box" id="plBox"><div class="sub">Loading…</div></div>`;
@@ -1179,25 +1179,25 @@ function planDraw() {
   const T = (h, rows) => rows.length ? `<table><thead><tr>${h.map(x => `<th${/Amount|Total|Balance|GST|Taxable|TDS|Sales/.test(x) ? ' style="text-align:right"' : ""}>${x}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="sub">Nothing here yet.</div>`;
   const R = v => `<td style="text-align:right">${inr2(v)}</td>`;
   let body = "";
-  if (planTab === "bills") body = T(["Invoice", "Date", "For", "Taxable", "GST", "Total", ""], (b.invoices || []).map(i => `<tr><td><b>${esc(i.inv_no)}</b>${i.funded === "BALANCE" ? '<div class="sub" style="font-size:11.5px">Paid from balance</div>' : ""}</td><td>${dmy(i.inv_date)}</td>
-      <td>${i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${dmy(i.period_from)} – ${dmy(i.period_to)}`}</td>${R(i.taxable)}${R(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<td style="text-align:right"><b>${inr2(i.total)}</b></td>
+  if (planTab === "bills") body = T(["Invoice", "Date", "For", "Taxable", "GST", "Total", ""], (b.invoices || []).map(i => `<tr><td><b>${esc(i.inv_no)}</b>${i.funded === "BALANCE" ? '<div class="sub" style="font-size:11.5px">Paid from balance</div>' : ""}</td><td>${dmyFull(i.inv_date)}</td>
+      <td>${i.purpose === "FEATURED" ? `Top placement ${i.days} days` : `Plan ${dmyFull(i.period_from)} – ${dmyFull(i.period_to)}`}</td>${R(i.taxable)}${R(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<td style="text-align:right"><b>${inr2(i.total)}</b></td>
       <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="planInvoice('${i.id}')">View / PDF</button></td></tr>`));
   if (planTab === "tds") body = tdsQuarters() + `<div class="sub" style="margin-bottom:8px">E-commerce TDS (Income-tax Act 2025, s.393(1) Sl. 8(v)) on your sales through Gali Bazaar. We deposit it with the Income-tax department and recover it from you by a separate TDS note — no GST on it. The credit shows in your Form 168 / AIS against your PAN; the certificate (Form 131) comes every quarter.</div>` +
       T(["Month", "Sales", "Rate", "TDS", "Note", "Status"], tds.map(r => `<tr><td><b>${txMonth(r.month)}</b></td>${R(r.sales)}<td>${r.rate}%${r.entity === "NO_PAN" ? ' <span class="pill bad">no PAN</span>' : ""}</td>${R(r.tds)}
         <td>${esc(r.note_no || "")} <button class="btn ghost" style="padding:4px 10px;font-size:12px" onclick="tdsNote('${r.month}')">View</button></td>
         <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`)) +
       "";
-  if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmy(c.paid_on)}</td><td>${esc(c.utr)}</td>
+  if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmyFull(c.paid_on)}</td><td>${esc(c.utr)}</td>
       <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
       <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
-  if (planTab === "stmt") body = T(["Date", "Entry", "Doc no", "Amount", "Balance"], (b.statement || []).map(l => `<tr><td>${dmy(l.at)}</td><td>${esc(KIND_L[l.kind] || l.kind)}<div class="sub" style="font-size:11.5px">${esc(l.note || "")}</div></td>
+  if (planTab === "stmt") body = T(["Date", "Entry", "Doc no", "Amount", "Balance"], (b.statement || []).map(l => `<tr><td>${dmyFull(l.at)}</td><td>${esc(KIND_L[l.kind] || l.kind)}<div class="sub" style="font-size:11.5px">${esc(l.note || "")}</div></td>
       <td>${esc(l.doc_no || "")}</td><td style="text-align:right;color:${l.amount < 0 ? "#C62828" : "#12A866"}">${l.amount < 0 ? "– " : "+ "}${inr2(Math.abs(l.amount))}</td>${R(l.running)}</tr>`));
   $("#main").innerHTML = head("Subscription & bills", "Your plan with Gali Bazaar — bills, TDS notes, payments and statement") + `
     <div class="box" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:${b.paused ? "#FDECEC" : "#fff"}">
       <div style="flex:1;min-width:200px"><div class="sub">Balance</div><div style="font-size:26px;font-weight:800;color:${bal < 0 ? "#C62828" : "#1D0F30"}">${bal < 0 ? "– " : ""}${inr2(Math.abs(bal))}</div>
-        <div class="sub">${S.sub_until ? "Plan active till " + dmy(S.sub_until) : "No plan yet"}</div></div>
+        <div class="sub">${S.sub_until ? "Plan active till " + dmyFull(S.sub_until) : "No plan yet"}</div></div>
       <div style="flex:1;min-width:200px"><div class="sub">${b.paused ? "Shop paused — pending" : "Pending"}</div><div style="font-size:26px;font-weight:800;color:${pay > 0 ? "#C62828" : "#12A866"}">${inr2(pay)}</div>
-        <div class="sub">${pay > 0 ? `Plan ${inr2(b.plan_due)}${Number(b.tds_this_month) ? ` + TDS ${inr2(b.tds_this_month)}` : ""}${bal > 0 ? ` – balance ${inr2(bal)}` : ""}${b.due_by ? ` · pay by ${dmy(b.due_by)}` : " · pay now"}` : "Nothing to pay"}</div></div>
+        <div class="sub">${pay > 0 ? `Plan ${inr2(b.plan_due)}${Number(b.tds_this_month) ? ` + TDS ${inr2(b.tds_this_month)}` : ""}${bal > 0 ? ` – balance ${inr2(bal)}` : ""}${b.due_by ? ` · pay by ${dmyFull(b.due_by)}` : " · pay now"}` : "Nothing to pay"}</div></div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <a class="btn pink" href="/pay/?shop=${S.id}&months=1">Pay / renew</a>
         ${q1 && bal >= Number(q1.amount) ? `<button class="btn" onclick="useBalance()">Use balance for plan</button>` : ""}</div></div>
@@ -1206,7 +1206,7 @@ function planDraw() {
       <div style="flex:1;min-width:240px"><b style="color:#B0144F">Payment not found — ${inr(c.amount)} · UTR ${esc(c.utr)}</b>
       <div class="sub" style="color:#6B1233">Payment not found in our bank statement — please check your bank statement and the UTR, then update it.</div></div>
       <a class="btn pink" href="/pay/?shop=${S.id}&fix=1">Update UTR</a></div>`).join("")}
-    ${pend.map(c => `<div class="box"><b>${inr(c.amount)} · ${dmy(c.paid_on)} · UTR ${esc(c.utr)}</b><div class="sub">Being checked with our bank statement — the invoice comes on the day it's verified.</div></div>`).join("")}
+    ${pend.map(c => `<div class="box"><b>${inr(c.amount)} · ${dmyFull(c.paid_on)} · UTR ${esc(c.utr)}</b><div class="sub">Being checked with our bank statement — the invoice comes on the day it's verified.</div></div>`).join("")}
     <div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${tab("bills", "Bills", (b.invoices || []).length)}${tab("tds", "TDS", tds.length)}${tab("pay", "Payments", (b.payments || []).length)}${tab("stmt", "Statement", 0)}
       <span style="flex:1"></span><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="planXlsx()">Excel</button><button class="btn ghost" style="padding:7px 14px;font-size:13px" onclick="print()">PDF</button></div>${body}</div>`;
 }
@@ -1223,7 +1223,7 @@ function tdsQuarters() {
       <span class="sub" style="margin:0">Sales <b>${inr2(q.sales)}</b> · TDS <b>${inr2(q.tds)}</b></span></div>
       <div style="display:grid;gap:6px;margin-top:10px;font-size:13.5px">
         <div>Deposited: ${q.all_deposited && deps ? `<b style="color:#12A866">✓ ${deps}</b>` : deps ? `${deps} <span style="color:#B26A00">· ⏳ rest pending</span>` : '<span style="color:#B26A00">⏳ Not deposited yet</span>'}</div>
-        <div>Return: ${q.return_filed_on ? `<b style="color:#12A866">✓ Filed ${dmy(q.return_filed_on)}</b>` : `<span style="color:#B26A00">⏳ Return due ${ret} ${q.quarter === 4 || q.quarter === 3 ? y0 + 1 : y0}</span>`}</div>
+        <div>Return: ${q.return_filed_on ? `<b style="color:#12A866">✓ Filed ${dmyFull(q.return_filed_on)}</b>` : `<span style="color:#B26A00">⏳ Return due ${ret} ${q.quarter === 4 || q.quarter === 3 ? y0 + 1 : y0}</span>`}</div>
         <div>Form 131: ${q.cert ? `<button class="btn ghost" style="padding:5px 12px;font-size:12.5px" onclick="tdsCert('${esc(q.cert)}')">Download PDF</button>` : `<span class="sub" style="margin:0">Comes by ~${cert} ${q.quarter === 1 || q.quarter === 2 ? y0 : y0 + 1}</span>`}</div>
         <div class="sub" style="margin:0">Form 168 / AIS should show ${inr2(q.tds)} — if it doesn't, tell us in Help &amp; support.</div></div></div>`; }).join("");
 }
@@ -1243,13 +1243,13 @@ function tdsNote(month) {
     @media print{.btn{display:none}}</style></head><body><div class="bar"></div>
     <div style="display:flex;justify-content:space-between;gap:20px"><div>${WORDMARK}<h1>${esc(st.biz_name || "Gali Bazaar")}</h1><div class="mut">${esc(st.biz_addr || "")}${st.biz_gstin ? `<br>GSTIN: ${esc(st.biz_gstin)}` : ""}${st.tan ? `<br>TAN: ${esc(st.tan)}` : ""}</div></div>
       <div style="background:#6A1BB0;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;height:fit-content">TDS RECOVERY NOTE</div></div>
-    <table><tr><td class="mut">Note no</td><td><b>${esc(r.note_no)}</b></td></tr><tr><td class="mut">Note date</td><td>${dmy(noteDate)}</td></tr>
+    <table><tr><td class="mut">Note no</td><td><b>${esc(r.note_no)}</b></td></tr><tr><td class="mut">Note date</td><td>${dmyFull(noteDate)}</td></tr>
       <tr><td class="mut">To</td><td><b>${esc(S.name)}</b> · PAN ${esc(r.pan || "not given")}<br><span class="mut">${esc(addr)}</span></td></tr>
       <tr><td class="mut">Sales month</td><td>${txMonth(r.month)}</td></tr><tr><td class="mut">Your sales through Gali Bazaar</td><td>${m(r.sales)}</td></tr>
       <tr><td class="mut">TDS rate</td><td>${r.rate}% — Income-tax Act 2025, s.393(1) Table Sl. 8(v)${r.entity === "NO_PAN" ? " (no PAN)" : ""}</td></tr>
       <tr><td class="mut"><b>TDS recovered from you</b></td><td><b style="font-size:16px">${m(r.tds)}</b></td></tr>
-      <tr><td class="mut">Pay by</td><td>${dmy(due)}</td></tr>
-      <tr><td class="mut">Status</td><td>${r.status === "RECOVERED" ? `<b style="color:#12A866">Paid${paidOn ? " on " + dmy(paidOn) : ""}</b>` : '<b style="color:#B26A00">Pending</b>'}</td></tr></table>
+      <tr><td class="mut">Pay by</td><td>${dmyFull(due)}</td></tr>
+      <tr><td class="mut">Status</td><td>${r.status === "RECOVERED" ? `<b style="color:#12A866">Paid${paidOn ? " on " + dmyFull(paidOn) : ""}</b>` : '<b style="color:#B26A00">Pending</b>'}</td></tr></table>
     <p class="mut" style="margin-top:20px">Gali Bazaar deposits this TDS with the Income-tax department against your PAN; it shows in your Form 168 / AIS and the quarterly certificate (Form 131). This note is not a tax invoice and carries no GST.</p>
     <button class="btn" onclick="print()">Print / Save as PDF</button></body></html>`);
   w.document.close();
