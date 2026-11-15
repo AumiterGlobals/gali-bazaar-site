@@ -1,6 +1,6 @@
 // Finds top-level names declared twice across the classic <script>s of one page (e.g. `const dmy` in panel/common.js
 // and again in seller/app.js → "Identifier 'dmy' has already been declared" and the second file never runs).
-// Run before every deploy:   npm i --no-save acorn && node tools/check-globals.mjs
+// Run before every deploy:   npm i --no-save acorn && node scripts/check-globals.mjs
 // Exit code 1 when any page has a clash.
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -10,7 +10,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const pages = [];
 (function walk(d) {
   for (const f of readdirSync(d)) {
-    if (f.startsWith(".") || f === "node_modules" || f === "tools") continue;
+    if (f.startsWith(".") || f === "node_modules" || f === "scripts") continue;
     const p = join(d, f);
     if (statSync(p).isDirectory()) walk(p); else if (f.endsWith(".html")) pages.push(p);
   }

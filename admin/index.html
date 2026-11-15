@@ -164,7 +164,9 @@ function go(k) {
   if (page === "categories") return loadCats();
   const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage, tax: taxPage };
   tdBanner().catch(() => {});
-  if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
+  if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`;
+    return pages[page]().then(() => { if ((page === "dashboard" || page === "settings") && !window.ACCOUNTANT && window.setupCard) setupCard(page); })
+      .catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
     <div class="soon"><b>Coming to the web console soon.</b><br>Until then, use the Admin panel inside the Gali Bazaar app (same admin email).</div>`;
@@ -862,8 +864,9 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
-<script src="/admin/tax.js?v=1795960000"></script>
+<script src="/admin/tax.js?v=1795980000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
+<script src="/admin/setup.js?v=1795980000"></script>
 <script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
