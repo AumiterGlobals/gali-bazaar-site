@@ -1,0 +1,70 @@
+/* Gali Bazaar public pages — design v2 (DESIGN.md): warm flat surfaces, Funnel type ≤ 500, brand purple for actions, pink only for offers.
+   Loaded after site.css on the public pages (home, for shops, pricing, help). Legal pages, /pay, panels, PDFs and emails keep their own style. */
+:root{--bg:#F7F3EE;--card:#fff;--line2:#ECE4DC;--soft:#F0E9E2;--ink:#1E1A1C;--muted:#6E6468;--brand:#6A1BB0;--brand-soft:#F1E8FA;--pink:#F0287A;--pink-soft:#FDE6EF;
+  --green:#12804A;--green-soft:#E3F3EA;--amber:#B26A00;--amber-soft:#FCF0DC;--violet:#6A1BB0;--night:#1E1A1C;--cream:#F7F3EE;--line:#ECE4DC}
+body{font-family:"Funnel Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--ink);font-weight:400}
+.page{background:var(--bg)!important}
+h1,h2,h3,h4,.h{font-family:"Funnel Display","Funnel Sans",system-ui,sans-serif;font-weight:500!important;letter-spacing:-.02em}
+b,strong,.btn,.btn b{font-weight:500!important}
+h1{font-size:clamp(40px,5.2vw,64px);line-height:1.02;letter-spacing:-.025em;color:var(--ink)}
+h1 .o,h1 .p{background:none!important;-webkit-background-clip:initial!important;background-clip:initial!important;color:var(--brand)!important}
+h2{font-size:clamp(30px,3.4vw,44px);line-height:1.08}
+.lead{color:#3D3538}
+.tag{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;border-radius:6px;background:var(--brand-soft)!important;color:var(--brand)!important}
+/* nav */
+nav.scrolled{background:rgba(247,243,238,.94);box-shadow:0 1px 0 var(--line2)}
+nav .links a{color:var(--ink)}nav .links a:hover{color:var(--brand)}
+nav .dlnav{background:var(--brand)!important;border-radius:14px}
+/* buttons: one primary (brand), the rest secondary (white + 1px line) — no gradients, no shadows */
+.btn{border-radius:14px;box-shadow:none!important}
+.btn-apk{background:var(--brand)!important;color:#fff}
+.btn-dl{background:var(--brand)}
+.btn-gp,.btn-out,.btn-dl.light,.btn-sell{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line2)!important}
+.btn-out .ic,.btn-sell .ic{color:var(--brand)}
+.live{border-color:var(--line2)}.live .ic{color:var(--brand)}
+.hero a[href="/help/install/"]{color:var(--brand)!important}
+.stats b{font-family:"Funnel Display",sans-serif;font-weight:500}
+.stats .s-g,.s-g{color:var(--green)!important}.s-v{color:var(--brand)!important}.s-p{color:var(--ink)!important}
+/* cards: white, 1px border, radius 16–18, no shadows */
+.cat,.card,.box,.price,.plan,.faq details,.st,.why .c,.feat{box-shadow:none!important}
+.cat.dyn{background:#fff!important;border:1px solid var(--line2);border-radius:18px}
+.cat.dyn img{filter:none}
+.fcbadge{background:var(--brand-soft)!important;color:var(--brand)!important;border-radius:6px;font-weight:500}
+.si{border-radius:12px}
+/* real app screens instead of drawn mock-ups */
+.shots{position:relative;display:flex;justify-content:center;gap:18px;align-items:flex-start}
+.shot{width:min(260px,40vw);border-radius:30px;background:#fff;border:1px solid var(--line2);padding:8px;margin:0}
+.shot img{width:100%;border-radius:22px;display:block}
+.shot.s2{margin-top:56px}
+.shot figcaption{font-size:12.5px;color:var(--muted);text-align:center;padding:8px 0 2px}
+@media (max-width:900px){.shot{width:44vw}.shot.s2{margin-top:36px}}
+/* festival hero keeps its own colours on top of this */
+html.gbf-on .hero{color:inherit}
+.hero .grid{grid-template-columns:minmax(0,1fr) minmax(0,540px)!important}
+@media (max-width:900px){.hero .grid{grid-template-columns:1fr!important}.shots{margin-top:28px}}
+html.gbf-engine .shot{border-color:rgba(255,255,255,.4)}
+/* category tags: soft, not pink (pink is for offers only) */
+.ctag.new{background:var(--brand-soft)!important;color:var(--brand)!important;border-radius:6px;font-weight:500;font-style:normal}
+.ctag.soon{background:var(--soft)!important;color:var(--muted)!important;border-radius:6px;font-weight:500;font-style:normal}
+/* mobile download bar: white card, brand action; its shadow stays (it floats, like the app's cart bar) */
+@media (max-width:760px){
+  .sticky{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line2);box-shadow:0 10px 30px rgba(30,26,28,.14)!important}
+  .sticky small{color:var(--muted)!important}.sticky small a{color:var(--brand)!important}
+  .sticky .si{background:var(--brand-soft)!important}
+  .sticky>a{background:var(--brand)!important}
+}
+/* flat everywhere (gradient only in the festival header) */
+.c1,.c2,.c3{background:#fff!important;border:1px solid var(--line2)}
+.sellers{background:var(--ink)!important;border-radius:24px}
+.btn-trial,.pr.best a,.teaser .ty{background:var(--brand)!important;color:#fff!important}
+.teaser{background:var(--ink)!important}
+footer.df{background:#1E1A1C!important}
+.df .fa{background:var(--brand)!important}
+.ocard .acc{background:var(--brand)!important}
+.sticky b.hi{color:var(--ink)}
+.wcta{background:var(--brand)!important;color:#fff!important;border-radius:14px!important;font-weight:500!important}
+.wcta2{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line2)}
+.whr .us{background:var(--brand)!important;color:#fff}
+#why h2 span,.why h2 span{color:var(--brand)!important;background:none!important;-webkit-text-fill-color:currentColor}
+.st .si{background:var(--brand-soft)!important;color:var(--brand)!important}
+.st small{color:var(--brand)!important}
