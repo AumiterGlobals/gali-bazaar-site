@@ -59,10 +59,79 @@
     const { error } = await db.from("terms_acceptances").insert({ profile: session.user.id, role, version: (s && s.terms_version) || "2026-11-14", platform: "web" });
     if (error) throw error;
   }
+  // ---------- update-75: sellers sign — read the Seller Terms to the end, type the KYC name, phone OTP (when switched on) ----------
+  const S2 = HI ? { t: "सेलर नियम", sub: "अंत तक पढ़ें, फिर नीचे साइन करें", scroll: "आगे बढ़ने के लिए नियम अंत तक स्क्रॉल करें", name: "अपना पूरा नाम लिखें (KYC / PAN जैसा)",
+      send: "OTP भेजें", otp: "6 अंकों का OTP", sign: "मैं सहमत हूँ — साइन करके स्वीकार करें", end: "— सेलर नियम समाप्त —",
+      law: "यह आईटी एक्ट, 2000 (धारा 10A) के तहत आपका इलेक्ट्रॉनिक साइन है। इसकी कॉपी आपको ईमेल होगी।", app: "फ़ोन OTP के लिए कृपया Gali Bazaar ऐप में स्वीकार करें।" }
+    : { t: "Seller Terms", sub: "Read to the end, then sign below", scroll: "Scroll to the end of the terms to continue", name: "Type your full name (as in KYC / PAN)",
+      send: "Send OTP", otp: "6-digit OTP", sign: "I agree — sign & accept", end: "— End of the Seller Terms —",
+      law: "This is your electronic signature under the IT Act, 2000 (s.10A). A copy is emailed to you.", app: "Phone OTP isn't set up on the website yet — please accept in the Gali Bazaar app." };
+  const css2 = `.gbs{position:fixed;inset:0;z-index:9999;background:rgba(29,15,48,.55);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Poppins,system-ui,sans-serif}
+.gbs-c{background:#fff;border-radius:22px;max-width:720px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(29,15,48,.3)}
+.gbs-h{padding:20px 22px 10px}.gbs-h h2{margin:0;font-size:22px;color:#1D0F30}.gbs-h p{margin:2px 0 0;color:#6B6380;font-size:13px}
+.gbs-t{flex:1;overflow:auto;margin:0 18px;padding:14px 16px;background:#FBF9FD;border:1px solid #EDE6F3;border-radius:14px;color:#3F3854;font-size:14px;line-height:1.65}
+.gbs-t p{margin:0 0 8px}.gbs-t li{margin:0 0 6px 16px}.gbs-t b{color:#1D0F30}.gbs-t .e{text-align:center;color:#8E84A8;font-size:12px;margin-top:10px}
+.gbs-f{padding:14px 22px 20px;display:flex;flex-direction:column;gap:10px}
+.gbs-f input{padding:12px 13px;border:1px solid #E6DEEC;border-radius:12px;font:inherit;font-size:14.5px}.gbs-f input:focus{outline:none;border-color:#8B5CF6}
+.gbs-f .w{color:#B26A00;font-size:12.5px;font-weight:600}.gbs-f .er{color:#E5383B;font-size:12.5px;font-weight:600}.gbs-f .lw{color:#8E84A8;font-size:11.5px}
+.gbs-f button.go{border:0;border-radius:99px;padding:14px;font:inherit;font-weight:600;font-size:15px;background:#1D0F30;color:#fff;cursor:pointer}.gbs-f button.go:disabled{background:#CFC9D9}
+.gbs-f button.so{background:none;border:0;color:#6B6380;font:inherit;font-size:13px;cursor:pointer}`;
+  const st2 = document.createElement("style"); st2.textContent = css2; document.head.appendChild(st2);
+  const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  const loadJs = src => new Promise((ok, bad) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.append(s); });
+  async function sellerSign(db, onSignOut) {
+    const [{ data: info }, terms] = await Promise.all([db.rpc("seller_terms_info"), fetch("/legal/seller-terms.json", { cache: "no-store" }).then(r => r.json()).catch(() => null)]);
+    const otpOn = !!(info && info.otp), fb = info && info.firebase_web;
+    return new Promise(res => {
+      const w = document.createElement("div"); w.className = "gbs";
+      const body = terms ? (HI ? terms.hi : terms.en).map(b => b.t === "li" ? `<li>${md(b.s)}</li>` : `<p>${md(b.s)}</p>`).join("") : `<p><a href="${LEGAL}#seller-terms" target="_blank">${esc(S2.t)}</a></p>`;
+      w.innerHTML = `<div class="gbs-c"><div class="gbs-h"><h2>${esc(S2.t)}</h2><p>${esc(S2.sub)}${info && info.version ? " · v" + esc(info.version) : ""}</p></div>
+        <div class="gbs-t" id="gbs-t">${body}<div class="e">${esc(S2.end)}</div></div>
+        <div class="gbs-f"><div class="w" id="gbs-w">${esc(S2.scroll)}</div>
+          <input id="gbs-n" placeholder="${esc(S2.name)}" disabled autocomplete="name">
+          ${otpOn ? (fb ? `<div id="gbs-rc"></div><input id="gbs-o" placeholder="${esc(S2.otp)} · ••••${esc(info.phone_last4 || "")}" inputmode="numeric" maxlength="6" style="display:none">` : `<div class="er">${esc(S2.app)}</div>`) : ""}
+          <div class="er" id="gbs-e"></div>
+          <button class="go" id="gbs-go" disabled>${esc(otpOn && fb ? S2.send + " · ••••" + (info.phone_last4 || "") : S2.sign)}</button>
+          <div class="lw">${esc(S2.law)}</div><button class="so" id="gbs-so">${esc(L.out)}</button></div></div>`;
+      document.body.appendChild(w);
+      const t = w.querySelector("#gbs-t"), n = w.querySelector("#gbs-n"), go = w.querySelector("#gbs-go"), er = w.querySelector("#gbs-e");
+      let read = false, conf = null;
+      const ready = () => { go.disabled = !read || n.value.trim().length < 3 || (otpOn && !fb); };
+      const onScroll = () => { if (!read && t.scrollTop + t.clientHeight >= t.scrollHeight - 24) { read = true; n.disabled = false; w.querySelector("#gbs-w").style.display = "none"; ready(); } };
+      t.addEventListener("scroll", onScroll); setTimeout(onScroll, 300); n.addEventListener("input", ready);
+      const device = (navigator.userAgentData && navigator.userAgentData.platform ? navigator.userAgentData.platform + " · " : "") + navigator.userAgent.slice(0, 90);
+      const fail = e => { er.textContent = (e && (e.message || e.error)) || "Couldn't save — please try again"; go.disabled = false; go.textContent = otpOn && fb && conf ? S2.sign : go.textContent; };
+      go.onclick = async () => {
+        er.textContent = ""; go.disabled = true;
+        try {
+          if (!otpOn) {
+            const { error } = await db.rpc("accept_seller_terms", { p_typed_name: n.value.trim(), p_scrolled: true, p_device: device, p_platform: "web" });
+            if (error) throw error; w.remove(); return res();
+          }
+          if (!conf) {   // send the OTP (Firebase phone sign-in, invisible reCAPTCHA)
+            if (!window.firebase) { await loadJs("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"); await loadJs("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"); }
+            if (!firebase.apps.length) firebase.initializeApp(fb);
+            const v = new firebase.auth.RecaptchaVerifier("gbs-rc", { size: "invisible" });
+            conf = await firebase.auth().signInWithPhoneNumber(info.phone, v);
+            w.querySelector("#gbs-o").style.display = ""; go.textContent = S2.sign; go.disabled = false; return;
+          }
+          const code = w.querySelector("#gbs-o").value.trim();
+          const cred = await conf.confirm(code);
+          const token = await cred.user.getIdToken(true);
+          const { data, error } = await db.functions.invoke("push", { body: { action: "seller_terms_otp", typed_name: n.value.trim(), scrolled: true, device, platform: "web", firebase_token: token } });
+          await firebase.auth().signOut().catch(() => {});
+          if (error || !data || !data.ok) throw (data || error); w.remove(); res();
+        } catch (e) { fail(e); }
+      };
+      w.querySelector("#gbs-so").onclick = async () => { await db.auth.signOut(); onSignOut ? onSignOut() : location.reload(); };
+    });
+  }
+
   /** Resolves once this person has accepted the current version for [role] (shows the sheet if needed). */
   async function gate(db, role, onSignOut) {
     const { data, error } = await db.rpc("terms_ok", { p_role: role });
     if (error || data !== false) return;   // DB not updated yet / offline → don't block
+    if (role === "seller") return sellerSign(db, onSignOut);
     return new Promise(res => {
       const w = document.createElement("div"); w.className = "gbt-sheet";
       w.innerHTML = `<div class="gbt-card"><h2>${esc(L.title)}</h2><p class="s">${esc(L.sub)}</p>${html(role, "gbt-gate")}<button class="go" id="gbt-go">${esc(L.btn)}</button><button class="so" id="gbt-so">${esc(L.out)}</button></div>`;

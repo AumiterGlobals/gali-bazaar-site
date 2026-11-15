@@ -995,7 +995,35 @@ function shop() {
       <div class="box" style="background:#1D0F30;color:#fff"><b style="font-size:16px">${S.kyc !== "APPROVED" ? "Plan starts after KYC" : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`}</b>
         <div style="font-size:12px;color:#CFC6E3;margin:4px 0 12px">${S.sub_until ? "Till " + dmyy(S.sub_until) + " • " : ""}Renewal link goes to your email</div><button class="btn" style="background:#fff;color:#1D0F30" onclick="sendLink(this)">Send link</button></div>
       <div class="box"><h3>Status</h3><div class="row" style="border:0;margin:0"><div><b>${S.closed ? "Shop closed" : "Shop open"}</b><span>Customers ${S.closed ? "can't" : "can"} order right now</span></div><button class="tog ${S.closed ? "" : "on"}" onclick="toggleOpen()"></button></div></div></div></div>`;
-  $("#main").insertAdjacentHTML("beforeend", `<div class="box" id="delBox"><div class="sub">Loading…</div></div>`); sdBox();
+  $("#main").insertAdjacentHTML("beforeend", `<div class="box" id="taBox"><div class="sub">Loading…</div></div><div class="box" id="delBox"><div class="sub">Loading…</div></div>`); sdBox(); taBox();
+}
+// update-75: signed Seller Terms (version, time, name typed, OTP) — download as PDF
+async function taBox() {
+  const { data } = await db.from("terms_acceptances").select("*").eq("profile", me.id).eq("role", "seller").order("accepted_at", { ascending: false }).limit(10);
+  window._ta = data || [];
+  const el = $("#taBox"); if (!el) return;
+  el.innerHTML = `<h3>Seller Terms you accepted</h3>${(data || []).length ? `<table><thead><tr><th>Version</th><th>Accepted</th><th>Name typed</th><th>Phone OTP</th><th></th></tr></thead><tbody>
+    ${data.map((t, i) => `<tr><td><b>${esc(t.version)}</b></td><td>${new Date(t.accepted_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+      <td>${esc(t.typed_name || "—")}</td><td>${t.otp_ref ? `<span class="pill ok">Verified ••••${esc(t.phone_last4 || "")}</span>` : '<span class="pill grey">—</span>'}</td>
+      <td><button class="btn ghost" style="padding:6px 12px;font-size:12.5px" onclick="taPdf(${i})">PDF</button></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No signed record yet.</div>`}`;
+}
+async function taPdf(i) {
+  const t = window._ta[i]; if (!t) return;
+  const terms = await fetch("/legal/seller-terms.json").then(r => r.json()).catch(() => null);
+  const md = x => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  const w = window.open("", "_blank"); if (!w) { alert("Allow pop-ups to view the record"); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Seller Terms acceptance ${esc(t.version)}</title><style>
+    body{font-family:Poppins,Arial,sans-serif;color:#1D0F30;margin:0;padding:32px;max-width:780px}.bar{height:6px;background:#6A1BB0;margin:-32px -32px 26px}
+    h1{font-size:20px;margin:0 0 12px}table{width:100%;border-collapse:collapse}td{padding:7px 6px;font-size:13.5px;border-bottom:1px solid #F1ECF4}td:first-child{color:#6B6380;width:200px}
+    .t{font-size:13px;line-height:1.6;color:#3F3854}.t li{margin-left:16px}.mut{color:#6B6380;font-size:12px}.btn{margin:18px 0;padding:10px 18px;border:0;border-radius:99px;background:#1D0F30;color:#fff;font:inherit;cursor:pointer}
+    @media print{.btn{display:none}}</style></head><body><div class="bar"></div><h1>Seller Terms — acceptance record</h1>
+    <table><tr><td>Shop</td><td><b>${esc(S.name)}</b></td></tr><tr><td>Terms version</td><td>${esc(t.version)}</td></tr>
+      <tr><td>Accepted at</td><td>${new Date(t.accepted_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</td></tr><tr><td>Name typed</td><td>${esc(t.typed_name || "—")}</td></tr>
+      <tr><td>Read to the end</td><td>${t.scrolled ? "Yes" : "—"}</td></tr><tr><td>Phone OTP</td><td>${t.otp_ref ? "Verified (number ending " + esc(t.phone_last4 || "") + ")" : "Not required at the time"}</td></tr>
+      <tr><td>OTP reference</td><td>${esc(t.otp_ref || "—")}</td></tr><tr><td>Device</td><td>${esc(t.device || "—")}</td></tr><tr><td>Via</td><td>${t.platform === "web" ? "Website seller panel" : "App " + esc(t.app_version || "")}</td></tr></table>
+    <p class="mut">Electronic record of acceptance under section 10A of the Information Technology Act, 2000.</p><button class="btn" onclick="print()">Print / Save as PDF</button>
+    ${terms ? `<h1 style="margin-top:20px">Seller Terms</h1><div class="t">${terms.en.map(b => b.t === "li" ? `<li>${md(b.s)}</li>` : `<p>${md(b.s)}</p>`).join("")}</div>` : ""}</body></html>`);
+  w.document.close();
 }
 
 // ---------- Delete shop: a request to Gali Bazaar, deleted after the checks (update-64) ----------
