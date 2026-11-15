@@ -269,6 +269,10 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   const upi = info.upi || ""; $("upi").textContent = upi || "—";
   const disc = info.discounts || { "1": 0, "3": 10, "6": 15, "12": 20 };
   const planAmt = m => Math.round(info.price * m * (100 - (disc[m] || 0)) / 100);
+  // update-71: plans run to the 1st; the first period is pro-rata and your balance is taken off
+  const Q = m => (info.quotes || []).find(q => q.months === m);
+  const payAmt = m => Q(m) ? Math.round(Q(m).pay) : planAmt(m);
+  const dmy = d => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   let months = [1, 3, 6, 12].includes(+qp.get("months")) ? +qp.get("months") : 12;
   let days = qp.get("days") === "7" ? 7 : 30;
   let amt = 0, note = "", label = "", till = new Date();
@@ -283,6 +287,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   const shopBox = (plan) => `<div class="shop"><div class="av">🛒</div><div><b>${esc(info.name)}</b><small>${plan ? esc(plan) : esc(info.city || "")} • ${sid}</small></div>
       ${plan ? '<button class="chg" onclick="document.getElementById(\'back\').click()">Change</button>' : ""}</div>
       ${info.pending ? '<div class="note warn">A payment you sent earlier is being checked. You don\'t need to pay again.</div>' : ""}
+      ${!featured ? `<div class="note">Plans renew on the 1st of every month — pay by the 5th.${info.paused ? " Your shop is paused and comes back as soon as this payment is verified." : ""}</div>` : ""}
       `;
 
   const draw = () => {
@@ -298,15 +303,19 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
       lines = `<div class="ln"><span>Top spot · ${label}</span><span>${inr(amt)}</span></div>`;
       note = `GaliBazaar TOP ${shop.slice(0, 8).toUpperCase()}`;
     } else {
-      $("plans").innerHTML = [1, 3, 6, 12].map(m => { const p = planAmt(m), d = disc[m] || 0;
+      $("plans").innerHTML = [1, 3, 6, 12].map(m => { const p = payAmt(m), d = disc[m] || 0;
         return `<button class="pl ${m === months ? "on" : ""}" data-m="${m}">${m === 12 ? '<span class="bv">BEST VALUE</span>' : ""}
           <h4>${m === 1 ? "1 month" : m + " months"}</h4><b>${inr(p)}</b><span class="pm">incl. GST · ${inr(Math.round(p / m))} / month</span>
           <span class="sv">${d ? "Save " + d + "%" : "Standard"}</span><span class="rd"></span></button>`; }).join("");
       document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { months = +b.dataset.m; draw(); });
-      full = info.price * months; amt = planAmt(months);
-      till = live ? new Date(info.sub_until) : new Date(); till.setMonth(till.getMonth() + months);
+      const q = Q(months), bal = Number(info.balance || 0);
+      full = q ? Math.round(q.plan) : info.price * months; amt = payAmt(months);
+      if (q) till = new Date(q.to + "T00:00:00"); else { till = live ? new Date(info.sub_until) : new Date(); till.setMonth(till.getMonth() + months); }
       label = months === 1 ? "1 month" : months + " months";
-      lines = `<div class="ln"><span>${months} months × ${inr(info.price)}</span><span>${inr(full)}</span></div>
+      lines = q ? `<div class="ln"><span>Plan ${dmy(q.from)} – ${dmy(q.to)}${q.from.slice(8) !== "01" ? " (first month pro-rata)" : ""}</span><span>${inr(full)}</span></div>
+        ${bal > 0 ? `<div class="ln"><span>Your balance</span><span class="g">– ${inr(Math.min(bal, full))}</span></div>` : ""}
+        ${bal < 0 ? `<div class="ln"><span>TDS / earlier dues</span><span>${inr(-bal)}</span></div>` : ""}`
+        : `<div class="ln"><span>${months} months × ${inr(info.price)}</span><span>${inr(full)}</span></div>
         ${full > amt ? `<div class="ln"><span>${months === 12 ? "Yearly" : months + "-month"} discount (${disc[months]}%)</span><span class="g">– ${inr(full - amt)}</span></div>` : ""}`;
       note = `GaliBazaar ${shop.slice(0, 8).toUpperCase()} ${months}M`;
     }
@@ -349,7 +358,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
           <div><span>Valid till</span><b>${fmt(till)}</b></div>
           <div><span>UTR</span><b>${esc($("utr").value.trim())}</b></div>
         </div>
-        <div class="mailnote"><svg class="ic"><use href="#i-mail"/></svg>Invoice will be in your app under Account → Accounts &amp; bills</div>
+        <div class="mailnote"><svg class="ic"><use href="#i-mail"/></svg>Once we verify the UTR with our bank, your tax invoice is emailed and is in the app under Account → Subscription &amp; bills</div>
         <a class="bigbtn dark" href="intent://#Intent;package=com.galibazaar.app;end"><svg class="ic"><use href="#i-store"/></svg>Open seller app</a>
         <button class="bigbtn white" onclick="print()"><svg class="ic"><use href="#i-upload"/></svg>Download receipt</button></div>`;
       show("vDone");
