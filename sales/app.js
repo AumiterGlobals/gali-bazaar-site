@@ -248,7 +248,7 @@ function overview() {
   fyCom.forEach(c => { const d = istD(c.created_at); const b = months.find(x => x.y === d.getUTCFullYear() && x.m === d.getUTCMonth()); if (b) b.v += Number(c.amount || 0); });
   const nowI = months.findIndex(x => x.y === istD(Date.now()).getUTCFullYear() && x.m === istD(Date.now()).getUTCMonth());
   const shown = months.slice(0, Math.max(nowI + 1, 1)), max = Math.max(1, ...shown.map(x => x.v));
-  const lim = t.threshold || 20000, credited = Number(t.fy_credited || 0) + Number(t.due || 0), over = credited > lim;
+  const lim = Number(t.threshold ?? 20000), first = lim === 0, credited = Number(t.fy_credited || 0) + Number(t.due || 0), over = credited > lim;
   const scale = Math.max(lim * 1.25, credited), pct = Math.min(100, credited / scale * 100), limPct = lim / scale * 100;
   $("#main").innerHTML = head(`Hi ${esc((me.name || "").split(" ")[0])} 👋`, `${fyLabel()} • ${me.commission_pct}% of every plan amount after GST`) + (D.sum ? statusStrip(D.sum) + codeCard(D.sum) : "") + `
     <div class="kpis k4">
@@ -261,10 +261,12 @@ function overview() {
       <div class="box"><h3>Commission by month <span style="float:right">${fyLabel()}</span></h3>
         <div class="bars">${shown.map((x, i) => `<div class="b ${i === nowI ? "now" : ""}"><em>${x.v ? inr(x.v) : ""}</em><i style="height:${Math.max(4, x.v / max * 170)}px"></i><span>${MON[x.m]}</span></div>`).join("")}</div></div>
       <div>
-        <div class="box"><h3>TDS this year ${over ? `<span class="pill warn" style="float:right">Limit crossed</span>` : ""}</h3>
+        <div class="box"><h3>TDS this year</h3>
+          ${first ? `<div class="sub" style="margin-top:4px">TDS <b>${t.rate_pan ?? 2}%</b> from the first payout (with PAN); <b>${t.rate_no_pan ?? 20}%</b> if PAN is missing. Commission this year <b>${inr(credited)}</b>${t.tds_done ? ` · TDS cut so far <b>${inr2(t.tds_done)}</b>` : ""}.</div>`
+          : `${over ? `<span class="pill warn" style="float:right;margin-top:-30px">Limit crossed</span>` : ""}
           <div class="tdsbar"><i class="${over ? "over" : ""}" style="width:${pct}%;--lim:${(limPct / pct * 100).toFixed(1)}%"></i><u style="left:${limPct}%"></u></div>
           <div class="lims"><span>₹0</span><span>${inr(lim)} limit</span><span>${inr(credited)}</span></div>
-          <div class="sub" style="margin-top:8px">Above ${inr(lim)} in a year → <b>${t.rate || 2}% TDS</b> on the whole year${t.tds_done ? `. Cut so far <b>${inr2(t.tds_done)}</b>` : ""}.</div>
+          <div class="sub" style="margin-top:8px">Above ${inr(lim)} in a year → <b>${t.rate || 2}% TDS</b> on the whole year${t.tds_done ? `. Cut so far <b>${inr2(t.tds_done)}</b>` : ""}.</div>`}
           ${t.has_pan ? `<div class="okline">✓ PAN added • ${esc(t.pan_masked || "")} (2%, not 20%)</div>` : `<div class="warnline">PAN not added — TDS is 20% without PAN. Ask the admin to add it.</div>`}</div>
         <div class="box"><h3>Need follow-up</h3>${follow.length ? follow.slice(0, 6).map(s => `<div class="fu"><div><b>${esc(s.name)}</b><span>${shopState(s) === "kyc" ? "KYC not finished" : "Plan expired " + dmy(s.sub_until)}</span></div>${phoneLink(s.phone) ? `<a class="callb" href="${phoneLink(s.phone)}">📞 Call</a>` : ""}</div>`).join("")
           : `<div class="sub">All your shops are fine 👍</div>`}</div>

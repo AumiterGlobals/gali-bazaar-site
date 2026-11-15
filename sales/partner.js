@@ -19,7 +19,7 @@ function commissionText(S, hi) {
     ["You earn only when a shop that joined with your code pays for a plan,", "and the payment is approved. No commission on customer orders, featured listings, refunds or free trials."],
     [`${CTYPE(t, m)}:`, typeLine + "."],
     ["Your code works and commission is paid only after your KYC", "(PAN, Aadhaar, selfie, bank, UPI) is approved."],
-    ["Payouts:", "we pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 393(1) (earlier 194H): 2% with PAN once your yearly commission crosses ₹20,000. If PAN is missing or invalid, TDS is deducted as the law requires. TDS is shown in your Form 168 / AIS; Form 131 (earlier Form 16A) is given every quarter."],
+    ["Payouts:", "we pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 393(1) (earlier 194H): 2% with PAN from the first payout. If PAN is missing or invalid, TDS is deducted as the law requires. TDS is shown in your Form 168 / AIS; Form 131 (earlier Form 16A) is given every quarter."],
     ["If a plan payment is refunded,", "its commission is cancelled, or adjusted in your next payout if it was already paid."],
     ["No referring your own shop, and no fake shops.", "These lead to blocking and loss of unpaid commission."],
     ["Gali Bazaar may change the %, type or rules with notice.", "Changes apply only to future payments, and you'll see this screen again."]];
@@ -30,7 +30,7 @@ function commissionText(S, hi) {
     ["कमाई सिर्फ़ तब, जब आपके कोड से जुड़ी दुकान प्लान ख़रीदे", "और पेमेंट अप्रूव हो। ग्राहक ऑर्डर, फ़ीचर्ड लिस्टिंग, रिफ़ंड या फ़्री ट्रायल पर कमीशन नहीं।"],
     [`${CTYPE_HI(t, m)}:`, typeLine + "।"],
     ["आपका कोड और कमीशन KYC के बाद ही", "(PAN, आधार, सेल्फ़ी, बैंक, UPI) अप्रूव होने पर चालू होता है।"],
-    ["पेमेंट:", "आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 393(1) (पहले 194H): साल का कमीशन ₹20,000 पार होने पर PAN के साथ 2%। PAN न हो या ग़लत हो तो क़ानून के अनुसार TDS कटेगा। TDS आपके Form 168 / AIS में दिखेगा; Form 131 (पहले Form 16A) हर तिमाही मिलेगा।"],
+    ["पेमेंट:", "आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 393(1) (पहले 194H): पहले पेमेंट से ही PAN के साथ 2%। PAN न हो या ग़लत हो तो क़ानून के अनुसार TDS कटेगा। TDS आपके Form 168 / AIS में दिखेगा; Form 131 (पहले Form 16A) हर तिमाही मिलेगा।"],
     ["प्लान पेमेंट रिफ़ंड हुआ तो", "उसका कमीशन रद्द होगा, या अगर दे दिया गया था तो अगले पेमेंट में घटेगा।"],
     ["अपनी दुकान रेफ़र करना या नक़ली दुकानें मना हैं।", "ऐसा करने पर ब्लॉक और बकाया कमीशन ख़त्म।"],
     ["Gali Bazaar सूचना देकर %, प्रकार या नियम बदल सकता है।", "बदलाव सिर्फ़ आगे के पेमेंट पर लागू होंगे, और यह स्क्रीन फिर दिखेगी।"]];
@@ -235,7 +235,7 @@ async function advicePdf(id, dbc) {
   }
   y += 4; doc.line(L, y, R, y); y += 20;
   const tot = (k, v, b) => { doc.setFont("helvetica", b ? "bold" : "normal"); doc.setFontSize(b ? 12 : 10); doc.text(k, 300, y); doc.text(v, R, y, { align: "right" }); y += b ? 20 : 16; };
-  tot("Gross commission", rs(a.gross)); tot(Number(a.tds) > 0 ? `TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}%` : "TDS (below Rs 20,000 a year)", "- " + rs(a.tds)); tot("Net paid", rs(a.net), true);
+  tot("Gross commission", rs(a.gross)); Number(a.tds) > 0 ? tot(`TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}%`, "- " + rs(a.tds)) : tot("TDS", "nil"); tot("Net paid", rs(a.net), true);
   y += 6; doc.setFillColor(232, 248, 239); doc.roundedRect(L, y, R - L, 28, 6, 6, "F"); doc.setFontSize(10); doc.setFont("helvetica", "bold");
   doc.text(`Payment: ${a.mode || "—"} · UTR ${a.utr || "—"} · ${a.date}`, L + 10, y + 18); y += 48;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(110, 99, 128);
