@@ -140,8 +140,9 @@
   }
   // parallax (mouse + scroll, max ~10 px) and particles (max 60, slower after 8 s, off when the tab is hidden or reduced motion)
   var RM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var LOW = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.connection && navigator.connection.saveData);
   function animate(hero, kind) {
-    if (RM) return;
+    if (RM || LOW) return;   // low-end phone / Save-Data / reduced motion: the still scene only
     var ls = hero.querySelectorAll(".gbf-l"), mx = 0, my = 0, sy = 0;
     function apply() { ls.forEach(function (l) { var d = +l.getAttribute("data-depth"); l.style.transform = "translate3d(" + (mx * d).toFixed(1) + "px," + (my * d - sy * d * .04).toFixed(1) + "px,0)"; }); }
     hero.addEventListener("mousemove", function (e) { var b = hero.getBoundingClientRect(); mx = ((e.clientX - b.left) / b.width - .5); my = ((e.clientY - b.top) / b.height - .5); apply(); }, { passive: true });
@@ -154,9 +155,12 @@
     function spawn() { var up = kind === "sparks"; return { x: Math.random() * W, y: up ? H + 10 : -10, vx: (Math.random() - .5) * (kind === "gulal" ? 1.2 : .5), vy: up ? -(0.6 + Math.random() * 1.4) : (0.4 + Math.random() * 1.1),
       r: kind === "gulal" ? 2 + Math.random() * 4 : 1.2 + Math.random() * 2.4, c: conf[Math.floor(Math.random() * conf.length)], a: .5 + Math.random() * .5, w: Math.random() * 6 }; }
     for (var i = 0; i < 60; i++) { var p = spawn(); p.y = Math.random() * H; P.push(p); }
+    var lastF = 0, NMAX = innerWidth < 600 ? 30 : 60;
     function frame(now) {
       if (!run) return;
-      var slow = now - t0 > 8000 ? .45 : 1, n = slow < 1 ? 30 : 60;
+      if (now - t0 > 8000) return;                                                   // 8 s, then the last frame stays
+      if (now - lastF < 33) { raf = requestAnimationFrame(frame); return; } lastF = now;   // 30 fps
+      var slow = 1, n = NMAX;
       cx.clearRect(0, 0, W, H);
       for (var i = 0; i < n; i++) { var p = P[i]; p.x += (p.vx + Math.sin((now / 900) + p.w) * .3) * slow; p.y += p.vy * slow;
         if (p.y < -12 || p.y > H + 12 || p.x < -12 || p.x > W + 12) { P[i] = spawn(); continue; }
@@ -167,6 +171,7 @@
     }
     raf = requestAnimationFrame(frame);
     document.addEventListener("visibilitychange", function () { if (document.hidden) { run = false; cancelAnimationFrame(raf); } else if (!run) { run = true; raf = requestAnimationFrame(frame); } });
+    if (window.IntersectionObserver) new IntersectionObserver(function (es) { if (es[0].isIntersecting) { if (!run) { run = true; raf = requestAnimationFrame(frame); } } else { run = false; cancelAnimationFrame(raf); } }).observe(cv);
   }
   var PARTICLES = { diwali: "sparks", igas: "sparks", holi: "gulal", christmas: "snow", phooldei: "petals" };
   var ENGINE = { igas: 1, diwali: 1, phooldei: 1, harela: 1, ghughutiya: 1 };   // scenes drawn by fest-engine.js (others: layered SVG for now)
@@ -200,7 +205,7 @@
       document.documentElement.classList.add("gbf-engine");
       var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
       hero.insertBefore(sc0, hero.firstChild);
-      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1795920000";
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796040000";
       js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
       document.head.appendChild(js);
     } else if (hero && !hero.querySelector(".gbf-scene")) {
