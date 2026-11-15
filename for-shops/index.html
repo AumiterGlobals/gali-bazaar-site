@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@500;600;700&family=Baloo+2:wght@800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css?v=1795600000">
+<link rel="stylesheet" href="/site.css?v=1795880000">
 <link rel="stylesheet" href="/mock.css?v=1794492417">
 <style id="signin-css">.signin{position:relative;display:inline-block}.sibtn{display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1D0F30;background:#fff;color:#1D0F30;border-radius:12px;padding:8px 13px;font:600 14px Poppins,system-ui,sans-serif;cursor:pointer}
 .sidrop{display:none;position:absolute;right:0;top:calc(100% + 10px);width:330px;background:#fff;border-radius:20px;box-shadow:0 24px 60px rgba(29,15,48,.18);padding:8px;z-index:60}.signin.open .sidrop{display:block}
@@ -130,7 +130,8 @@
   <p style="color:#6B6380;margin:-18px 0 26px">Pick your category when you register — don't see yours? Request it and we add it.</p></div>
   <div class="cats" data-cats="shops">
     <div class="cat c1"><h3>Grocery</h3><p>Atta, dal, milk, spices &amp; daily needs</p><img src="/img/cat-grocery.png" alt=""></div>
-    <div class="cat c2"><h3>Food Corner</h3><p>Chaat, samosa, sweets &amp; snacks</p><img src="/img/cat-food.png" alt=""></div>
+    <div class="cat c2"><h3>Sweet shop &amp; bakery</h3><p>Mithai, cakes &amp; namkeen — orders in the app</p><img src="/img/cat-food.png" alt=""></div>
+    <div class="cat c4" style="background:linear-gradient(120deg,#FFE3D6,#FFC2A8)"><h3>Food Corner</h3><span class="fcbadge">📞 Call to order</span><p>Chaat, snacks, thali: customers see your menu and call you</p><img src="/img/art/dumpling.webp" alt="" loading="lazy"></div>
     <div class="cat c3"><h3>Stationery</h3><p>Notebooks, pens, art &amp; office</p><img src="/img/cat-stationery.png" alt=""></div>
   </div>
 </div></section>
@@ -176,6 +177,6 @@ fetch("https://airbbnopqgubftqjzkjr.supabase.co/rest/v1/settings?id=eq.1&select=
 .then(r=>r.json()).then(j=>{const s=j&&j[0];if(!s)return;if(s.plan_price)drawPrices(s.plan_price,s.plan_discounts||{1:0,3:10,6:15,12:20});
 if(s.trial_days)document.querySelectorAll(".td").forEach(e=>e.textContent=s.trial_days);if(s.plan_price)document.querySelectorAll(".pp").forEach(e=>e.textContent="₹"+s.plan_price)}).catch(()=>{});
 </script>
-<script src="/cats.js" defer></script>
+<script src="/cats.js?v=1795880000" defer></script>
 </body>
 </html>

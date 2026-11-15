@@ -370,3 +370,6 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
   .teaser .tbtns .ty,.teaser .tbtns .tw{display:block;flex:1 1 100%;text-align:center;padding:12px 14px;font-size:14px}
   .teaser .tbtns .tw{color:var(--ink);border:1.5px solid #E2D9EE;background:#fff}
 }
+
+/* Food Corner = listing + call (update-70) */
+.fcbadge{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:#fff;color:#E0306F;margin:2px 0 8px;box-shadow:0 1px 0 rgba(0,0,0,.04)}

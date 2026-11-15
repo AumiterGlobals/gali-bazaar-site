@@ -23,15 +23,19 @@
     if (!cats || !cats.length) return;
     // hero stat "N shop categories" follows the real list
     document.querySelectorAll(".s-v").forEach(function (el) { el.textContent = cats.length; });
+    document.querySelectorAll(".s-l").forEach(function (el) { el.textContent = "shop categories"; });
     boxes.forEach(function (box) {
       var forShops = box.getAttribute("data-cats") === "shops";
       var html = cats.map(function (c) {
         var isNew = c.created_at && (Date.now() - Date.parse(c.created_at)) < 21 * 864e5;
         var none = (live[c.key] || 0) === 0;
         var tag = isNew ? '<em class="ctag new">New</em>' : none ? '<em class="ctag soon">' + (forShops ? "Be the first in your area" : "Joining soon") + "</em>" : "";
+        // Food Corner (call_only): listing + "Call to order" — never "order" wording (update-70)
+        if (c.call_only) tag = '<span class="fcbadge">📞 Call to order</span>';
+        var line = c.call_only ? (forShops ? "Customers see your menu and call you" : "See the menu and call the shop to order") : c.short_line;
         var img = /^https?:/.test(c.icon) ? c.icon : "/img/art/" + c.icon + ".webp";
         return '<div class="cat dyn" style="background:linear-gradient(120deg,' + shade(c.color, 1.35) + " 0%," + esc(c.color) + " 55%," + shade(c.color, .88) + ' 100%)">' +
-          "<h3>" + esc(c.name) + "</h3>" + tag + (c.short_line ? "<p>" + esc(c.short_line) + "</p>" : "") +
+          "<h3>" + esc(c.name) + "</h3>" + tag + (line ? "<p>" + esc(line) + "</p>" : "") +
           '<img src="' + esc(img) + '" alt="" loading="lazy"></div>';
       }).join("");
       if (forShops) html += '<a class="cat dyn req" href="/contact/?topic=category"><b>+</b><h3>Request a category</h3><p>Bakery, flowers, hardware…</p></a>';
