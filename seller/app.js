@@ -475,6 +475,8 @@ function editItem(id) {
     <div class="fchips" id="pol" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${["At door only", "Replacement"].concat(RET().refund ? ["Return & refund"] : []).map((l, k) => `<button class="fchip" style="flex:1;border:0" data-k="${k}">${l}</button>`).join("")}</div>
     ${RET().refund ? "" : `<div class="sub" style="font-size:12px;margin-top:4px">Replacement only for damaged or expired packs.</div>`}`}
     <div id="dw" style="display:none"><label>WITHIN HOW MANY DAYS OF DELIVERY? (1–${RET().max || 30})</label><input class="in" id="fd" inputmode="numeric" value="${Math.min(i?.ret_days || 7, RET().max || 30)}"></div>
+    ${RET().max === 0 ? "" : `<label>WARRANTY IN MONTHS (OPTIONAL)</label><input class="in" id="fwm" inputmode="numeric" maxlength="3" value="${i?.warranty_months || ""}" placeholder="e.g. 12 for 1 year" oninput="this.value=this.value.replace(/\\D/g,'')">
+    <div class="sub" style="font-size:12px;margin:4px 0 8px">Your shop's own warranty, from the delivery date. Customers see it on the item and the bill. While any sold item is under warranty, Gali Bazaar checks with you before your shop can be deleted.</div>`}
     ${COURIER_SHOP() ? (K.courier === "never" ? `<div class="note" style="margin-top:10px">Fresh items: local delivery only.</div>` : `<div class="row" style="border:1.5px solid ${F_.courier ? "#6A1BB0" : "#EEE7F6"};border-radius:16px;padding:12px 14px;margin-top:10px" id="crow"><div><b>📦 Can go by courier</b><span>${K.courier === "sealed" ? "Only sealed packets that last at least 1 month (namkeen, biscuits, soan papdi…)." : "Customers in your courier area can order it"}</span></div><button class="tog ${F_.courier ? "on" : ""}" id="fcr"></button></div>
       ${K.courier === "sealed" ? `<div id="sealbox" style="display:${F_.courier ? "grid" : "none"};grid-template-columns:1fr 1fr;gap:10px;align-items:end"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13.5px;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="fsl" ${F_.sealed ? "checked" : ""}> Sealed pack</label>
         <div><label>SHELF LIFE (MONTHS) *</label><input class="in" id="fsh" inputmode="numeric" maxlength="2" value="${i?.shelf_life_months ?? ""}"></div></div>` : ""}`) : ""}
@@ -639,6 +641,8 @@ async function saveItem() {
     const imgs = Object.values(map);
     const row = { shop: S.id, name, price, unit: vs.length ? "" : $("#fu").value.trim(), in_stock: F_.stock, mrp: +$("#fm").value || null, grp: grp || null, descr: desc || null,
       img_url: imgs[0] || null, images: imgs, photos: map, variants: vs, ret_policy: F_.pol === 0 || days === 0 ? "none" : F_.pol === 1 ? "replace" : "return", ret_days: F_.pol === 0 ? 0 : days,
+      // warranty (update-64): only sent once the column exists, so saving never breaks before the SQL is run
+      ...((D.items.some(x => "warranty_months" in x) || +(val("#fwm") || 0)) ? { warranty_months: Math.min(120, +(val("#fwm") || 0) || 0) } : {}),
       packaged: pk, maker: val("#fmk") || null, stock_qty: val("#fsq") === "" ? null : +val("#fsq"), net_qty: pk && !vs.length ? (val("#fq") + " " + ($("#fuu")?.value || "")).trim() : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
       courier_ok: !!F_.courier && K.courier !== "never", sealed: !!$("#fsl")?.checked, shelf_life_months: isNaN(shelf) ? null : shelf };
     if (K.food) { row.fssai = fssai || null; row.ingredients = val("#fin") || null; }
@@ -912,6 +916,60 @@ function shop() {
       <div class="box" style="background:#1D0F30;color:#fff"><b style="font-size:16px">${S.kyc !== "APPROVED" ? "Plan starts after KYC" : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`}</b>
         <div style="font-size:12px;color:#CFC6E3;margin:4px 0 12px">${S.sub_until ? "Till " + dmyy(S.sub_until) + " • " : ""}Renewal link goes to your email</div><button class="btn" style="background:#fff;color:#1D0F30" onclick="sendLink(this)">Send link</button></div>
       <div class="box"><h3>Status</h3><div class="row" style="border:0;margin:0"><div><b>${S.closed ? "Shop closed" : "Shop open"}</b><span>Customers ${S.closed ? "can't" : "can"} order right now</span></div><button class="tog ${S.closed ? "" : "on"}" onclick="toggleOpen()"></button></div></div></div></div>`;
+  $("#main").insertAdjacentHTML("beforeend", `<div class="box" id="delBox"><div class="sub">Loading…</div></div>`); sdBox();
+}
+
+// ---------- Delete shop: a request to Gali Bazaar, deleted after the checks (update-64) ----------
+const SDT = [
+  "Download your records first: Bills → Excel and Books → Excel here (the app saves everything in one Excel file). Keep them for GST (72 months) and income tax (6–7 years) — Gali Bazaar keeps no copy of your books; only your customers' copies of their own bills stay.",
+  "Your request goes to Gali Bazaar. While we check it, your shop is hidden from customers and takes no new orders. You can cancel the request any time before it is done.",
+  "We delete the shop only when no order is open, no complaint is open, the return / exchange time of every order is over, and every paid order that was cancelled has its refund recorded. We also check store credit (\"Adjust in next order\") and items still under your warranty — settle these with your customers first.",
+  "After deletion your books, counter sales, expenses, items, photos and delivery-staff access go. KYC is kept locked for 180 days as the law requires, then deleted. It can't be brought back. We email you when it is done.",
+  "Gali Bazaar keeps only its own records with you — plan payments and its invoices to you — as its tax law needs.",
+];
+function sdList(c) {
+  if (!c) return `<div class="sub">Checking…</div>`;
+  return (c.checks || []).map(k => { const [m, col, bg] = k.level === "ok" ? ["✓", "#15803D", "#E6F8EE"] : k.level === "warn" ? ["!", "#B45309", "#FFF1DC"] : ["✕", "#BE123C", "#FFE4EC"];
+    return `<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #F5F1FA"><span style="flex:none;width:22px;height:22px;border-radius:50%;background:${bg};color:${col};font-weight:800;font-size:12px;display:grid;place-items:center">${m}</span>
+      <div style="flex:1"><b style="font-size:13.5px">${esc(k.title)}</b><div style="font-size:12.5px;color:${k.level === "ok" ? "#8E84A8" : col}">${esc(k.detail)}</div>
+      ${(k.rows || []).slice(0, 3).map(r => `<div style="font-size:12px;color:#8E84A8">${esc(r.ref)} · ${esc(r.text)}</div>`).join("")}${(k.rows || []).length > 3 ? `<div style="font-size:12px;color:#8E84A8">+${k.rows.length - 3} more</div>` : ""}</div></div>`; }).join("");
+}
+async function sdBox(openForm) {
+  const box = $("#delBox"); if (!box) return;
+  const [{ data: rq }, { data: chk }] = await Promise.all([
+    db.from("shop_delete_requests").select("*").eq("shop", S.id).order("created_at", { ascending: false }).limit(1),
+    db.rpc("shop_delete_check", { p_shop: S.id })]);
+  const r = (rq || [])[0];
+  if (r && (r.status === "PENDING" || r.status === "APPROVED")) {
+    box.style.cssText = "background:#FFF7E6;border:1px solid #F5D08A";
+    box.innerHTML = `<h3 style="color:#92400E">🗑 Delete request sent <span>${new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span></h3>
+      <div class="sub" style="margin:0 0 6px">Gali Bazaar is checking your shop. It is hidden from customers and takes no new orders meanwhile. We delete it when the checks below are clear, and email you.</div>
+      ${sdList(chk)}${r.status === "PENDING" ? `<button class="btn ghost" style="margin-top:12px" onclick="sdCancel()">Cancel request</button>` : ""}`;
+    return;
+  }
+  box.style.cssText = "";
+  box.innerHTML = `<h3>Delete shop</h3>${r && r.status === "REJECTED" ? `<div class="warnline" style="margin-bottom:8px">Your last request was not approved: ${esc(r.admin_note || "")}</div>` : ""}
+    <div class="sub" style="margin:0 0 8px">Gali Bazaar checks every shop before deleting it, so no customer is left without their order, refund, return or warranty.</div>
+    ${openForm ? `<div style="background:#F7F5FA;border-radius:14px;padding:10px 12px;margin-bottom:10px"><b style="font-size:13.5px">Your shop right now</b>${sdList(chk)}
+        ${chk && !chk.ok ? `<div class="sub" style="font-size:12px;margin:6px 0 0">You can still send the request — Gali Bazaar deletes the shop once the ✕ items are clear.</div>` : ""}</div>
+      <ol style="font-size:13px;line-height:1.55;padding-left:18px;margin:0 0 8px">${SDT.map(t => `<li>${t}</li>`).join("")}</ol>
+      <label>WHY ARE YOU CLOSING? (OPTIONAL)</label><input class="in" id="sdr" maxlength="300">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12.5px;text-transform:none;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="sdx" style="margin-top:3px"> I have downloaded my records and will keep them as the law needs.</label>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="sda" style="margin-top:3px"> I have read and accept these terms (also in the Seller terms and the Seller guide).</label>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#D7263D;color:#fff" onclick="sdSend()">Send delete request</button><button class="btn ghost" onclick="sdBox(false)">Cancel</button></div>`
+    : `<button class="btn ghost" style="color:#D7263D" onclick="sdBox(true)">Delete my shop &amp; account</button>`}`;
+}
+async function sdSend() {
+  if (!$("#sdx").checked || !$("#sda").checked) return toast("Tick both boxes to send the request");
+  const { error } = await db.rpc("request_shop_delete", { p_terms: "seller-delete-2026-11-15.9", p_excel: true, p_reason: $("#sdr").value.trim() });
+  if (error) return toast(niceErr(error));
+  toast("Request sent · Gali Bazaar will check your shop"); sdBox();
+}
+async function sdCancel() {
+  if (!confirm("Cancel the delete request? Your shop shows to customers and takes orders again.")) return;
+  const { error } = await db.rpc("cancel_shop_delete_request");
+  if (error) return toast(niceErr(error));
+  toast("Request cancelled · your shop is open again"); sdBox();
 }
 async function saveShopForm() {
   const v = k => $("#sh_" + k).value.trim(), n = k => v(k) === "" ? null : +v(k), m = $("#shm");
