@@ -102,6 +102,7 @@ async function loadAll() {
   if (shop.data) S = shop.data;
   D = { items: items.data || [], orders: ords.data || [], riders: rid.data || [], complaints: comp.data || [], cns: cns.data || [], slots: slots.data || [], cov: cov.data || [], festivals: fest.data || [] };
   D.cats = catq.data || [];
+  { const r = await db.rpc("item_spec_def"); if (!r.error && r.data && r.data.sets) { SPEC = r.data; SPEC_LIVE = true; } }   // update-65
   D.charts = charts.error ? [] : (charts.data || []);
   D.recent = D.orders.filter(o => o.created_at >= since3 || ["PLACED", "ACCEPTED", "OUT"].includes(o.status));
 }
@@ -363,6 +364,36 @@ function printBill(id) {
   w.document.close();
 }
 
+// ================= Item details by category (update-65) =================
+// The server keeps the master list (item_spec_def) and checks every item; this built-in copy is used until it loads.
+// SPEC_LIVE: the server has update-65 — only then are the new boxes shown, checked and saved
+let SPEC_LIVE = false;
+let SPEC = {"version":1,"sets":{"apparel":{"label":"Clothing","hi":"कपड़े","fields":[{"k":"material","label":"Material / fabric","req":true,"hint":"e.g. 100% cotton","hi":"मटीरियल / कपड़ा"},{"k":"colour","label":"Colour","req":true,"hint":"e.g. Navy blue","hi":"रंग"},{"k":"fit","label":"Fit","req":false,"options":["Regular","Slim","Loose"],"hi":"फ़िट"},{"k":"wash_care","label":"Wash care","req":false,"hint":"e.g. Machine wash cold","hi":"धुलाई"}]},"footwear":{"label":"Footwear","hi":"जूते-चप्पल","fields":[{"k":"upper","label":"Upper material","req":true,"hint":"e.g. Synthetic leather","hi":"ऊपर का मटीरियल"},{"k":"sole","label":"Sole material","req":true,"hint":"e.g. Rubber / EVA","hi":"सोल का मटीरियल"},{"k":"colour","label":"Colour","req":true,"hint":"e.g. Black","hi":"रंग"},{"k":"ftype","label":"Footwear type","req":false,"options":["Shoe","Sports shoe","Sandal","Slipper","Chappal","Boot","Other"],"hi":"टाइप"}]},"electrical":{"label":"Electrical / appliance","hi":"बिजली का सामान / उपकरण","fields":[{"k":"brand","label":"Brand","req":true,"hint":"e.g. Bajaj","hi":"ब्रांड"},{"k":"model","label":"Model no.","req":true,"hint":"e.g. KX 15 (as printed on the product)","hi":"मॉडल नंबर"},{"k":"power","label":"Power / voltage","req":true,"hint":"e.g. 750 W, 230 V","hi":"पावर (W) / वोल्टेज"},{"k":"in_box","label":"What's in the box","req":true,"hint":"e.g. Mixer, 3 jars, user manual","hi":"डिब्बे में क्या है"}]},"mobile_acc":{"label":"Mobile accessory","hi":"मोबाइल एक्सेसरी","fields":[{"k":"brand","label":"Brand","req":true,"hint":"e.g. boAt","hi":"ब्रांड"},{"k":"compatible","label":"Works with","req":true,"hint":"e.g. Type-C phones, iPhone 13","hi":"किस फ़ोन के साथ चलेगा"},{"k":"colour","label":"Colour","req":false,"hint":"e.g. Black","hi":"रंग"}]},"beauty":{"label":"Personal care & beauty","hi":"पर्सनल केयर व ब्यूटी","fields":[{"k":"brand","label":"Brand","req":true,"hint":"e.g. Himalaya","hi":"ब्रांड"},{"k":"ingredients","label":"Key ingredients","req":true,"hint":"e.g. Neem, turmeric","hi":"मुख्य सामग्री"},{"k":"how_to_use","label":"How to use","req":true,"hint":"e.g. Apply on wet face, rinse after 1 minute","hi":"कैसे इस्तेमाल करें"},{"k":"skin_hair","label":"Skin / hair type","req":false,"hint":"e.g. All skin types","hi":"त्वचा / बालों का टाइप"}]},"toys":{"label":"Toys","hi":"खिलौने","fields":[{"k":"brand","label":"Brand","req":true,"hint":"e.g. Funskool","hi":"ब्रांड"},{"k":"age","label":"Age group","req":true,"hint":"e.g. 3+ years","hi":"उम्र"},{"k":"material","label":"Material","req":true,"hint":"e.g. Plastic","hi":"मटीरियल"}]},"homekitchen":{"label":"Home & kitchen","hi":"घर व रसोई","fields":[{"k":"material","label":"Material","req":true,"hint":"e.g. Stainless steel","hi":"मटीरियल"},{"k":"size","label":"Size / capacity","req":true,"hint":"e.g. 3 L, 24 cm","hi":"साइज़ / क्षमता"},{"k":"colour","label":"Colour","req":false,"hint":"e.g. Silver","hi":"रंग"}]},"stationery":{"label":"Stationery, books & gifts","hi":"स्टेशनरी, किताबें व गिफ़्ट","fields":[{"k":"brand","label":"Brand / publisher","req":true,"hint":"e.g. Classmate","hi":"ब्रांड / प्रकाशक"},{"k":"contents","label":"What's in the pack","req":true,"hint":"e.g. 6 notebooks, 200 pages each","hi":"पैक में क्या-क्या है"}]},"general":{"label":"Other items","hi":"बाक़ी सामान","fields":[],"details_min":20}},"by_category":{"garments":["apparel"],"footwear":["footwear"],"electrical":["electrical","mobile_acc"],"beauty":["beauty"],"toys":["toys"],"homekitchen":["homekitchen"],"stationery":["stationery"]},"none_kinds":["food_fresh","food_cooked","food_packed","flowers"],"details_min":20};
+const specSets = t => SPEC.none_kinds.includes(KIND().key) ? [] : (SPEC.by_category[t] || ["general"]);
+function specBox(i) {
+  const sets = specSets(S.type); if (!sets.length || !SPEC_LIVE) return "";
+  if (!F_.specSet) F_.specSet = sets.includes(i?.spec_set) ? i.spec_set : sets.length === 1 ? sets[0] : null;
+  F_.specs = F_.specs || { ...(i?.specs || {}) };
+  const st = SPEC.sets[F_.specSet];
+  const field = f => f.options
+    ? `<div><label>${esc(f.label.toUpperCase())}${f.req ? " *" : " (OPTIONAL)"}</label><select class="in" data-spec="${f.k}"><option value="">—</option>${f.options.map(o => `<option ${F_.specs[f.k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`
+    : `<div><label>${esc(f.label.toUpperCase())}${f.req ? " *" : " (OPTIONAL)"}</label><input class="in" data-spec="${f.k}" maxlength="300" value="${esc(F_.specs[f.k] || "")}" placeholder="${esc(f.hint || "")}"></div>`;
+  return `<div id="specbox" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px;margin-top:12px"><b>Product details</b>
+    ${sets.length > 1 ? `<label>PRODUCT TYPE *</label><div class="fchips" style="background:#F6F2FB;border-radius:14px;padding:4px;gap:4px">${sets.map(k => `<button class="fchip ${F_.specSet === k ? "on" : ""}" style="flex:1;border:0" onclick="specPick('${k}')">${esc(SPEC.sets[k].label)}</button>`).join("")}</div>` : ""}
+    ${st ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${st.fields.map(field).join("")}</div>` : ""}
+    ${st && st.details_min ? `<div class="sub" style="font-size:12px;margin:6px 0 0">Write at least ${st.details_min} letters in <b>Product details</b> below — what it is, size, material, use.</div>` : ""}</div>`;
+}
+function specErr(desc) {
+  const sets = specSets(S.type); if (!sets.length || !SPEC_LIVE) return null;
+  if (!F_.specSet) return "Pick the product type";
+  const st = SPEC.sets[F_.specSet], miss = st.fields.find(f => f.req && !(F_.specs[f.k] || "").trim());
+  if (miss) return `Add ${miss.label.toLowerCase()} — needed for ${(D.cats.find(c => c.key === S.type) || {}).name || "this category"}`;
+  if (st.details_min && desc.replace(/\s+/g, " ").length < st.details_min) return `Product details: write at least ${st.details_min} letters about the item`;
+  return null;
+}
+function specRead() { document.querySelectorAll("[data-spec]").forEach(el => { F_.specs[el.dataset.spec] = el.value.trim(); }); }
+function specPick(k) { specRead(); F_.specSet = k; const b = $("#specbox"); if (b) b.outerHTML = specBox(null); }
+
 // ================= Catalog =================
 // low stock (update-63): items with a stock count at or below the shop's mark (default 5)
 const lowI = i => i.stock_qty != null && i.stock_qty <= (S.low_stock_at ?? 5);
@@ -460,11 +491,15 @@ function editItem(id) {
     <div id="off"></div>
     ${!["food_fresh", "flowers"].includes(K.key) ? `<div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px;margin-top:12px"><div><b>Packaged item</b><span>Maker, net qty, MRP and country of origin are shown to customers</span></div><button class="tog ${F_.packaged ? "on" : ""}" id="fpk"></button></div>
     <div id="pkbox" style="display:${F_.packaged ? "block" : "none"}">
-      <div style="display:grid;grid-template-columns:1fr;gap:10px"><div><label>MANUFACTURER / PACKER *</label><input class="in" id="fmk" value="${esc(i?.maker || "")}" placeholder="As on the pack"></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:10px"><div><label>MANUFACTURER / PACKER / IMPORTER *</label><input class="in" id="fmk" value="${esc(i?.maker || "")}" placeholder="Name, as on the pack"></div>
         <div></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>COUNTRY OF ORIGIN</label><input class="in" id="fco" value="${esc(i?.country_of_origin || "India")}"></div>
+      ${SPEC_LIVE ? `<label>THEIR FULL ADDRESS WITH PIN *</label><input class="in" id="fma" maxlength="300" value="${esc(i?.maker_address || "")}" placeholder="As on the pack — building, street, city, PIN">
+      <label>CONSUMER CARE PHONE / EMAIL *</label><input class="in" id="fcc" maxlength="120" value="${esc(i?.consumer_care || "")}" placeholder="As on the pack, e.g. 1800-123-4567 or care@brand.com">` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>COUNTRY OF ORIGIN</label><input class="in" id="fco" value="${esc(i?.country_of_origin || "India")}" title="Not India → the item shows as Imported"></div>
         ${K.food ? `<div><label>FSSAI (ON PACK) *</label><input class="in" id="ffs" inputmode="numeric" maxlength="14" value="${esc(i?.fssai || "")}" placeholder="14 digits"></div>` : "<div></div>"}</div>
-      ${K.food ? `<label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}">` : ""}</div>` : ""}
+      ${K.food ? `<label>INGREDIENTS (OPTIONAL)</label><input class="in" id="fin" value="${esc(i?.ingredients || "")}">` : ""}
+      <div class="sub" style="font-size:12px;margin:6px 0 0">Every declaration on the pack is shown to customers (Legal Metrology rules). A country other than India shows the item as <b>Imported</b>.</div></div>` : ""}
+    ${specBox(i)}
     ${!K.food && K.key !== "flowers" ? `<div id="biswrap" style="display:none"><label>BIS / ISI / R-NUMBER (ON THE BOX OR LABEL) <span id="bisreq"></span></label><input class="in" id="fbis" value="${esc(i?.bis_no || "")}" maxlength="20" placeholder="e.g. CM/L-1234567 or R-41012345" style="text-transform:uppercase"></div>` : ""}
     ${["garments", "footwear"].includes(S.type) ? `<label>📏 SIZE CHART</label>
       <div style="display:flex;gap:8px"><select class="in" id="fch" style="flex:1"><option value="">Standard — picked automatically</option>
@@ -484,8 +519,8 @@ function editItem(id) {
     <label>STOCK — HOW MANY YOU HAVE (OPTIONAL)</label><input class="in" id="fsq" inputmode="numeric" maxlength="5" value="${i?.stock_qty ?? ""}" placeholder="${S.type === "footwear" ? "e.g. 100 (pairs)" : "e.g. 100"}" oninput="this.value=this.value.replace(/\\D/g,'');if(this.value!=='')$('#fs').classList.toggle('on',+this.value>0)">
     <div class="sub" style="font-size:12px;margin:4px 0 8px">Goes down with each order; comes back on a cancel or when you check in returned items. You get an alert at 5 or fewer. At 0 the item shows "Out of stock" by itself. Leave empty to use only the switch.</div>
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
-    <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
-      <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
+    <details style="margin-top:10px" ${(i && (i.descr || i.gst_rate || (i.variants || []).length)) || (specSets(S.type)[0] === "general") ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
+      <label>${specSets(S.type).length === 0 ? "PRODUCT DETAILS (OPTIONAL)" : (specSets(S.type).includes("general") && specSets(S.type).length === 1) ? "PRODUCT DETAILS * (AT LEAST 20 LETTERS)" : "MORE DETAILS (OPTIONAL)"}</label><textarea class="in" id="fx" rows="3" placeholder="What it is, size, material, how to use">${esc(i?.descr || "")}</textarea>
       ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28, 40].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
         <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 11010000">` : ""}
       <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${v.p}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
@@ -625,11 +660,15 @@ async function saveItem() {
   const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(RET().max, +$("#fd").value || 0));
   if (RET().max === 0) F_.pol = 0; else if (F_.pol === 2 && !RET().refund) F_.pol = 1;
   const pk = F_.packaged && !["food_fresh", "flowers"].includes(K.key), val = id => ($(id)?.value || "").trim();
+  if ($("#specbox")) specRead();
   const bis = val("#fbis").toUpperCase(), fssai = val("#ffs").replace(/\D/g, ""), shelf = parseInt(val("#fsh"), 10);
   const sl = F_.slots || localSlots().slots, miss = sl.filter(d => d.req && !(F_.ph[d.key]?.url || F_.ph[d.key]?.res));
   const err = !name ? "Enter the item name" : banWord(name, grp, desc) ? "Tobacco, cigarettes and alcohol can't be sold on Gali Bazaar." : miss.length ? `Add ${miss.map(d => d.label.toLowerCase()).join(", ")} photo`
     : vs.some(v => v.p <= 0) ? "Every size needs a price above ₹0" : price <= 0 ? "Price must be above ₹0"
-    : pk && !val("#fmk") ? "Packaged item: add the manufacturer / packer name" : !vs.length && !(+val("#fq") > 0) ? `Add ${amountLabel(S.type).toLowerCase()} — a number, e.g. ${S.type === "footwear" ? "1 (pair)" : "500 (g)"}`
+    : pk && !val("#fmk") ? "Packaged item: add the manufacturer / packer / importer name"
+    : SPEC_LIVE && pk && !(val("#fma").length >= 15 && /(^|[^0-9])[1-9][0-9]{5}([^0-9]|$)/.test(val("#fma"))) ? "Packaged item: add the full address of the manufacturer / packer / importer, with the 6-digit PIN code"
+    : SPEC_LIVE && pk && !(val("#fcc").replace(/\D/g, "").length >= 10 || /[^@\s]+@[^@\s]+\.[a-z]{2,}/i.test(val("#fcc"))) ? "Packaged item: add the consumer care phone number or email printed on the pack"
+    : specErr(desc) ? specErr(desc) : !vs.length && !(+val("#fq") > 0) ? `Add ${amountLabel(S.type).toLowerCase()} — a number, e.g. ${S.type === "footwear" ? "1 (pair)" : "500 (g)"}`
     : pk && !(+$("#fm").value > 0) && !vs.length ? "Packaged item: add the MRP" : pk && K.food && !/^[12][0-9]{13}$/.test(fssai) ? "Packaged food: add the 14-digit FSSAI number printed on the pack"
     : F_.needsBis && !bis ? "Add the BIS / ISI / R-number printed on the product" : bis && !/^[A-Z0-9/ .-]{6,20}$/.test(bis) ? "BIS / ISI / R-number: 6–20 letters or numbers, e.g. CM/L-1234567"
     : F_.courier && K.courier === "sealed" && !($("#fsl")?.checked && shelf >= 1) ? "Food by courier: only sealed packs that last at least 1 month" : null;
@@ -646,6 +685,8 @@ async function saveItem() {
       // warranty (update-64): only sent once the column exists, so saving never breaks before the SQL is run
       ...((D.items.some(x => "warranty_months" in x) || +(val("#fwm") || 0)) ? { warranty_months: Math.min(120, +(val("#fwm") || 0) || 0) } : {}),
       packaged: pk, maker: val("#fmk") || null, stock_qty: val("#fsq") === "" ? null : +val("#fsq"), net_qty: pk && !vs.length ? (val("#fq") + " " + ($("#fuu")?.value || "")).trim() : null, country_of_origin: pk ? val("#fco") || "India" : null, bis_no: bis || null,
+      ...(SPEC_LIVE ? { maker_address: pk ? val("#fma") || null : null, consumer_care: pk ? val("#fcc") || null : null } : {}),
+      ...(SPEC_LIVE && specSets(S.type).length ? { spec_set: F_.specSet, specs: Object.fromEntries((SPEC.sets[F_.specSet]?.fields || []).map(f => [f.k, (F_.specs[f.k] || "").trim()]).filter(([, v]) => v)) } : {}),
       courier_ok: !!F_.courier && K.courier !== "never", sealed: !!$("#fsl")?.checked, shelf_life_months: isNaN(shelf) ? null : shelf };
     if (K.food) { row.fssai = fssai || null; row.ingredients = val("#fin") || null; }
     if ($("#fch")) row.size_chart = $("#fch").value || null;
