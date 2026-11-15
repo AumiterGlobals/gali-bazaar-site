@@ -20,9 +20,11 @@
     chhath:     ["#FE794E", "#FE8B70", "#E17FA5", "#E26249", "Chhath Puja ki shubhkamnayein 🌅", "🌅🪔🌾🪷", "sunset"],
     igas:       ["#0E1235", "#141941", "#28365D", "#F27E03", "Igas Bagwal ki bhaut badhai 🔥", "🔥🪔✨🔥", "igas"],
     phooldei:   ["#C4E2FC", "#DAEDFC", "#90AACD", "#D22D29", "Phool Dei, chhammaa Dei 🌸", "🌸🌼🌺🌸", "phooldei"],
-    harela:     ["#1F6624", "#26722A", "#398A3D", "#3A923E", "Harela ki shubhkamnayein 🌱", "🌱🌿🌳🌱", "harela"],
+    harela:     ["#A9D6E6", "#DCEFE6", "#F2F0D6", "#2F7A34", "Harela ki shubhkamnayein 🌱", "🌱🌿🌳🌱", "harela"],
     ghughutiya: ["#FEE5BD", "#FFF0D9", "#C5CAE8", "#7F6157", "Kale kauva kale! Uttarayani ki badhai", "🐦‍⬛🌾🍯🐦‍⬛", "ghughutiya"]
   };
+  // the drawn scene decides light or dark (text colour on it), not the theme colours — same map as the app's Themes.kt
+  var SCENE_DARK = { igas: true, diwali: true, phooldei: false, harela: false, ghughutiya: false };
   var ALIAS = { independence: "india", republic: "india", newyear: "christmas", xmas: "christmas", lohri: "sankranti", pongal: "sankranti",
     janmashtami: "ganesh", durga: "navratri", uttarayani: "ghughutiya" };
 
@@ -50,7 +52,7 @@
     var L = look(f), r = document.documentElement;
     r.classList.add("gbf-has");
     if (!L) return null;   // unknown theme: greeting strip only
-    var t = L.t, dark = lum(t[1]) < .45;   // same test as the app (FestTheme.darkHeader)
+    var t = L.t, dark = L.key in SCENE_DARK ? SCENE_DARK[L.key] : lum(t[1]) < .45;   // same rule as the app (SCENE_DARK, FestTheme.darkHeader)
     r.classList.add("gbf-on"); if (dark) r.classList.add("gbf-dark");
     r.setAttribute("data-fest", L.key);
     r.style.setProperty("--fest-top", t[0]); r.style.setProperty("--fest-mid", t[1]); r.style.setProperty("--fest-low", t[2]);

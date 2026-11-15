@@ -69,3 +69,15 @@ html.gbf-engine:not(.gbf-dark) .gbf-scene .gbf-shade{background:linear-gradient(
   .gbf-strip .gbf-deco{display:none}
   .gbf-strip span:not(.gbf-deco){overflow:hidden;text-overflow:ellipsis}
 }
+/* light scenes: links and the secondary button in ink with a solid backing (≥ 4.5:1 on any part of the scene) */
+html.gbf-engine:not(.gbf-dark) .hero a[href="/help/install/"]{color:#1E1A1C!important;background:rgba(255,255,255,.82);border-radius:8px;padding:2px 6px;text-decoration:underline}
+html.gbf-engine:not(.gbf-dark) .hero .btn-sell{color:#1E1A1C!important;background:#fff!important;border:1px solid #ECE4DC!important}
+html.gbf-engine:not(.gbf-dark) .hero .btn-sell svg{color:#6A1BB0}
+html.gbf-engine:not(.gbf-dark) .hero .lead,html.gbf-engine:not(.gbf-dark) .hero p{color:#1E1A1C}
+html.gbf-engine:not(.gbf-dark) .hero .stats span{color:#3A3236}
+/* dark scenes on mobile: the same links get a dark backing so they stay readable over fireworks / fire */
+@media (max-width:760px){
+  html.gbf-engine.gbf-dark .hero a[href="/help/install/"]{background:rgba(10,4,14,.55);border-radius:8px;padding:2px 6px}
+  html.gbf-engine.gbf-dark .hero .btn-sell{background:rgba(10,4,14,.55)!important}
+}
+@media (max-width:760px){.gbf-scene canvas.gbf-e{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 22%);mask-image:linear-gradient(180deg,transparent 0,#000 22%)}}
