@@ -262,6 +262,7 @@ function dash() {
         <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Renewal link goes to your email</div></div>
           <button class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" onclick="sendLink(this)">Send link</button></div>
       </div></div>`;
+  rulesCard();   // IT Rules 2026: content-rules reminder every 3 months
 }
 async function sendLink(b) {
   b.disabled = true; b.textContent = "Sending…";
@@ -396,6 +397,17 @@ function specPick(k) { specRead(); F_.specSet = k; const b = $("#specbox"); if (
 
 // 270, "270.00", 270.0 → "270"; 12.5 → "12.5" (form boxes show whole rupees without decimals)
 const numTxt = v => v == null || v === "" || isNaN(+v) ? "" : String(Math.round(+v * 100) / 100);
+
+// ================= Content-rules reminder (update-69): shown for 30 days after each quarterly push, until "Got it" =================
+async function rulesCard() {
+  const { data: r } = await db.rpc("content_reminder_now"); if (!r || !r.year) return;
+  const key = `rules_seen_${r.year}_${r.quarter}`; try { if (localStorage.getItem(key)) return; } catch (e) {}
+  const m = $("#main"); if (!m || document.getElementById("rulescard")) return;
+  const h = m.querySelector(".top"); const html = `<div class="box" id="rulescard" style="background:#F3EDFF;border-color:#E2D6FA"><b>📜 Reminder: Gali Bazaar content rules</b>
+    <div class="sub" style="margin:4px 0 10px;color:#3D2F55">In ratings, chats, photos and items, don't post: someone else's content, obscene or harmful-to-children material, false or misleading claims, impersonation, anything against India's security or public order, viruses, or anything illegal. Such content is removed and the account can be closed.</div>
+    <a class="btn ghost" href="/legal/#terms" target="_blank">Read the rules</a> <button class="btn pink" onclick="try{localStorage.setItem('${key}','1')}catch(e){};document.getElementById('rulescard').remove()">Got it</button></div>`;
+  if (h) h.insertAdjacentHTML("afterend", html); else m.insertAdjacentHTML("afterbegin", html);
+}
 
 // ================= Catalog =================
 // low stock (update-63): items with a stock count at or below the shop's mark (default 5)

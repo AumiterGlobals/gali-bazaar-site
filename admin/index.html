@@ -85,7 +85,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["payments","Payments"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
@@ -158,7 +158,8 @@ function go(k) {
   page = k || "categories"; menu(false);
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage };
+  tdBanner().catch(() => {});
   if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`; return pages[page]().catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
@@ -837,6 +838,7 @@ start();
 <script>(function(){for(const k of ["toLocaleString","toLocaleDateString","toLocaleTimeString"]){const o=Date.prototype[k];Date.prototype[k]=function(l,p){return o.call(this,l||"en-IN",Object.assign({timeZone:"Asia/Kolkata"},p||{}))}}})();</script>
 <script src="/admin/sales-partner.js?v=1795530000"></script>
 <script src="/admin/shop-delete.js?v=1795660000"></script>
+<script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/books.js?v=1795530000">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
