@@ -853,7 +853,8 @@ async function saveForm() {
   closeForm(); loadCats();
 }
 
-start();
+// start after every admin script below has loaded (pages use functions from them)
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 </script>
 <script src="/panel/fy.js?v=1795530000"></script>
 <script>(function(){for(const k of ["toLocaleString","toLocaleDateString","toLocaleTimeString"]){const o=Date.prototype[k];Date.prototype[k]=function(l,p){return o.call(this,l||"en-IN",Object.assign({timeZone:"Asia/Kolkata"},p||{}))}}})();</script>
@@ -861,8 +862,9 @@ start();
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
-<script src="/admin/tax.js?v=1795900000"></script>
-<script src="/admin/books.js?v=1795530000">
+<script src="/admin/tax.js?v=1795960000"></script>
+<script src="/admin/books.js?v=1795530000"></script>
+<script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
 async function supportPage() {
