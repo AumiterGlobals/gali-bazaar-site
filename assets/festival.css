@@ -56,3 +56,16 @@ html.gbf-engine .hero{min-height:640px}
 .gbf-scene .gbf-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,4,14,.55) 0%,rgba(10,4,14,.25) 45%,rgba(10,4,14,0) 70%)}
 @media (max-width:760px){html.gbf-engine .hero{min-height:0}.gbf-scene .gbf-shade{background:linear-gradient(180deg,rgba(10,4,14,.55) 0%,rgba(10,4,14,.2) 60%,rgba(10,4,14,.1) 100%)}}
 html.gbf-engine .gbf-deco-row{display:none}
+/* light scenes (Phool Dei, Harela, Ghughutiya): white wash behind the words instead of a dark one */
+html.gbf-engine:not(.gbf-dark) .gbf-scene .gbf-shade{background:linear-gradient(90deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.4) 45%,rgba(255,255,255,0) 70%)}
+/* mobile: the scene sits in the lower part of the hero (mountains and moon below the words); the text area gets a soft scrim */
+@media (max-width:760px){
+  .gbf-scene canvas.gbf-e{top:auto;bottom:0;height:min(62%,560px)}
+  .gbf-scene .gbf-shade{background:linear-gradient(180deg,rgba(10,4,14,.35) 0%,rgba(10,4,14,.15) 45%,rgba(10,4,14,0) 60%)}
+  html.gbf-engine:not(.gbf-dark) .gbf-scene .gbf-shade{background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.25) 45%,rgba(255,255,255,0) 60%)}
+  html.gbf-on.gbf-dark .hero h1,html.gbf-on.gbf-dark .hero .lead{text-shadow:0 2px 14px rgba(0,0,0,.55)}
+  /* greeting strip: one line */
+  .gbf-strip{font-size:12px;padding:7px 38px 7px 10px;white-space:nowrap}
+  .gbf-strip .gbf-deco{display:none}
+  .gbf-strip span:not(.gbf-deco){overflow:hidden;text-overflow:ellipsis}
+}

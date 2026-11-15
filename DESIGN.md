@@ -49,7 +49,7 @@ Every rule has a **why**. If a screen needs something that is not here, add it h
 - **Price:** 16sp 500 ink; MRP 12sp muted, struck through, beside it.
 - **Icons:** line icons, stroke 1.8, rounded caps; one set across the app.
 - **Art:** the website's `/img/art` 3D images — category tiles, shop tiles, and items without a photo.
-- **Bottom nav:** 72dp, white, 1px top border, 4 items (icon + 11.5sp label). Active = brand, with a brand-soft 56×30 pill behind the icon.
+- **Bottom nav:** 72dp, white, 1px top border, 4 items (customer: Home, Shops, Orders, Profile — all categories live in Shops) (icon + 11.5sp label). Active = brand, with a brand-soft 56×30 pill behind the icon.
 - **Bottom sheet:** white, top radius 24, grab handle 40×4 `#D9D0C8`, scrim ink 35%.
 - **Info card (with an action):** 36dp icon / art + title 14.5 500 + one line of meta + small secondary button on the right. Low stock = amber card; festival = pink card.
 
