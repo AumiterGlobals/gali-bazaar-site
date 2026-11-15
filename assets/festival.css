@@ -1,0 +1,37 @@
+/* Gali Bazaar festival theme for the website — same festivals, same switch as the app (admin → Festivals). Logo colours never change. */
+.gbf-strip{position:relative;z-index:60;display:flex;align-items:center;gap:10px;justify-content:center;padding:9px 44px 9px 16px;font:600 13.5px/1.35 Poppins,system-ui,sans-serif;
+  color:var(--fest-ink,#fff);background:linear-gradient(90deg,var(--fest-top),var(--fest-mid),var(--fest-low));text-align:center}
+.gbf-strip .gbf-deco{letter-spacing:2px}
+.gbf-strip .gbf-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:rgba(255,255,255,.18);color:inherit;width:26px;height:26px;border-radius:50%;
+  font:700 15px/1 system-ui;cursor:pointer}
+html.gbf-dark .gbf-strip .gbf-x{background:rgba(255,255,255,.18)}html:not(.gbf-dark) .gbf-strip .gbf-x{background:rgba(0,0,0,.08)}
+/* home / guides: header + hero */
+html.gbf-on nav#nav{background:linear-gradient(90deg,var(--fest-top),var(--fest-mid))!important}
+html.gbf-on.gbf-dark nav#nav a:not(.logo):not(.btn),html.gbf-on.gbf-dark nav#nav .navlinks a{color:#fff}
+html.gbf-on .hero{position:relative;background:linear-gradient(180deg,var(--fest-top) 0%,var(--fest-mid) 55%,var(--fest-low) 100%)!important;isolation:isolate}
+html.gbf-on.gbf-dark .hero h1,html.gbf-on.gbf-dark .hero p,html.gbf-on.gbf-dark .hero .lead{color:#fff}
+.gbf-scene{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.gbf-scene svg{position:absolute;inset:0;width:100%;height:100%}
+.gbf-deco-row{position:absolute;right:4%;top:14px;font-size:26px;letter-spacing:6px;pointer-events:none;z-index:2}
+.gbf-deco-row span{display:inline-block;animation:gbf-swing 2.8s ease-in-out infinite alternate}
+.gbf-deco-row span:nth-child(2n){animation-direction:alternate-reverse}
+@keyframes gbf-swing{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+.gbf-scene .tw{animation:gbf-tw 2.4s ease-in-out infinite alternate}.gbf-scene .tw:nth-of-type(3n){animation-delay:.8s}.gbf-scene .tw:nth-of-type(4n){animation-delay:1.5s}
+@keyframes gbf-tw{from{opacity:.35}to{opacity:1}}
+.gbf-scene .fall{animation:gbf-fall 9s linear infinite}
+@keyframes gbf-fall{from{transform:translateY(-20px)}to{transform:translateY(40px)}}
+/* the logo keeps its colours: on a dark festival header it sits on a white pill, like the app */
+html.gbf-on.gbf-dark nav#nav .logo,html.gbf-on.gbf-dark .gbf-logo-pill{background:#fff;border-radius:12px;padding:5px 12px}
+.logo .g,.gbf-keep .g{color:#6A1BB0!important}.logo{color:#111111}.logo .dot{color:#F0287A!important}
+/* seller / sales panels: a festive band at the top of the side bar + accent line on the page top */
+.gbf-band{margin:-22px -16px 14px;padding:12px 16px 10px;background:linear-gradient(135deg,var(--fest-top),var(--fest-mid),var(--fest-low));border-radius:0 0 16px 16px;
+  color:var(--fest-ink,#fff);font:600 12.5px/1.35 Poppins,system-ui,sans-serif;position:relative;overflow:hidden}
+.gbf-band .gbf-deco{font-size:18px;letter-spacing:4px;display:block;margin-bottom:2px}
+html.gbf-on .main>.top{box-shadow:inset 0 3px 0 var(--fest-accent);border-radius:6px;padding-top:6px}
+@media (prefers-reduced-motion:reduce){.gbf-deco-row span,.gbf-scene .tw,.gbf-scene .fall{animation:none!important}}
+@media print{.gbf-strip,.gbf-scene,.gbf-deco-row,.gbf-band{display:none!important}}
+/* readable text on a dark festival hero */
+html.gbf-on.gbf-dark .hero .stats span{color:rgba(255,255,255,.75)}
+html.gbf-on.gbf-dark .hero .btn-sell{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.06)}
+html.gbf-on.gbf-dark .hero a[href="/help/install/"]{color:#FFD27A}
+html.gbf-on.gbf-dark .hero .stats b{filter:brightness(1.25)}

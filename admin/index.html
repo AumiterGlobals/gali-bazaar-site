@@ -671,7 +671,7 @@ async function festivals() {
   const { data, error } = await db.from("festivals").select("*").gte("day", today).order("day");
   if (error) throw error;
   const hasCols = (data || []).length === 0 || "show_chips" in data[0];
-  $("#main").innerHTML = head("Festivals", "Festival look shows in the app from 2 days before the date and ends after the festival day") +
+  $("#main").innerHTML = head("Festivals", "Shows in the app and on the website (home, guides, seller &amp; sales panels) from 2 days before the date until the festival day ends. The same switch controls both. Preview the website look: galibazaar.site/?fest=diwali") +
     (hasCols ? "" : `<div class="soon err" style="padding:16px;margin-bottom:14px">Run <b>update-24-festival-switch.sql</b> in Supabase to use the on/off switches.</div>`) +
     `<div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn ghost" onclick="festAll('show_chips',false)">Item chips: all OFF</button><button class="btn ghost" onclick="festAll('show_chips',true)">Item chips: all ON</button>
       <button class="btn ghost" onclick="festAll('active',false)">Festival look: all OFF</button><button class="btn ghost" onclick="festAll('active',true)">Festival look: all ON</button></div>
