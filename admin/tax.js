@@ -36,7 +36,11 @@ async function taxPage() {
         ${f("ecom_tds_threshold", "Individual / HUF yearly threshold ₹", s.ecom_tds_threshold, "500000", "number")}</div>
       ${chk("ecom_tds_catch_up", "Catch-up (on): in the month an individual / HUF crosses ₹5 lakh, TDS on the whole year's sales so far (off = only on the part above the threshold)", s.ecom_tds_catch_up ?? true)}
       <div class="sub" style="margin-top:8px">Firm, company, LLP, trust etc. (PAN 4th letter not P / H): from the first rupee. Food Corner is left out (customers call the shop). Sales = delivered orders − credit notes.</div></div>
-    <div class="box"><h3>Sales-partner commission</h3>${chk("comm_tds_first_rupee", "TDS from the first payout", s.comm_tds_first_rupee ?? true)}</div>
+    <div class="box"><h3>Sales partner commission TDS</h3>
+      <div class="sub">s.393(1) Table Sl. 1(ii) (earlier 194H) — 2% with PAN since 1 Oct 2024; without PAN the higher rate (20%).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">${f("tds_rate", "Rate % (with PAN)", s.tds_rate ?? 2, "2", "number")}${f("tds_rate_no_pan", "Rate % without PAN", s.tds_rate_no_pan ?? 20, "20", "number")}</div>
+      ${Number(s.tds_rate ?? 2) !== 2 ? `<div class="sub" style="color:#B0144F;margin-top:6px"><b>Commission TDS is 2% under s.393(1) — change only if your CA says so.</b> Now: ${esc(s.tds_rate)}%.</div>` : ""}
+      ${chk("comm_tds_first_rupee", "TDS from the first payout (no yearly limit)", s.comm_tds_first_rupee ?? true)}</div>
     ${window.ACCOUNTANT ? `<div class="sub">Only the admin can change these settings.</div>` : `<button class="btn pink" onclick="taxSave()">Save</button><span id="tx_m" style="margin-left:10px"></span>`}
     <div class="box" style="margin-top:16px"><h3>TDS payment codes</h3><div class="sub">Fill the codes your CA gives you — they go into the challan and return files.</div>
       <table><thead><tr><th>Payment</th><th>Section</th><th>Code</th><th></th></tr></thead><tbody>${codes.map(c => `<tr><td>${esc(c.label)}</td><td>${esc(c.section_new)}${c.section_old ? ` <span class="sub">(earlier ${esc(c.section_old)})</span>` : ""}</td>
@@ -57,7 +61,10 @@ async function taxSave() {
   const v = k => $("#tx_" + k).value, c = k => $("#tx_" + k).checked;
   const tan = v("tan").trim().toUpperCase();
   if (tan && !/^[A-Z]{4}[0-9]{5}[A-Z]$/.test(tan)) { $("#tx_m").innerHTML = `<span class="msg err">TAN looks like ABCD12345E</span>`; return; }
-  const row = { tan: tan || null, deductor_name: v("deductor_name").trim() || null, ecom_tds_on: c("ecom_tds_on"), ecom_tds_rate: +v("ecom_tds_rate") || 0.1,
+  const cr = +v("tds_rate"), cn = +v("tds_rate_no_pan");
+  if (!(cr > 0 && cr <= 30) || !(cn > 0 && cn <= 40)) { $("#tx_m").innerHTML = `<span class="msg err">Enter the commission TDS rates</span>`; return; }
+  if (cr !== 2 && !confirm(`Commission TDS is 2% under s.393(1) — change only if your CA says so.\n\nSave ${cr}% anyway?`)) return;
+  const row = { tds_rate: cr, tds_rate_no_pan: cn, tan: tan || null, deductor_name: v("deductor_name").trim() || null, ecom_tds_on: c("ecom_tds_on"), ecom_tds_rate: +v("ecom_tds_rate") || 0.1,
     ecom_tds_no_pan_rate: +v("ecom_tds_no_pan_rate") || 5, ecom_tds_threshold: +v("ecom_tds_threshold") || 0, ecom_tds_catch_up: c("ecom_tds_catch_up"), comm_tds_first_rupee: c("comm_tds_first_rupee") };
   const { error } = await db.from("settings").update(row).eq("id", 1);
   $("#tx_m").innerHTML = `<span class="msg ${error ? "err" : "ok"}">${esc(error ? error.message : "Saved")}</span>`;

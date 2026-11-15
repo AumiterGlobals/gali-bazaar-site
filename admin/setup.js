@@ -2,7 +2,7 @@
 // Shows what is still not set up and what breaks without it. Hidden when everything required is done.
 async function setupItems() {
   const [{ data: st }, codes, team, inbox, health] = await Promise.all([
-    db.from("settings").select("tan,tax_report_emails,backup_email,firebase_web,seller_terms_otp,setup_done").eq("id", 1).maybeSingle(),
+    db.from("settings").select("tan,tax_report_emails,backup_email,firebase_web,seller_terms_otp,setup_done,tds_rate").eq("id", 1).maybeSingle(),
     q("tds_codes", "key,code").catch(() => null), q("tax_team", "email").catch(() => null), q("tds_inbox", "id", x => x.limit(1)).catch(() => []),
     db.functions.invoke("push", { body: { action: "health" } }).then(r => r.data?.secrets || null).catch(() => null)]);
   const s = st || {}, done = s.setup_done || {}, H = health || {};
@@ -10,6 +10,7 @@ async function setupItems() {
   return [
     { k: "mails", ok: (s.tax_report_emails || []).length > 0, t: "Tax mail list", why: "Monthly TDS / GST statements and tax reminders go to nobody.", go: "tax" },
     { k: "tan", ok: !!(s.tan || "").trim(), t: "TAN", why: "TDS can't be deposited and the TDS return can't be filed.", go: "tax" },
+    { k: "commrate", ok: Number(s.tds_rate) === 2, t: `Commission TDS rate = 2%${s.tds_rate != null && Number(s.tds_rate) !== 2 ? ` (now ${s.tds_rate}%)` : ""}`, why: "Sales partner payouts deduct the wrong TDS (s.393(1) Sl. 1(ii) is 2% with PAN).", go: "tax" },
     { k: "codes", ok: codes ? codes.length > 0 && codes.every(c => (c.code || "").trim()) : false, t: "TDS payment codes (from your CA)", why: "Statements show \"Fill code\" instead of the payment code.", go: "tax" },
     { k: "backup", ok: !!(s.backup_email || "").trim(), t: "Backup email", why: "The nightly PDF of payment screenshots isn't emailed.", go: "settings" },
     { k: "team", ok: (team || []).length > 0, t: "Accountant (tax team)", why: "Only you can enter challans, returns and Form 131.", go: "tax", optional: true },
