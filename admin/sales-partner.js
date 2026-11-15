@@ -150,7 +150,7 @@ async function spPayOpen(id) {
   const prev = async () => {
     const { data, error } = await db.rpc("admin_tds_preview", { p_sales: id, p_ids: ids() });
     $("#tdsv").innerHTML = error ? `<span class="err">${esc(spErr(error))}</span>` : `<div style="display:flex;justify-content:space-between"><span>Gross</span><b>${mny2(data.gross)}</b></div>
-      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}%` : `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})`}</span><b>− ${mny2(data.tds)}</b></div>
+      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}%` : Number(data.threshold) > 0 ? `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})` : "(nil)"}</span><b>− ${mny2(data.tds)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;margin-top:4px"><span><b>Pay this</b></span><b style="color:#16A34A">${mny2(data.net)}</b></div>${data.has_pan ? "" : `<div class="warnline">No PAN — higher TDS rate</div>`}`;
   };
   document.querySelectorAll(".pc").forEach(i => i.onchange = prev); prev();

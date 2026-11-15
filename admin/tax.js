@@ -46,8 +46,8 @@ async function taxPage() {
       <div style="display:${window.ACCOUNTANT ? "none" : "flex"};gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:10px"><div><div class="sub" style="margin:0 0 4px">Run a past month by hand</div><input class="in" type="month" id="tx_run"></div>
         <button class="btn" onclick="taxRun()">Work out TDS</button></div>
       ${Object.keys(byM).length ? `<table><thead><tr><th>Month</th><th style="text-align:right">Shops with TDS</th><th style="text-align:right">Sales</th><th style="text-align:right">TDS</th><th style="text-align:right">Recovered</th><th style="text-align:right">Still due</th></tr></thead><tbody>
-        ${Object.entries(byM).map(([m, v]) => `<tr><td><b>${txMon(m)}</b></td><td style="text-align:right">${v.shops}</td><td style="text-align:right">${inr(v.sales)}</td><td style="text-align:right">${inr(v.tds)}</td>
-          <td style="text-align:right">${inr(v.rec)}</td><td style="text-align:right;${v.tds - v.rec > 0 ? "color:#B0144F;font-weight:700" : ""}">${inr(v.tds - v.rec)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">Nothing yet.</div>`}</div>
+        ${Object.entries(byM).map(([m, v]) => `<tr><td><b>${txMon(m)}</b></td><td style="text-align:right">${v.shops}</td><td style="text-align:right">${inr(v.sales)}</td><td style="text-align:right">${inr2(v.tds)}</td>
+          <td style="text-align:right">${inr2(v.rec)}</td><td style="text-align:right;${v.tds - v.rec > 0 ? "color:#B0144F;font-weight:700" : ""}">${inr2(v.tds - v.rec)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub">Nothing yet.</div>`}</div>
     <div id="txMore"></div><div id="txTeam"></div>`;
   if (window.ACCOUNTANT) $$("#main input:not([type=file]):not([id^=ch_]):not([id^=cu_]):not([id^=rt_]):not([id^=st_]):not([id^=ce_])").forEach(i => i.disabled = true);
   if (window.taxReports) taxReports().then(() => window.ACCOUNTANT && $$("#main .box:first-of-type input").forEach(i => i.disabled = true));   // update-74: challans + monthly files
@@ -88,7 +88,7 @@ async function taxReports() {
     <div class="box" ${(due || []).length ? 'style="border:2px solid #E5484D;background:#FFF5F6"' : ""}><h3>TDS challans</h3>
       ${(due || []).length ? `<div class="sub" style="color:#B0144F;margin-bottom:10px">Enter the challan once you have paid — the banner stays until then.</div>` : `<div class="sub">All challans entered ✓</div>`}
       ${(due || []).map((d, i) => `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;padding:10px 0;border-top:1px solid #F1ECF4">
-        <div style="min-width:220px;flex:1"><b>${kindL(d.kind)} · ${txMon(d.month)}</b><div class="sub" style="margin:2px 0 0">TDS ${inr(d.tds)} · deposit by ${esc(d.due_by)}</div></div>
+        <div style="min-width:220px;flex:1"><b>${kindL(d.kind)} · ${txMon(d.month)}</b><div class="sub" style="margin:2px 0 0">TDS ${inr2(d.tds)} · deposit by ${esc(d.due_by)}</div></div>
         <input class="in" id="ch_a${i}" type="number" value="${d.tds}" style="width:110px" title="Amount">
         <input class="in" id="ch_d${i}" type="date" style="width:150px" title="Challan date">
         <input class="in" id="ch_b${i}" placeholder="BSR (7 digits)" style="width:130px">
@@ -109,7 +109,7 @@ async function taxReports() {
         <button class="btn ghost" onclick="taxSend('draft')">Email draft</button><button class="btn ghost" onclick="taxSend('final')">Email final</button><button class="btn ghost" onclick="taxSend('quarter')">Email quarter (ending this month)</button></div>
       ${runs.length ? `<table style="margin-top:12px"><thead><tr><th>Month</th><th>File</th><th>Sent</th><th style="text-align:right">TDS</th><th style="text-align:right">GST</th></tr></thead><tbody>
         ${runs.map(r => `<tr><td>${txMon(r.month)}</td><td>${r.stage === "final" ? "Final" : r.stage === "quarter" ? "Quarter" : "Draft"}</td><td>${new Date(r.sent_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</td>
-          <td style="text-align:right">${inr(r.tds || 0)}</td><td style="text-align:right">${inr(r.gst || 0)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
+          <td style="text-align:right">${inr2(r.tds || 0)}</td><td style="text-align:right">${inr(r.gst || 0)}</td></tr>`).join("")}</tbody></table>` : ""}</div>
     <div class="box"><h3>Quarterly TDS return (Form 140)</h3>
       <div class="sub">After filing, enter the date and token no. — shops see only the filed date on their TDS cards.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
@@ -300,5 +300,5 @@ taxBanner = async function () {
   const b = document.createElement("div"); b.id = "taxbar"; document.body.prepend(b);
   b.style.cssText = "position:sticky;top:0;z-index:49;background:#B0144F;color:#fff;padding:9px 16px;font-weight:600;cursor:pointer;font-size:14px";
   b.onclick = () => go("tax");
-  b.textContent = `TDS challan not entered: ${data.map(d => `${d.kind === "ecom" ? "e-commerce" : "commission"} ${txMon(d.month)} ${inr(d.tds)} (by ${d.due_by})`).join(" · ")}`;
+  b.textContent = `TDS challan not entered: ${data.map(d => `${d.kind === "ecom" ? "e-commerce" : "commission"} ${txMon(d.month)} ${inr2(d.tds)} (by ${d.due_by})`).join(" · ")}`;
 };

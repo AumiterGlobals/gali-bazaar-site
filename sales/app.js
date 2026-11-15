@@ -248,7 +248,7 @@ function overview() {
   fyCom.forEach(c => { const d = istD(c.created_at); const b = months.find(x => x.y === d.getUTCFullYear() && x.m === d.getUTCMonth()); if (b) b.v += Number(c.amount || 0); });
   const nowI = months.findIndex(x => x.y === istD(Date.now()).getUTCFullYear() && x.m === istD(Date.now()).getUTCMonth());
   const shown = months.slice(0, Math.max(nowI + 1, 1)), max = Math.max(1, ...shown.map(x => x.v));
-  const lim = Number(t.threshold ?? 20000), first = lim === 0, credited = Number(t.fy_credited || 0) + Number(t.due || 0), over = credited > lim;
+  const lim = Number(t.threshold ?? 20000), first = lim === 0, credited = Number(t.fy_credited || 0), over = credited > lim;
   const scale = Math.max(lim * 1.25, credited), pct = Math.min(100, credited / scale * 100), limPct = lim / scale * 100;
   $("#main").innerHTML = head(`Hi ${esc((me.name || "").split(" ")[0])} 👋`, `${fyLabel()} • ${me.commission_pct}% of every plan amount after GST`) + (D.sum ? statusStrip(D.sum) + codeCard(D.sum) : "") + `
     <div class="kpis k4">

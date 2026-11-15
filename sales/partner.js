@@ -5,17 +5,19 @@ const CTYPE_HI = (t, m) => t === "one_time" ? "एक बार" : t === "period
 const r2 = x => Math.round(x * 100) / 100;
 const mny = x => "₹" + Number(x || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // worked example from the live plan price: ₹99 → GST ₹15.10 → ₹83.90 → 20% = ₹16.78
-function cExample(price, gst, pct) { const after = r2(price / (1 + gst / 100)); return { price, gst: r2(price - after), after, com: r2(after * pct / 100) }; }
+// … → TDS 2% = ₹0.34 → you get ₹16.44 (live plan price, GST, % and TDS rate; TDS to the paisa, update-77)
+function cExample(price, gst, pct, tdsRate) { const after = r2(price / (1 + gst / 100)), com = r2(after * pct / 100), tds = r2(com * (tdsRate ?? 2) / 100);
+  return { price, gst: r2(price - after), after, com, tdsRate: tdsRate ?? 2, tds, net: r2(com - tds) }; }
 
 // ---------- 9a. "How your commission works" — every sign-in until the current text + this person's % / type is accepted ----------
 function commissionText(S, hi) {
-  const e = cExample(S.plan_price || 99, S.gst_rate || 18, S.pct), t = S.type, m = S.months;
+  const e = cExample(S.plan_price || 99, S.gst_rate || 18, S.pct, S.tds_rate), t = S.type, m = S.months;
   const typeLine = hi ? (t === "one_time" ? "सिर्फ़ दुकान के पहले प्लान पेमेंट पर" : t === "period" ? `दुकान जुड़ने के बाद पहले ${m} महीनों में हर प्लान पेमेंट पर` : "जब तक दुकान सब्सक्राइब्ड है, हर प्लान पेमेंट पर")
     : (t === "one_time" ? "only on the shop's first plan payment" : t === "period" ? `on every plan payment for the first ${m} months after the shop joins` : "on every plan payment while the shop stays subscribed");
   const EN = [
     [`Your commission: ${S.pct}% · ${CTYPE(t, m)}.`, ""],
     ["It is calculated on the plan amount after GST.", `Plan prices include ${S.gst_rate || 18}% GST, which goes to the government. We first take out GST, then pay ${S.pct}% of the rest.`],
-    ["Example:", `a shop pays ₹${e.price} → GST ${mny(e.gst)} → amount after GST ${mny(e.after)} → your commission <b>${mny(e.com)}</b>.`],
+    ["Example:", `a shop pays ₹${e.price} → GST ${mny(e.gst)} → amount after GST ${mny(e.after)} → your commission ${S.pct}% = ${mny(e.com)} → TDS ${e.tdsRate}% = ${mny(e.tds)} → you get <b>${mny(e.net)}</b>.`],
     ["You earn only when a shop that joined with your code pays for a plan,", "and the payment is approved. No commission on customer orders, featured listings, refunds or free trials."],
     [`${CTYPE(t, m)}:`, typeLine + "."],
     ["Your code works and commission is paid only after your KYC", "(PAN, Aadhaar, selfie, bank, UPI) is approved."],
@@ -26,7 +28,7 @@ function commissionText(S, hi) {
   const HI = [
     [`आपका कमीशन: ${S.pct}% · ${CTYPE_HI(t, m)}।`, ""],
     ["कमीशन GST हटाने के बाद की रक़म पर बनता है।", `प्लान के दाम में ${S.gst_rate || 18}% GST शामिल है जो सरकार को जाता है। पहले GST हटाते हैं, फिर बाकी का ${S.pct}% देते हैं।`],
-    ["उदाहरण:", `दुकान ₹${e.price} देती है → GST ${mny(e.gst)} → GST के बाद ${mny(e.after)} → आपका कमीशन <b>${mny(e.com)}</b>।`],
+    ["उदाहरण:", `दुकान ₹${e.price} देती है → GST ${mny(e.gst)} → GST के बाद ${mny(e.after)} → आपका कमीशन ${S.pct}% = ${mny(e.com)} → TDS ${e.tdsRate}% = ${mny(e.tds)} → आपको <b>${mny(e.net)}</b>।`],
     ["कमाई सिर्फ़ तब, जब आपके कोड से जुड़ी दुकान प्लान ख़रीदे", "और पेमेंट अप्रूव हो। ग्राहक ऑर्डर, फ़ीचर्ड लिस्टिंग, रिफ़ंड या फ़्री ट्रायल पर कमीशन नहीं।"],
     [`${CTYPE_HI(t, m)}:`, typeLine + "।"],
     ["आपका कोड और कमीशन KYC के बाद ही", "(PAN, आधार, सेल्फ़ी, बैंक, UPI) अप्रूव होने पर चालू होता है।"],
@@ -35,7 +37,7 @@ function commissionText(S, hi) {
     ["अपनी दुकान रेफ़र करना या नक़ली दुकानें मना हैं।", "ऐसा करने पर ब्लॉक और बकाया कमीशन ख़त्म।"],
     ["Gali Bazaar सूचना देकर %, प्रकार या नियम बदल सकता है।", "बदलाव सिर्फ़ आगे के पेमेंट पर लागू होंगे, और यह स्क्रीन फिर दिखेगी।"]];
   return (hi ? HI : EN).map((x, i) => `<div style="display:flex;gap:10px;margin:10px 0"><b style="color:#6A1BB0;width:22px;flex:none">${i + 1}.</b><div><b>${x[0]}</b> ${x[1]}</div></div>`).join("")
-    + `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">${[[hi ? "प्लान (GST सहित)" : "Plan (incl. GST)", "₹" + e.price], [hi ? "GST हटाया" : "GST taken out", mny(e.gst)], [hi ? "GST के बाद" : "After GST", mny(e.after)], [`${hi ? "आपका कमीशन" : "Your commission"} (${S.pct}%)`, mny(e.com)]].map(r => `<tr><td style="padding:5px 0;border-bottom:1px solid #EEE7F6">${r[0]}</td><td style="text-align:right;border-bottom:1px solid #EEE7F6"><b>${r[1]}</b></td></tr>`).join("")}</table>`;
+    + `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px">${[[hi ? "प्लान (GST सहित)" : "Plan (incl. GST)", "₹" + e.price], [hi ? "GST हटाया" : "GST taken out", mny(e.gst)], [hi ? "GST के बाद" : "After GST", mny(e.after)], [`${hi ? "आपका कमीशन" : "Your commission"} (${S.pct}%)`, mny(e.com)], [`TDS (${e.tdsRate}%${hi ? ", PAN के साथ" : ", with PAN"})`, "− " + mny(e.tds)], [hi ? "आपको मिलेगा" : "You get", mny(e.net)]].map(r => `<tr><td style="padding:5px 0;border-bottom:1px solid #EEE7F6">${r[0]}</td><td style="text-align:right;border-bottom:1px solid #EEE7F6"><b>${r[1]}</b></td></tr>`).join("")}</table>`;
 }
 function commissionGate(S, onOut) {
   return new Promise(res => {
