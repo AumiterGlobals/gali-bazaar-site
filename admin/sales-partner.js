@@ -1,4 +1,4 @@
-/* Admin — sales partners (update-52): applications, approve with %/type, KYC + bank check, pay commission (UTR + TDS preview), Form 16A, change terms.
+/* Admin — sales partners (update-52): applications, approve with %/type, KYC + bank check, pay commission (UTR + TDS preview), Form 131 (earlier Form 16A), change terms.
  * All rules are enforced by the server functions; this file only shows and sends. */
 const SPT = (t, m) => t === "one_time" ? "One-time" : t === "period" ? `First ${m} months` : "Permanent";
 const mny2 = x => "₹" + Number(x || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8,7 +8,7 @@ if (typeof window.toast !== "function") window.toast = m => alert(m);
 if (typeof window.niceErr !== "function") window.niceErr = e => spErr(e);
 document.head.insertAdjacentHTML("beforeend", `<style>.fchip{border:1px solid #E6E1EF;background:#fff;border-radius:999px;padding:8px 14px;font:600 13px Poppins,sans-serif;color:#1D0F30;cursor:pointer}.fchip.on{background:#1D0F30;color:#fff;border-color:#1D0F30}</style>`);
 function spTabs(on) {
-  const t = [["team", "Team"], ["apps", `Applications${SPC.apps ? ` <span class="pill warn">${SPC.apps}</span>` : ""}`], ["kyc", `KYC${SPC.kyc ? ` <span class="pill warn">${SPC.kyc}</span>` : ""}`], ["pay", "Pay commission"], ["f16", "Form 16A"]];
+  const t = [["team", "Team"], ["apps", `Applications${SPC.apps ? ` <span class="pill warn">${SPC.apps}</span>` : ""}`], ["kyc", `KYC${SPC.kyc ? ` <span class="pill warn">${SPC.kyc}</span>` : ""}`], ["pay", "Pay commission"], ["f16", "Form 131 (earlier Form 16A)"]];
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px">${t.map(([k, l]) => `<button class="fchip ${k === on ? "on" : ""}" onclick="salesTab('${k}')">${l}</button>`).join("")}</div>`;
 }
 let SALES_TAB = "team";
@@ -150,7 +150,7 @@ async function spPayOpen(id) {
   const prev = async () => {
     const { data, error } = await db.rpc("admin_tds_preview", { p_sales: id, p_ids: ids() });
     $("#tdsv").innerHTML = error ? `<span class="err">${esc(spErr(error))}</span>` : `<div style="display:flex;justify-content:space-between"><span>Gross</span><b>${mny2(data.gross)}</b></div>
-      <div style="display:flex;justify-content:space-between"><span>TDS u/s 194H ${data.tds > 0 ? `@ ${data.rate}%` : `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})`}</span><b>− ${mny2(data.tds)}</b></div>
+      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}%` : `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})`}</span><b>− ${mny2(data.tds)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;margin-top:4px"><span><b>Pay this</b></span><b style="color:#16A34A">${mny2(data.net)}</b></div>${data.has_pan ? "" : `<div class="warnline">No PAN — higher TDS rate</div>`}`;
   };
   document.querySelectorAll(".pc").forEach(i => i.onchange = prev); prev();
@@ -170,14 +170,14 @@ async function spPayOpen(id) {
 }
 async function advicePdfAdmin(pid) { if (!window.advicePdf) await new Promise(ok => { const s = document.createElement("script"); s.src = "/sales/partner.js?v=1795480000"; s.onload = ok; document.head.appendChild(s); }); advicePdf(pid, db); }
 
-// ---------- Form 16A upload (per partner, per quarter) ----------
+// ---------- Form 131 (earlier Form 16A) upload (per partner, per quarter) ----------
 async function spF16() {
   const [sp, list] = await Promise.all([q("sales_people", "id,name,code,pan", x => x.not("pan", "is", null).order("name")), q("form16a", "*", x => x.order("uploaded_at", { ascending: false }))]);
   const d0 = new Date(Date.now() + 19800000), y0 = d0.getUTCMonth() < 3 ? d0.getUTCFullYear() - 1 : d0.getUTCFullYear(), fy = `${y0}-${String(y0 + 1).slice(2)}`;
-  $("#main").innerHTML = head("Sales team", "Upload Form 16A each quarter after TDS is filed — partners download it from their Payouts page") + spTabs("f16") + `<div class="box" style="max-width:640px">
+  $("#main").innerHTML = head("Sales team", "Upload Form 131 (earlier Form 16A) each quarter after TDS is filed — partners download it from their Payouts page") + spTabs("f16") + `<div class="box" style="max-width:640px">
     <label>SALES PARTNER</label><select class="in" id="fs">${sp.map(p => `<option value="${p.id}">${esc(p.name)} · ${esc(p.code)} · ${esc(p.pan)}</option>`).join("")}</select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px"><div><label>FINANCIAL YEAR</label><input class="in" id="ff" value="${esc(fy)}" placeholder="2026-27"></div><div><label>QUARTER</label><select class="in" id="fq"><option value="1">Q1 (Apr–Jun)</option><option value="2">Q2 (Jul–Sep)</option><option value="3">Q3 (Oct–Dec)</option><option value="4">Q4 (Jan–Mar)</option></select></div></div>
-    <label>FORM 16A (PDF)</label><input class="in" id="fp" type="file" accept="application/pdf"><div class="msg" id="fm"></div><button class="btn pink full" id="fgo">Upload</button></div>
+    <label>FORM 131 / EARLIER FORM 16A (PDF)</label><input class="in" id="fp" type="file" accept="application/pdf"><div class="msg" id="fm"></div><button class="btn pink full" id="fgo">Upload</button></div>
     <div class="box"><h3>Uploaded</h3>${list.map(f => `<div class="row"><div><b>${esc(sp.find(p => p.id === f.sales)?.name || "—")}</b><span>Q${f.quarter} FY ${esc(f.fy)} · ${(f.uploaded_at || "").slice(0, 10)}</span></div></div>`).join("") || `<div class="sub">None yet.</div>`}</div>`;
   $("#fgo").onclick = async () => {
     const m = $("#fm"), file = $("#fp").files[0], s = $("#fs").value, fyv = $("#ff").value.trim(), qv = +$("#fq").value;

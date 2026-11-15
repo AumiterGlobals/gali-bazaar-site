@@ -1,4 +1,4 @@
-/* Sales partner (update-52): commission popup, status strip, code card + QR, KYC + bank + UPI, payouts with PDF advice, Form 16A.
+/* Sales partner (update-52): commission popup, status strip, code card + QR, KYC + bank + UPI, payouts with PDF advice, Form 131 (earlier Form 16A).
  * Every rule is checked on the server; this file only shows and sends. */
 const CTYPE = (t, m) => t === "one_time" ? "One-time" : t === "period" ? `First ${m} months` : "Permanent";
 const CTYPE_HI = (t, m) => t === "one_time" ? "एक बार" : t === "period" ? `पहले ${m} महीने` : "स्थायी";
@@ -19,7 +19,7 @@ function commissionText(S, hi) {
     ["You earn only when a shop that joined with your code pays for a plan,", "and the payment is approved. No commission on customer orders, featured listings, refunds or free trials."],
     [`${CTYPE(t, m)}:`, typeLine + "."],
     ["Your code works and commission is paid only after your KYC", "(PAN, Aadhaar, selfie, bank, UPI) is approved."],
-    ["Payouts:", "we pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 194H: 2% with PAN once your yearly commission crosses ₹20,000; the higher rate if PAN is missing. TDS is shown in your Form 26AS / AIS; Form 16A is given every quarter."],
+    ["Payouts:", "we pay by bank transfer or UPI to your verified account. Each payout shows the UTR, date and TDS, with a PDF you can download. TDS u/s 393(1) (earlier 194H): 2% with PAN once your yearly commission crosses ₹20,000. If PAN is missing or invalid, TDS is deducted as the law requires. TDS is shown in your Form 168 / AIS; Form 131 (earlier Form 16A) is given every quarter."],
     ["If a plan payment is refunded,", "its commission is cancelled, or adjusted in your next payout if it was already paid."],
     ["No referring your own shop, and no fake shops.", "These lead to blocking and loss of unpaid commission."],
     ["Gali Bazaar may change the %, type or rules with notice.", "Changes apply only to future payments, and you'll see this screen again."]];
@@ -30,7 +30,7 @@ function commissionText(S, hi) {
     ["कमाई सिर्फ़ तब, जब आपके कोड से जुड़ी दुकान प्लान ख़रीदे", "और पेमेंट अप्रूव हो। ग्राहक ऑर्डर, फ़ीचर्ड लिस्टिंग, रिफ़ंड या फ़्री ट्रायल पर कमीशन नहीं।"],
     [`${CTYPE_HI(t, m)}:`, typeLine + "।"],
     ["आपका कोड और कमीशन KYC के बाद ही", "(PAN, आधार, सेल्फ़ी, बैंक, UPI) अप्रूव होने पर चालू होता है।"],
-    ["पेमेंट:", "आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 194H: साल का कमीशन ₹20,000 पार होने पर PAN के साथ 2%; PAN न हो तो ज़्यादा दर। TDS आपके Form 26AS / AIS में दिखेगा; Form 16A हर तिमाही मिलेगा।"],
+    ["पेमेंट:", "आपके वेरिफ़ाइड खाते में बैंक ट्रांसफ़र या UPI से। हर पेमेंट पर UTR, तारीख़ और TDS, और डाउनलोड करने लायक PDF। TDS धारा 393(1) (पहले 194H): साल का कमीशन ₹20,000 पार होने पर PAN के साथ 2%। PAN न हो या ग़लत हो तो क़ानून के अनुसार TDS कटेगा। TDS आपके Form 168 / AIS में दिखेगा; Form 131 (पहले Form 16A) हर तिमाही मिलेगा।"],
     ["प्लान पेमेंट रिफ़ंड हुआ तो", "उसका कमीशन रद्द होगा, या अगर दे दिया गया था तो अगले पेमेंट में घटेगा।"],
     ["अपनी दुकान रेफ़र करना या नक़ली दुकानें मना हैं।", "ऐसा करने पर ब्लॉक और बकाया कमीशन ख़त्म।"],
     ["Gali Bazaar सूचना देकर %, प्रकार या नियम बदल सकता है।", "बदलाव सिर्फ़ आगे के पेमेंट पर लागू होंगे, और यह स्क्रीन फिर दिखेगी।"]];
@@ -181,7 +181,7 @@ async function selfieCam() {
   w.querySelector("#sn").onclick = async () => { const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .85)); stop(); upKyc("selfie", b); };
 }
 
-// ---------- payouts: year summary, each payout with UTR + PDF, Form 16A ----------
+// ---------- payouts: year summary, each payout with UTR + PDF, Form 131 (earlier Form 16A) ----------
 async function payoutsPage() {
   const S = D.sum, f16 = (await db.from("form16a").select("*").eq("sales", me.id).order("fy", { ascending: false })).data || [];
   const name = id => D.shops.find(s => s.id === id)?.name || "Shop";
@@ -194,7 +194,7 @@ async function payoutsPage() {
         <a href="#" style="color:#6A1BB0;font-size:13px;font-weight:600" onclick="poDetails('${p.id}');return false">View details</a><div id="pd_${p.id}"></div></div>
         <div style="text-align:right"><b style="color:#16A34A">Net ${mny(p.net)}</b><br><button class="btn pink" style="margin-top:8px;padding:8px 14px" onclick="advicePdf('${p.id}')">⇩ PDF</button></div></div>`).join("")
       : `<div class="sub">No payouts yet.</div>`}</div>
-    <div class="box"><h3>Form 16A</h3>${f16.length ? f16.map(f => `<div class="row"><div><b>📄 Form 16A — Q${f.quarter} FY ${esc(f.fy)}</b></div><a href="#" style="color:#6A1BB0;font-weight:600" onclick="f16dl('${esc(f.path)}');return false">Download</a></div>`).join("") : `<div class="sub">Form 16A is added every quarter after TDS is deducted.</div>`}</div>
+    <div class="box"><h3>Form 131 (earlier Form 16A)</h3>${f16.length ? f16.map(f => `<div class="row"><div><b>📄 Form 131 — Q${f.quarter} FY ${esc(f.fy)}</b></div><a href="#" style="color:#6A1BB0;font-weight:600" onclick="f16dl('${esc(f.path)}');return false">Download</a></div>`).join("") : `<div class="sub">Form 131 (earlier Form 16A) is added every quarter after TDS is deducted.</div>`}</div>
     <div class="box"><h3>Commission entries</h3>${D.com.length ? `<table><thead><tr><th>DATE</th><th>SHOP</th><th class="hm">PLAN · AFTER GST</th><th>%</th><th>AMOUNT</th><th></th></tr></thead><tbody>${D.com.map(c => `<tr>
         <td>${dmy(c.created_at)}</td><td><b>${esc(name(c.shop))}</b>${c.kind === "ADJUST" ? `<div class="sub" style="margin:0">Refund adjustment</div>` : ""}</td><td class="hm">${c.plan_amount != null ? mny(c.plan_amount) + " · " + mny(c.taxable) : inr(c.base_amount)}</td><td>${c.pct}%</td>
         <td><b>${mny(c.amount)}</b></td><td><span class="pill ${c.status === "PAID" ? "grey" : c.status === "CANCELLED" ? "bad" : "warn"}">${c.status}</span></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No commission yet.</div>`}</div>`;
@@ -235,10 +235,10 @@ async function advicePdf(id, dbc) {
   }
   y += 4; doc.line(L, y, R, y); y += 20;
   const tot = (k, v, b) => { doc.setFont("helvetica", b ? "bold" : "normal"); doc.setFontSize(b ? 12 : 10); doc.text(k, 300, y); doc.text(v, R, y, { align: "right" }); y += b ? 20 : 16; };
-  tot("Gross commission", rs(a.gross)); tot(Number(a.tds) > 0 ? `TDS u/s 194H @ ${a.tds_rate || ""}%` : "TDS (below Rs 20,000 a year)", "- " + rs(a.tds)); tot("Net paid", rs(a.net), true);
+  tot("Gross commission", rs(a.gross)); tot(Number(a.tds) > 0 ? `TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}%` : "TDS (below Rs 20,000 a year)", "- " + rs(a.tds)); tot("Net paid", rs(a.net), true);
   y += 6; doc.setFillColor(232, 248, 239); doc.roundedRect(L, y, R - L, 28, 6, 6, "F"); doc.setFontSize(10); doc.setFont("helvetica", "bold");
   doc.text(`Payment: ${a.mode || "—"} · UTR ${a.utr || "—"} · ${a.date}`, L + 10, y + 18); y += 48;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(110, 99, 128);
-  doc.text(doc.splitTextToSize("TDS deducted will be deposited with the Income Tax Department and will appear in your Form 26AS / AIS. Form 16A is issued quarterly. This is a computer-generated advice.", R - L), L, y);
+  doc.text(doc.splitTextToSize("TDS deducted will be deposited with the Income Tax Department and will appear in your Form 168 / AIS. Form 131 (earlier Form 16A) is issued quarterly. This is a computer-generated advice.", R - L), L, y);
   doc.save(`${String(a.advice_no).replace(/\//g, "-")}.pdf`);
 }
