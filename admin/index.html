@@ -149,7 +149,7 @@ function loginView() {
 
 function shell() {
   $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>${window.ACCOUNTANT ? "TAX &amp; TDS · ACCOUNTANT" : "ADMIN CONSOLE"}</small><nav class="nav">
-    ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
+    ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}" onclick="if(location.hash==='#${k}'){event.preventDefault();go('${k}')}">${l}</a>`).join("")}
     <a href="/" style="margin-top:20px">← Website</a><a onclick="db.auth.signOut().then(()=>location.reload())">Sign out</a></nav></aside>
     <main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
   document.querySelector(".app").insertAdjacentHTML("afterbegin", `<div class="mtop"><button onclick="menu(true)" aria-label="Menu">☰</button>${LOGO}<small>Admin console</small></div>`);
@@ -160,6 +160,7 @@ function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").cla
 function go(k) {
   page = k || "categories"; menu(false);
   if (window.ACCOUNTANT) page = "tax";
+  if (location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page);   // keep the address in step, so the menu link for the page you came from works again
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
   const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage, tax: taxPage };
@@ -866,7 +867,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/bank.js?v=1795860000"></script>
 <script src="/admin/tax.js?v=1796020000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
-<script src="/admin/setup.js?v=1796010000"></script>
+<script src="/admin/setup.js?v=1796020000"></script>
 <script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
