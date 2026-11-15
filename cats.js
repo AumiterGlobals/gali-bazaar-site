@@ -31,8 +31,9 @@
         var none = (live[c.key] || 0) === 0;
         var tag = isNew ? '<em class="ctag new">New</em>' : none ? '<em class="ctag soon">' + (forShops ? "Be the first in your area" : "Joining soon") + "</em>" : "";
         // Food Corner (call_only): listing + "Call to order" — never "order" wording (update-70)
-        if (c.call_only) tag = '<span class="fcbadge">📞 Call to order</span>';
-        var line = c.call_only ? (forShops ? "Customers see your menu and call you" : "See the menu and call the shop to order") : c.short_line;
+        if (c.call_only || (c.call_only == null && c.key === "food")) tag = '<span class="fcbadge">📞 Call to order</span>';
+        var call = c.call_only || (c.call_only == null && c.key === "food");
+        var line = call ? (forShops ? "Customers see your menu and call you" : "See the menu and call the shop to order") : c.short_line;
         var img = /^https?:/.test(c.icon) ? c.icon : "/img/art/" + c.icon + ".webp";
         return '<div class="cat dyn" style="background:linear-gradient(120deg,' + shade(c.color, 1.35) + " 0%," + esc(c.color) + " 55%," + shade(c.color, .88) + ' 100%)">' +
           "<h3>" + esc(c.name) + "</h3>" + tag + (line ? "<p>" + esc(line) + "</p>" : "") +
