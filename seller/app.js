@@ -565,6 +565,9 @@ function useMaster(k) {
   $("#fn").value = c.name; $("#fu").value = c.unit || ""; { const [q, u] = splitUnit(c.unit); $("#fq").value = q; if (u) { if (![...$("#fuu").options].some(o => o.value === u)) $("#fuu").add(new Option(u)); $("#fuu").value = u; } } if (c.grp) $("#fg").value = c.grp;
   if (S.gst_billing && $("#fh") && c.hsn) { $("#fh").value = c.hsn; if (c.gst_rate != null) $("#fgst").value = String(c.gst_rate); }
   if ($("#fmk") && c.maker) $("#fmk").value = c.maker; if ($("#ffs") && c.fssai) $("#ffs").value = c.fssai; if ($("#fin") && c.ingredients) $("#fin").value = c.ingredients;
+  // pack declarations from the item list (update-65)
+  if ($("#fma") && c.maker_address) $("#fma").value = c.maker_address; if ($("#fcc") && c.consumer_care) $("#fcc").value = c.consumer_care;
+  if ($("#fco") && c.country_of_origin) $("#fco").value = c.country_of_origin;
   (c.images || []).forEach((u, j) => { const sl = (F_.slots || localSlots().slots)[j]; if (sl) F_.ph[sl.key] = { url: u }; });
   $("#msug").innerHTML = `<div class="okline">Details taken from the Gali Bazaar item list${(c.images || []).length ? "" : " — add the photos"}. Set your price.</div>`; drawPhotos();
 }

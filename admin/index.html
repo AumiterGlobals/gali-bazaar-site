@@ -356,12 +356,20 @@ async function ilEdit(id) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">${(c.images || []).map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" style="width:84px;height:84px;object-fit:cover;border-radius:10px"></a>`).join("") || '<div class="sub">No photos yet — the first shop that adds this product fills them.</div>'}</div>
     <label>NAME</label><input class="in" id="ie_n" value="${esc(c.name)}"><label>PACK / UNIT</label><input class="in" id="ie_u" value="${esc(c.unit)}">
     <label>CATEGORY</label><input class="in" id="ie_g" value="${esc(c.grp || "")}"><label>HSN</label><input class="in" id="ie_h" value="${esc(c.hsn || "")}" maxlength="8">
+    <h3 style="margin:14px 0 0;font-size:14px">Pack declarations <span class="sub" style="font-weight:400">— filled for shops that use this item</span></h3>
+    <label>MANUFACTURER / PACKER / IMPORTER</label><input class="in" id="ie_mk" maxlength="120" value="${esc(c.maker || "")}">
+    <label>FULL ADDRESS WITH PIN</label><input class="in" id="ie_ma" maxlength="300" data-has="${"maker_address" in c ? 1 : ""}" value="${esc(c.maker_address || "")}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>CONSUMER CARE</label><input class="in" id="ie_cc" maxlength="120" value="${esc(c.consumer_care || "")}"></div>
+      <div><label>COUNTRY OF ORIGIN</label><input class="in" id="ie_co" maxlength="40" value="${esc(c.country_of_origin || "")}"></div></div>
     <label><input type="checkbox" id="ie_x" ${c.hidden ? "checked" : ""}> Hidden — shops won't see it</label>
     ${(c.images || []).length ? '<label><input type="checkbox" id="ie_p"> Remove these photos (wrong / copied)</label>' : ""}
     <div class="msg" id="ie_m"></div><div style="margin-top:14px"><button class="btn pink" onclick="ilSave('${id}')">Save</button></div>`;
 }
 async function ilSave(id) {
-  const row = { name: $("#ie_n").value.trim(), unit: $("#ie_u").value.trim(), grp: $("#ie_g").value.trim() || null, hsn: $("#ie_h").value.replace(/\D/g, "") || null, hidden: $("#ie_x").checked };
+  const row = { name: $("#ie_n").value.trim(), unit: $("#ie_u").value.trim(), grp: $("#ie_g").value.trim() || null, hsn: $("#ie_h").value.replace(/\D/g, "") || null, hidden: $("#ie_x").checked,
+    maker: $("#ie_mk").value.trim() || null,
+    // pack address / consumer care / origin columns come with update-65
+    ...($("#ie_ma").dataset.has ? { maker_address: $("#ie_ma").value.trim() || null, consumer_care: $("#ie_cc").value.trim() || null, country_of_origin: $("#ie_co").value.trim() || null } : {}) };
   if ($("#ie_p") && $("#ie_p").checked) row.images = [];
   const { error } = await db.from("common_items").update(row).eq("id", id);
   if (error) { $("#ie_m").className = "msg err"; $("#ie_m").textContent = /duplicate|unique/i.test(error.message) ? "An item with this name and pack already exists." : error.message; return; }
