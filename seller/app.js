@@ -394,6 +394,9 @@ function specErr(desc) {
 function specRead() { document.querySelectorAll("[data-spec]").forEach(el => { F_.specs[el.dataset.spec] = el.value.trim(); }); }
 function specPick(k) { specRead(); F_.specSet = k; const b = $("#specbox"); if (b) b.outerHTML = specBox(null); }
 
+// 270, "270.00", 270.0 → "270"; 12.5 → "12.5" (form boxes show whole rupees without decimals)
+const numTxt = v => v == null || v === "" || isNaN(+v) ? "" : String(Math.round(+v * 100) / 100);
+
 // ================= Catalog =================
 // low stock (update-63): items with a stock count at or below the shop's mark (default 5)
 const lowI = i => i.stock_qty != null && i.stock_qty <= (S.low_stock_at ?? 5);
@@ -487,7 +490,7 @@ function editItem(id) {
       <div><label>${amountLabel(S.type)}</label><div style="display:flex;gap:6px"><input class="in" id="fq" inputmode="decimal" style="flex:1;min-width:0" value="${esc(splitUnit(i?.unit)[0])}" placeholder="1">
         <select class="in" id="fuu" style="flex:1;min-width:0">${(() => { const cu = splitUnit(i?.unit)[1] || unitsFor(S.type)[0]; return [...new Set([...unitsFor(S.type), ...(i ? [cu] : [])])].map(u => `<option ${u === cu ? "selected" : ""}>${esc(u)}</option>`).join(""); })()}</select></div>
         <input type="hidden" id="fu" value="${esc(i?.unit || "")}"></div>
-      <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${i?.mrp ?? ""}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${i ? i.price : ""}"></div></div>
+      <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${numTxt(i?.mrp)}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${numTxt(i?.price)}"></div></div>
     <div id="off"></div>
     ${!["food_fresh", "flowers"].includes(K.key) ? `<div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px;margin-top:12px"><div><b>Packaged item</b><span>Maker, net qty, MRP and country of origin are shown to customers</span></div><button class="tog ${F_.packaged ? "on" : ""}" id="fpk"></button></div>
     <div id="pkbox" style="display:${F_.packaged ? "block" : "none"}">
@@ -523,7 +526,7 @@ function editItem(id) {
       <label>${specSets(S.type).length === 0 ? "PRODUCT DETAILS (OPTIONAL)" : (specSets(S.type).includes("general") && specSets(S.type).length === 1) ? "PRODUCT DETAILS * (AT LEAST 20 LETTERS)" : "MORE DETAILS (OPTIONAL)"}</label><textarea class="in" id="fx" rows="3" placeholder="What it is, size, material, how to use">${esc(i?.descr || "")}</textarea>
       ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28, 40].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
         <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 11010000">` : ""}
-      <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${v.p}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
+      <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${numTxt(v.p)}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
     <div class="msg" id="fe"></div>
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
     ${i ? `<button class="btn ghost full" style="margin-top:8px;color:#BE185D" onclick="delItem('${i.id}')">Delete item</button>` : ""}`);
