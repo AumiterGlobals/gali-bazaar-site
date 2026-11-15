@@ -584,7 +584,7 @@ function spAdd() {
   const el = $("#panel"); el.classList.add("open"); document.body.classList.add("po");
   el.innerHTML = `<h2><span>Add sales person</span><button class="x" onclick="closeForm()" aria-label="Close">×</button></h2>
     <label>NAME</label><input class="in" id="an"><label>PHONE</label><input class="in" id="ap" inputmode="tel">
-    <label>EMAIL (THEIR LOGIN)</label><input class="in" id="ae" type="email"><label>UPI FOR PAYOUTS</label><input class="in" id="au" placeholder="name@okaxis">
+    <label>EMAIL (THEIR LOGIN) *</label><input class="in" id="ae" type="email" required><label>UPI FOR PAYOUTS</label><input class="in" id="au" placeholder="name@okaxis">
     <label>COMMISSION %</label><input class="in" id="ac" type="number" value="20" min="0" max="100">
     <div class="note">Only this email can open the sales panel. They verify it once with an email code and create their own username &amp; password.</div>
     <div class="msg" id="am"></div><button class="btn pink full" onclick="spAddSave()">Add to sales team</button>`;

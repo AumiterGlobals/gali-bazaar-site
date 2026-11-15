@@ -227,7 +227,10 @@ function dash() {
   const greet = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
   $("#main").innerHTML = head(`${greet}${S.pan_name ? ", " + esc(S.pan_name.split(" ")[0][0] + S.pan_name.split(" ")[0].slice(1).toLowerCase()) : ""}`,
       `${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} • ${esc(S.name)}${S.locality ? ", " + esc(S.locality) : ""}`,
-      `<button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + (FOOD() && !/^[12][0-9]{13}$/.test(S.fssai || "") ? `
+      `<button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + (D.items.some(lowI) ? (() => { const L = D.items.filter(lowI).sort((a, b) => a.stock_qty - b.stock_qty); return `
+    <div class="box" style="background:#FFF7E6;border-color:#FFC93C;display:flex;gap:12px;align-items:center;flex-wrap:wrap;cursor:pointer" onclick="catF='low';go('catalog')"><span style="font-size:24px">📦</span>
+      <div style="flex:1;min-width:200px"><b style="color:#8A5A00">${L.length} item${L.length === 1 ? "" : "s"} low on stock</b><div class="sub" style="margin:0">${L.slice(0, 3).map(i => `${esc(i.name)} (${i.stock_qty === 0 ? "out" : i.stock_qty + " left"})`).join(" · ")}${L.length > 3 ? ` · +${L.length - 3} more` : ""}</div></div>
+      <b style="color:#8A5A00">Update stock →</b></div>`; })() : "") + (FOOD() && !/^[12][0-9]{13}$/.test(S.fssai || "") ? `
     <div class="box" style="background:#FFF4D6;border-color:#F6D58A;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="font-size:24px">🧾</span>
       <div style="flex:1;min-width:200px"><b>Add your FSSAI number</b><div class="sub">FSSAI registration is required for food shops. Add your 14-digit number to keep selling.</div></div>
       <a class="btn dark" href="/seller/shop/">Add FSSAI number</a></div>` : "") + `
@@ -360,10 +363,12 @@ function printBill(id) {
 }
 
 // ================= Catalog =================
+// low stock (update-63): items with a stock count at or below the shop's mark (default 5)
+const lowI = i => i.stock_qty != null && i.stock_qty <= (S.low_stock_at ?? 5);
 function catalog() {
   const groups = [...new Set(D.items.map(i => (i.grp || "").trim()).filter(Boolean))].sort().slice(0, 8);
   const liveN = D.items.filter(i => !hidden(i) && i.in_stock).length;
-  const F = [["all", `All ${D.items.length}`], ["missing", `Hidden ${D.items.filter(hidden).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...groups.map(g => ["g:" + g, g])];
+  const F = [["all", `All ${D.items.length}`], ["missing", `Hidden ${D.items.filter(hidden).length}`], ["oos", `Out of stock ${D.items.filter(i => !i.in_stock).length}`], ...(D.items.some(lowI) ? [["low", `📦 Low stock ${D.items.filter(lowI).length}`]] : []), ...groups.map(g => ["g:" + g, g])];
   $("#main").innerHTML = head(`${D.items.length} items • ${liveN} live`, "Photos per item depend on your category — see the 📷 Photo guide. Hidden items show what to fix.",
       `<a class="btn ghost" href="/help/photo-guide/" target="_blank">📷 Photo guide</a>${["garments", "footwear"].includes(S.type) ? `<button class="btn ghost" onclick="go('catalog/charts')">📏 Size charts</button>` : ""}<button class="btn ghost" onclick="go('catalog/bulk')">⇪ Bulk upload</button><button class="btn pink" onclick="editItem(null)">＋ Add item</button>`) + `
     <div class="bar2"><div class="fchips">${F.map(([k, l]) => `<button class="fchip ${catF === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div><div class="sp"></div>
@@ -382,7 +387,7 @@ function catalog() {
 }
 function drawCat() {
   const q = catQ.toLowerCase().trim();
-  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && hidden(i)) || (catF === "oos" && !i.in_stock) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
+  const list = D.items.filter(i => (catF === "all" || (catF === "missing" && hidden(i)) || (catF === "oos" && !i.in_stock) || (catF === "low" && lowI(i)) || (catF.startsWith("g:") && (i.grp || "").trim() === catF.slice(2)))
     && (!q || (i.name + " " + (i.grp || "")).toLowerCase().includes(q)));
   const fei = i => hidden(i) ? `<span class="pill bad" title="Hidden from customers">${esc(i.hidden_reason || "Add photos")}</span>` + (i.hidden_reason === "Add size chart" && (D.charts || []).length
       ? `<br><select class="in" style="margin-top:4px;padding:4px 8px;font-size:12px;width:auto" onchange="if(this.value)setChart('${i.id}',this.value)"><option value="">📏 Pick size chart…</option>${(D.charts || []).map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>` : "")
@@ -392,7 +397,7 @@ function drawCat() {
     <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
     <td class="hm">${i.mrp ? `<s style="color:#8E84A8">${inr(i.mrp)}</s>` : "—"}</td><td><b>${(i.variants || []).length ? i.variants.map(v => `${esc(v.n)} ${inr(v.p)}`).join("<br>") : inr(i.price)}</b></td>
-    <td style="white-space:nowrap">${fei(i)}</td><td><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button></td>
+    <td style="white-space:nowrap">${fei(i)}</td><td style="white-space:nowrap"><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button>${i.stock_qty != null ? `<div class="sub" style="margin:2px 0 0;font-size:11.5px;${lowI(i) ? "color:#8A5A00;font-weight:700" : ""}">${i.stock_qty} left</div>` : ""}</td>
     <td class="hm">${retLabel(i)}</td><td><button class="edit" onclick="editItem('${i.id}')">Edit</button></td></tr>`).join("")}</tbody></table>`
     : `<div class="sub" style="padding:18px 0">${D.items.length ? "No items match." : "No items yet. Add one, or upload your whole catalogue from Excel."}</div>`;
 }
@@ -474,7 +479,7 @@ function editItem(id) {
       ${K.courier === "sealed" ? `<div id="sealbox" style="display:${F_.courier ? "grid" : "none"};grid-template-columns:1fr 1fr;gap:10px;align-items:end"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13.5px;letter-spacing:0;color:#1D0F30"><input type="checkbox" id="fsl" ${F_.sealed ? "checked" : ""}> Sealed pack</label>
         <div><label>SHELF LIFE (MONTHS) *</label><input class="in" id="fsh" inputmode="numeric" maxlength="2" value="${i?.shelf_life_months ?? ""}"></div></div>` : ""}`) : ""}
     <label>STOCK — HOW MANY YOU HAVE (OPTIONAL)</label><input class="in" id="fsq" inputmode="numeric" maxlength="5" value="${i?.stock_qty ?? ""}" placeholder="${S.type === "footwear" ? "e.g. 100 (pairs)" : "e.g. 100"}" oninput="this.value=this.value.replace(/\\D/g,'');if(this.value!=='')$('#fs').classList.toggle('on',+this.value>0)">
-    <div class="sub" style="font-size:12px;margin:4px 0 8px">Goes down with each order and comes back if an order is cancelled. At 0 the item shows "Out of stock" by itself. Leave empty to use only the switch.</div>
+    <div class="sub" style="font-size:12px;margin:4px 0 8px">Goes down with each order; comes back on a cancel or when you check in returned items. You get an alert at 5 or fewer. At 0 the item shows "Out of stock" by itself. Leave empty to use only the switch.</div>
     <div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px"><div><b>In stock</b><span>On = customers can order • Off = out of stock (hidden)</span></div><button class="tog ${F_.stock ? "on" : ""}" id="fs"></button></div>
     <details style="margin-top:10px" ${i && (i.descr || i.gst_rate || (i.variants || []).length) ? "open" : ""}><summary class="sub" style="cursor:pointer">More: product details${S.gst_billing ? ", GST %" : ""}, multiple sizes</summary>
       <label>PRODUCT DETAILS</label><textarea class="in" id="fx" rows="2">${esc(i?.descr || "")}</textarea>
