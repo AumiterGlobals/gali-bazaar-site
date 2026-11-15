@@ -245,7 +245,7 @@ function dash() {
       <div style="flex:1;min-width:200px"><b>Add your FSSAI number</b><div class="sub">FSSAI registration is required for food shops. Add your 14-digit number to keep selling.</div></div>
       <a class="btn dark" href="/seller/shop/">Add FSSAI number</a></div>` : "") + `
     <div class="kpis k4">
-      <div class="kpi"><span>Today's sales</span><b>${inr(sales)}</b><small>${todayDone.length} order${todayDone.length === 1 ? "" : "s"} delivered</small></div>
+      <div class="kpi"><span>Today's sales</span><b>${inr(sales)}</b><small>${todayDone.length} order${todayDone.length === 1 ? "" : "s"} delivered${(o => o > 0 ? ` · 🪔 ${inr(o)} from offers` : "")(todayDone.reduce((a, o) => a + (o.items || []).filter(l => l.d && !(o.returned || []).includes(l.n)).reduce((x, l) => x + l.p * l.q, 0), 0))}</small></div>
       <div class="kpi"><span>New orders</span><b class="pk">${news.length}</b><small>waiting for you</small></div>
       <div class="kpi"><span>Cash with staff</span><b class="or">${inr(cash)}</b><small>${who.length ? esc(who.join(", ")) + " • not handed over" : "All cash received"}</small></div>
       <div class="kpi"><span>Returns coming back</span><b class="pu">${back.length}</b><small>${inr(backV)} • check in</small></div>
@@ -450,10 +450,61 @@ function catalog() {
         <span style="font-size:24px">🙈</span><div style="flex:1"><b style="color:#BE185D">${H.length} item${H.length === 1 ? "" : "s"} hidden — ${act}</b>
         <div class="sub" style="margin:0">${Object.entries(why).map(([k, v]) => `${esc(k)} (${v})`).join(" · ")} · customers can't see them</div></div>
         <b style="color:#BE185D">${catF === "missing" ? "Show all" : "Fix now →"}</b></div>`; })()}
+    ${COOKED() ? "" : `<div class="box" id="offbox" style="border:1.5px solid #F5C27A;background:#FFF5E6"></div>`}
     <div class="box" id="ct"></div><div class="sub">Items missing photos, pack details or a size chart are hidden from customers until fixed — the PHOTOS column says what to fix.</div>`;
   $$(".fchip").forEach(b => b.onclick = () => { catF = b.dataset.f; catalog(); });
   $("#q").oninput = e => { catQ = e.target.value; drawCat(); };
-  drawCat();
+  drawCat(); if (!COOKED()) loadOffers();
+}
+// ---- festival offers (update-76): select items → Discount %, or the whole shop; ends by itself ----
+let offSel = null, OFF = { items: [], shop: [] };   // offSel = Set of picked item ids while selecting
+async function loadOffers() {
+  const now = new Date().toISOString();
+  const [a, b] = await Promise.all([db.from("item_offers").select("*").eq("shop", S.id).is("ended_at", null).gt("ends", now).order("ends"),
+    db.from("shop_offers").select("*").eq("shop", S.id).is("ended_at", null).gt("ends", now).order("ends")]);
+  OFF = { items: a.data || [], shop: b.data || [] }; drawOffers(); drawCat();
+}
+function drawOffers() {
+  const el = $("#offbox"); if (!el) return;
+  const groups = {}; OFF.items.forEach(o => { const k = o.name + "|" + o.pct + "|" + o.ends.slice(0, 10); (groups[k] = groups[k] || []).push(o); });
+  const rows = [...OFF.shop.map(o => `<div class="offrow"><span>🏬 Whole shop <b>${o.pct}%</b> · ${esc(o.name)} · ${o.starts.slice(0, 10)} → ${o.ends.slice(0, 10)}${(o.exclude || []).length ? ` · ${o.exclude.length} left out` : ""}</span><button class="btn ghost sm" onclick="endOffer('shop','${o.id}')">End</button></div>`),
+    ...Object.values(groups).map(l => `<div class="offrow"><span>🏷️ ${l.length} item${l.length === 1 ? "" : "s"} <b>${l[0].pct}%</b> · ${esc(l[0].name)} · ${l[0].starts.slice(0, 10)} → ${l[0].ends.slice(0, 10)}</span><button class="btn ghost sm" onclick="endOffer('item','${l.map(o => o.id).join(",")}')">End</button></div>`)];
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:24px">🪔</span>
+    <div style="flex:1;min-width:200px"><b style="color:#8A4B00">Festival offers</b><div class="sub" style="margin:0">Give a % discount on some items or the whole shop. Customers see the struck price and a badge; it ends by itself.</div></div>
+    ${offSel ? `<button class="btn ghost" onclick="offSel=null;drawOffers();drawCat()">Cancel</button><button class="btn pink" ${offSel.size ? "" : "disabled"} onclick="offerForm('items')">Discount % on ${offSel.size} item${offSel.size === 1 ? "" : "s"}</button>`
+      : `<button class="btn ghost" onclick="offSel=new Set();drawOffers();drawCat()">☑ Select items</button><button class="btn" style="background:#B45309;color:#fff" onclick="offerForm('shop')">Whole shop</button>`}</div>
+    ${rows.length ? `<div style="margin-top:10px;display:grid;gap:6px">${rows.join("")}</div>` : ""}`;
+}
+function pickOff(id, on) { if (!offSel) return; on ? offSel.add(id) : offSel.delete(id); drawOffers(); }
+async function endOffer(kind, ids) {
+  for (const id of ids.split(",")) { const { error } = await db.rpc("seller_end_offer", { p_kind: kind, p_id: id }); if (error) return toast(niceErr(error)); }
+  toast("Offer ended"); loadOffers();
+}
+async function offerForm(kind) {
+  const d0 = new Date(), ymd = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10), today = ymd(d0);
+  const { data: fs } = await db.from("festivals").select("id,name,day,active").gte("day", today).order("day").limit(5);
+  const fest = (fs || []).find(f => f.active !== false) || null;
+  const from = fest ? [today, ymd(new Date(new Date(fest.day).getTime() - 2 * 864e5))].sort()[1] : today, to = fest ? fest.day : ymd(new Date(d0.getTime() + 3 * 864e5));
+  window._offFest = fest?.id || null;
+  drawer(`<h2><span>${kind === "items" ? `Discount on ${offSel.size} item${offSel.size === 1 ? "" : "s"}` : "Discount on the whole shop"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <label class="lbl">Discount % (1–90)</label><input class="in" id="opct" type="number" min="1" max="90" value="10">
+    <label class="lbl">Offer name (customers see it)</label><input class="in" id="oname" maxlength="30" value="${esc(fest ? fest.name + " offer" : "Festival offer")}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="lbl">From</label><input class="in" id="ofrom" type="date" min="${today}" value="${from}"></div><div><label class="lbl">Till</label><input class="in" id="oto" type="date" min="${today}" value="${to}"></div></div>
+    <div class="sub">Works on each item's price of 7 days ago (or today's if lower) and never goes above MRP. Size options get the same %. ${fest ? `Dates are set for ${esc(fest.name)} (${fest.day}).` : ""}</div>
+    ${kind === "shop" ? `<label class="lbl">Leave these items out (optional)</label><div style="max-height:220px;overflow:auto;border:1px solid #EEE7F7;border-radius:12px;padding:8px">${D.items.map(i => `<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" class="oex" value="${i.id}">${esc(i.name)}</label>`).join("")}</div>` : ""}
+    <button class="btn pink" style="width:100%;margin-top:14px" onclick="saveOffer('${kind}')">Save offer</button>`);
+}
+async function saveOffer(kind) {
+  const pct = +$("#opct").value, name = $("#oname").value.trim(), from = $("#ofrom").value, to = $("#oto").value;
+  if (!(pct >= 1 && pct <= 90)) return toast("Discount must be 1–90%");
+  if (!from || !to || to < from) return toast("Pick the start and end dates");
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const starts = from === today ? new Date().toISOString() : from + "T00:00:00+05:30", ends = to + "T23:59:59+05:30";
+  const { error } = kind === "items"
+    ? await db.rpc("seller_item_offer", { p_items: [...offSel], p_pct: pct, p_starts: starts, p_ends: ends, p_name: name, p_fest: window._offFest })
+    : await db.rpc("seller_shop_offer", { p_pct: pct, p_starts: starts, p_ends: ends, p_name: name, p_exclude: $$(".oex").filter(c => c.checked).map(c => c.value), p_fest: window._offFest });
+  if (error) return toast(niceErr(error));
+  toast(`Offer saved — customers see it from ${from}`); closeDrawer(); offSel = null; loadOffers();
 }
 function drawCat() {
   const q = catQ.toLowerCase().trim();
@@ -464,7 +515,7 @@ function drawCat() {
     : i.photos && Object.keys(i.photos).length ? Object.keys(i.photos).filter(k => i.photos[k]).map(k => `<span class="pill ok" style="padding:2px 6px;margin-right:2px" title="${esc(k)}">${esc(SLOT_ABBR[k] || k.replace(/^c-/, ""))}</span>`).join("")
     : `<span class="pill ok" style="padding:2px 6px">${photos(i).length}</span>`;
   $("#ct").innerHTML = list.length ? `<table><thead><tr><th>ITEM</th><th class="hm">CATEGORY</th><th class="hm">UNIT</th><th class="hm">MRP</th><th>YOUR PRICE</th><th>PHOTOS</th><th>IN STOCK</th><th class="hm">RETURN</th><th></th></tr></thead><tbody>${list.map(i => `<tr>
-    <td><div style="display:flex;align-items:center;gap:10px">${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<b>${esc(i.name)}</b></div></td>
+    <td><div style="display:flex;align-items:center;gap:10px">${offSel ? `<input type="checkbox" ${offSel.has(i.id) ? "checked" : ""} onchange="pickOff('${i.id}',this.checked)" style="width:18px;height:18px">` : ""}${photos(i)[0] ? `<img src="${esc(thumbUrl(photos(i)[0]))}" onerror="this.onerror=null;this.src='${esc(photos(i)[0])}'" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#F6F2FB" loading="lazy">` : `<span style="width:40px;height:40px;border-radius:10px;background:#F6F2FB;display:inline-flex;align-items:center;justify-content:center">📦</span>`}<div><b>${esc(i.name)}</b>${(o => o ? `<div style="color:#B45309;font-weight:700;font-size:11.5px">🪔 ${o.pct}% · ${esc(o.name)}</div>` : "")(OFF.items.find(o => o.item === i.id))}</div></div></td>
     <td class="hm">${esc(i.grp || "—")}</td><td class="hm">${esc(i.unit || (i.variants || []).map(v => v.n).join(", ") || "—")}</td>
     <td class="hm">${i.mrp ? `<s style="color:#8E84A8">${inr(i.mrp)}</s>` : "—"}</td><td><b>${(i.variants || []).length ? i.variants.map(v => `${esc(v.n)} ${inr(v.p)}`).join("<br>") : inr(i.price)}</b></td>
     <td style="white-space:nowrap">${fei(i)}</td><td style="white-space:nowrap"><button class="tog ${i.in_stock ? "on" : ""}" onclick="stock('${i.id}',${!i.in_stock})" aria-label="In stock"></button>${i.stock_qty != null ? (lowI(i) && i.in_stock ? `<div style="margin:3px 0 0"><span style="display:inline-block;background:#FFEDD5;color:#C2410C;font-weight:700;font-size:11px;border-radius:20px;padding:1px 8px">${i.stock_qty} left</span></div>` : `<div class="sub" style="margin:2px 0 0;font-size:11.5px">${i.stock_qty} left</div>`) : ""}</td>
@@ -927,14 +978,14 @@ function billDl(kind) {
   const { rows, notes, f, t, kept, billTot } = BILLS, gstOn = !!(S.gst_billing && S.gstin), f2 = v => Number(v || 0).toFixed(2);
   const tax = l => l.g > 0 ? l.p * l.q * l.g / (100 + l.g) : 0, per = `${f}_to_${t}`;
   if (kind === "register") {
-    const h = ["Bill No", "Date", "Customer", "Phone", "Source", "Items", "Goods value", "Delivery", "Bill total", "Paid by"]; if (gstOn) h.push("Taxable", "CGST", "SGST", "GST rates");
+    const h = ["Bill No", "Date", "Customer", "Phone", "Source", "Items", "Goods value", "Festival discount", "Delivery", "Bill total", "Paid by"]; if (gstOn) h.push("Taxable", "CGST", "SGST", "GST rates");
     return csvDownload(`sales-register-${per}.csv`, [h, ...rows.map(r => { const goods = (r.items || []).reduce((a, l) => a + l.p * l.q, 0), tx = (r.items || []).reduce((a, l) => a + tax(l), 0);
-      const row = [r.bill_no, (r.delivered_at || r.created_at || "").slice(0, 10), r.cust_name, r.cust_phone || "", r.counter ? "Counter bill" : "App order", (r.items || []).map(l => `${l.n} x${l.q}`).join("; "), f2(goods), f2(r.fee), f2(billTot(r)), r.pay_mode || "Cash"];
+      const row = [r.bill_no, (r.delivered_at || r.created_at || "").slice(0, 10), r.cust_name, r.cust_phone || "", r.counter ? "Counter bill" : "App order", (r.items || []).map(l => `${l.n} x${l.q}`).join("; "), f2(goods), f2(offSaved(r)), f2(r.fee), f2(billTot(r)), r.pay_mode || "Cash"];
       if (gstOn) row.push(f2(goods - tx), f2(tx / 2), f2(tx / 2), [...new Set((r.items || []).map(l => (l.g || 0) + "%"))].join("/")); return row; })]);
   }
   if (kind === "items") {
-    const m = {}; rows.forEach(r => (r.items || []).forEach(l => { const k = l.n; m[k] = m[k] || { q: 0, a: 0, g: l.g, h: l.h }; m[k].q += l.q; m[k].a += l.p * l.q; }));
-    return csvDownload(`item-sales-${per}.csv`, [["Item", "HSN", "Qty", "Amount", "GST %"], ...Object.entries(m).sort((a, b) => b[1].a - a[1].a).map(([n, v]) => [n, v.h || "", v.q, f2(v.a), v.g ?? ""])]);
+    const m = {}; rows.forEach(r => (r.items || []).forEach(l => { const k = l.n; m[k] = m[k] || { q: 0, a: 0, g: l.g, h: l.h, oq: 0, oa: 0 }; m[k].q += l.q; m[k].a += l.p * l.q; if (l.d) { m[k].oq += l.q; m[k].oa += l.p * l.q; } }));
+    return csvDownload(`item-sales-${per}.csv`, [["Item", "HSN", "Qty", "Amount", "GST %", "Qty on offer", "Sales from offers"], ...Object.entries(m).sort((a, b) => b[1].a - a[1].a).map(([n, v]) => [n, v.h || "", v.q, f2(v.a), v.g ?? "", v.oq, f2(v.oa)])]);
   }
   if (kind === "gst" || kind === "hsn") {
     const m = {}; rows.forEach(r => (r.items || []).filter(l => l.g > 0 || kind === "hsn").forEach(l => { const k = kind === "gst" ? String(l.g) : (l.h || "—") + "|" + (l.g || 0); m[k] = m[k] || { q: 0, gross: 0, tax: 0 }; m[k].q += l.q; m[k].gross += l.p * l.q; m[k].tax += tax(l); }));
@@ -946,6 +997,8 @@ function billDl(kind) {
   return csvDownload(`credit-notes-${per}.csv`, [["CN No", "Date", "Type", "Against bill", "Customer", "Items", "Amount", "Refund mode", "Reason"],
     ...notes.map(n => { const r = rows.find(x => x.id === (n.order_id || n.sale_id)) || {}; return [n.cn_no || "", n.cn_date || (n.created_at || "").slice(0, 10), n.kind, r.bill_no || "", r.cust_name || "", (n.items || []).map(l => `${l.n} x${l.q}`).join("; "), f2(n.amount), n.refund_mode || "", n.reason || ""]; })]);
 }
+// festival offers (update-76): what the customer saved on this order (lines carry b = base price, d = % off)
+const offSaved = r => (r.items || []).filter(l => l.d && !(r.returned || []).includes(l.n)).reduce((a, l) => a + ((l.b ?? l.p) - l.p) * l.q, 0);
 // one printable page with every bill / credit note (Print → Save as PDF)
 function billPrintAll(kind, onlyRows, onlyNotes) {
   const { rows, notes } = BILLS, gstOn = !!(S.gst_billing && S.gstin), f2 = v => Number(v || 0).toFixed(2);
@@ -957,8 +1010,9 @@ function billPrintAll(kind, onlyRows, onlyNotes) {
     return `<div class="doc">${headHtml}<div class="tag">${gstOn ? "TAX INVOICE" : "BILL OF SUPPLY"}</div>
       <div class="meta"><div><b>Bill no</b> ${esc(r.bill_no)}<br><b>Date</b> ${dmyy(r.delivered_at || r.created_at)}<br><b>Paid by</b> ${esc(r.pay_mode || "Cash")}</div><div><b>Billed to</b><br>${esc(r.cust_name)}${r.cust_phone ? " · " + esc(r.cust_phone) : ""}<br><span class="m">${esc(r.addr || "")}</span></div></div>
       <table><tr><th>#</th><th>Item${gstOn ? " · HSN" : ""}</th><th>Qty</th><th>Rate</th>${gstOn ? "<th>Taxable</th><th>GST</th>" : ""}<th>Amount</th></tr>
-      ${items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.n)} ${esc(l.u || "")}${gstOn && l.h ? `<br><small>HSN ${esc(l.h)}</small>` : ""}</td><td>${l.q}</td><td>${f2(l.p)}</td>${gstOn ? `<td>${f2(l.p * l.q - tax(l))}</td><td>${l.g || 0}%<br><small>C ${f2(tax(l) / 2)} · S ${f2(tax(l) / 2)}</small></td>` : ""}<td>${f2(l.p * l.q)}</td></tr>`).join("")}
+      ${items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.n)} ${esc(l.u || "")}${gstOn && l.h ? `<br><small>HSN ${esc(l.h)}</small>` : ""}${l.d ? `<br><small style="color:#B45309">Price ${f2(l.b)} − ${l.d}% ${esc(l.on || "offer")}</small>` : ""}</td><td>${l.q}</td><td>${f2(l.p)}</td>${gstOn ? `<td>${f2(l.p * l.q - tax(l))}</td><td>${l.g || 0}%<br><small>C ${f2(tax(l) / 2)} · S ${f2(tax(l) / 2)}</small></td>` : ""}<td>${f2(l.p * l.q)}</td></tr>`).join("")}
       ${fee ? `<tr><td></td><td>Delivery charges</td><td></td><td></td>${gstOn ? "<td></td><td></td>" : ""}<td>${f2(fee)}</td></tr>` : ""}
+      ${(sv => sv > 0 ? `<tr><td></td><td colspan="${gstOn ? 5 : 3}" style="color:#B45309">Festival discount (included above)</td><td style="color:#B45309">− ${f2(sv)}</td></tr>` : "")(offSaved(r))}
       <tr class="t"><td colspan="${gstOn ? 6 : 4}">Total</td><td>₹${f2(goods + fee)}</td></tr></table>
       ${(r.returned || []).length ? `<div class="m">Returned at the door: ${esc(r.returned.join(", "))} — reduced by credit note.</div>` : ""}
       ${gstOn ? `<div class="m">Whether tax is payable on reverse charge: No</div>` : `<div class="m">Seller not registered under GST · no GST charged.</div>`}

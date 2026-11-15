@@ -87,6 +87,7 @@ const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
 const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const iconSrc = i => /^https?:/.test(i) ? i : `/img/art/${i}.webp`;
 const LOGO = '<span class="logo"><span class="g">गली</span> Bazaar<span class="d">.</span></span>';
@@ -96,6 +97,8 @@ async function start() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) return loginView();
   const { data: me } = await db.from("profiles").select("role,name,email").eq("id", session.user.id).single();
+  // accountant (tax team, update-74): signs in here and sees only Tax & TDS
+  if (me && me.role !== "admin") { const { data: tax } = await db.rpc("is_tax_user"); if (tax === true) { window.ACCOUNTANT = true; NAV.splice(0, NAV.length, ["tax", "Tax & TDS"]); page = "tax"; shell(); go("tax"); return; } }
   if (!me || me.role !== "admin") {
     $("#root").innerHTML = `<div class="login">${LOGO}<h1>Not an admin account</h1><p class="sub">${esc(session.user.email)} is not set as admin.</p>
       <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`;
@@ -124,7 +127,7 @@ async function start() {
 
 function loginView() {
   let sent = false;
-  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">Sign in with the admin email. We send a code.</p>
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">Sign in with the admin or accountant email. We send a code.</p>
     <label>EMAIL</label><input class="in" id="em" type="email" placeholder="admin email">
     <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
     <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button>
@@ -145,7 +148,7 @@ function loginView() {
 }
 
 function shell() {
-  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>ADMIN CONSOLE</small><nav class="nav">
+  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>${window.ACCOUNTANT ? "TAX &amp; TDS · ACCOUNTANT" : "ADMIN CONSOLE"}</small><nav class="nav">
     ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}">${l}</a>`).join("")}
     <a href="/" style="margin-top:20px">← Website</a><a onclick="db.auth.signOut().then(()=>location.reload())">Sign out</a></nav></aside>
     <main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
@@ -156,6 +159,7 @@ function shell() {
 function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").classList.toggle("open", open); }
 function go(k) {
   page = k || "categories"; menu(false);
+  if (window.ACCOUNTANT) page = "tax";
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
   const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage, tax: taxPage };
@@ -403,6 +407,9 @@ async function settingsPage() {
     <label style="margin-top:10px"><input type="checkbox" id="st_auto" ${s.auto_kyc ? "checked" : ""}> KYC auto-checker on</label>
     <div class="sub" style="margin-top:8px">UPI ID for payments and GST details are changed in the admin app (Settings) — they need a confirmation step.</div>
     <div class="msg" id="st_m"></div><button class="btn pink" style="margin-top:12px" onclick="settingsSave()">Save</button></div>
+    ${"tax_report_emails" in s ? `<div class="box" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="font-size:22px">🧾</span><div style="flex:1;min-width:220px"><b>Accountant &amp; tax mail list</b>
+      <div class="sub" style="margin:0">${(s.tax_report_emails || []).length ? esc(s.tax_report_emails.join(", ")) : "<b style='color:#B0144F'>Empty — tax mails can't be sent</b>"} · add an accountant by email; they see only Tax &amp; TDS.</div></div>
+      <button class="btn dark" onclick="go('tax');setTimeout(()=>$('#txTeam')?.scrollIntoView({behavior:'smooth'}),900)">Open</button></div>` : ""}
     ${"nudges_on" in s ? `<div class="box" id="nudgeBox"><div class="sub">Loading nudges…</div></div>` : ""}
     ${"launch_on" in s ? launchBox(s) : ""}
     <div class="box"><h3>Unused KYC files</h3><div class="sub">Deletes KYC photos (PAN, Aadhaar, selfie, cheque) that no shop, delivery partner or sales partner uses any more — e.g. left after test data was cleaned. Photos of every existing account and anything uploaded in the last 24 hours are never touched.</div>
@@ -854,7 +861,7 @@ start();
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
-<script src="/admin/tax.js?v=1795860000"></script>
+<script src="/admin/tax.js?v=1795900000"></script>
 <script src="/admin/books.js?v=1795530000">
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";

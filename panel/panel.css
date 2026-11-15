@@ -121,3 +121,7 @@ body.po .main{padding-right:430px}
 .steps3>*{min-width:0}.msg.ok{background:none}.codes input{width:auto}
 .toprow{flex-wrap:wrap}
 @media(max-width:900px){.hm{display:none}.codes{gap:5px}.codes input{height:44px;font-size:18px;border-radius:10px}.st{padding:16px}.st .sub{margin-left:0}}
+/* festival offers (update-76) */
+.offrow{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #F5DDB5;border-radius:12px;padding:8px 10px;font-size:13px}
+.offrow span{flex:1}
+.btn.sm{padding:6px 12px;font-size:12.5px}
