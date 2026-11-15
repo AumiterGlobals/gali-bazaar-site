@@ -50,3 +50,9 @@ html.gbf-on.gbf-dark .hero h1 .p{background:linear-gradient(90deg,#FFF1C9 0%,#FF
 @media (prefers-reduced-motion:reduce){.gbf-scene .gbf-l{transition:none;transform:none!important}.gbf-scene canvas.gbf-p{display:none}}
 html.gbf-on.gbf-dark .hero a[href="/help/install/"]{color:#FFD27A!important}
 html.gbf-on.gbf-dark .hero .lead,html.gbf-on.gbf-dark .hero .stats{text-shadow:0 1px 8px rgba(0,0,0,.45)}
+/* scene engine (fest-engine.js): full-width canvas behind the home hero, ~640px tall at 1440 */
+html.gbf-engine .hero{min-height:640px}
+.gbf-scene canvas.gbf-e{position:absolute;inset:0;width:100%;height:100%;display:block}
+.gbf-scene .gbf-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,4,14,.55) 0%,rgba(10,4,14,.25) 45%,rgba(10,4,14,0) 70%)}
+@media (max-width:760px){html.gbf-engine .hero{min-height:0}.gbf-scene .gbf-shade{background:linear-gradient(180deg,rgba(10,4,14,.55) 0%,rgba(10,4,14,.2) 60%,rgba(10,4,14,.1) 100%)}}
+html.gbf-engine .gbf-deco-row{display:none}

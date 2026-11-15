@@ -457,7 +457,8 @@ function catalog() {
   drawCat(); if (!COOKED()) loadOffers();
 }
 // ---- festival offers (update-76): select items → Discount %, or the whole shop; ends by itself ----
-let offSel = null, OFF = { items: [], shop: [] };   // offSel = Set of picked item ids while selecting
+let offSel = null, OFF = { items: [], shop: [] };
+const offDay = iso => new Date(String(iso).slice(0, 10) + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });   // "24 Nov"   // offSel = Set of picked item ids while selecting
 async function loadOffers() {
   const now = new Date().toISOString();
   const [a, b] = await Promise.all([db.from("item_offers").select("*").eq("shop", S.id).is("ended_at", null).gt("ends", now).order("ends"),
@@ -466,9 +467,9 @@ async function loadOffers() {
 }
 function drawOffers() {
   const el = $("#offbox"); if (!el) return;
-  const groups = {}; OFF.items.forEach(o => { const k = o.name + "|" + o.pct + "|" + o.ends.slice(0, 10); (groups[k] = groups[k] || []).push(o); });
-  const rows = [...OFF.shop.map(o => `<div class="offrow"><span>🏬 Whole shop <b>${o.pct}%</b> · ${esc(o.name)} · ${o.starts.slice(0, 10)} → ${o.ends.slice(0, 10)}${(o.exclude || []).length ? ` · ${o.exclude.length} left out` : ""}</span><button class="btn ghost sm" onclick="endOffer('shop','${o.id}')">End</button></div>`),
-    ...Object.values(groups).map(l => `<div class="offrow"><span>🏷️ ${l.length} item${l.length === 1 ? "" : "s"} <b>${l[0].pct}%</b> · ${esc(l[0].name)} · ${l[0].starts.slice(0, 10)} → ${l[0].ends.slice(0, 10)}</span><button class="btn ghost sm" onclick="endOffer('item','${l.map(o => o.id).join(",")}')">End</button></div>`)];
+  const groups = {}; OFF.items.forEach(o => { const k = o.name + "|" + o.pct + "|" + offDay(o.ends); (groups[k] = groups[k] || []).push(o); });
+  const rows = [...OFF.shop.map(o => `<div class="offrow"><span>🏬 Whole shop <b>${o.pct}%</b> · ${esc(o.name)} · ${offDay(o.starts)} → ${offDay(o.ends)}${(o.exclude || []).length ? ` · ${o.exclude.length} left out` : ""}</span><button class="btn ghost sm" onclick="endOffer('shop','${o.id}')">End</button></div>`),
+    ...Object.values(groups).map(l => `<div class="offrow"><span>🏷️ ${l.length} item${l.length === 1 ? "" : "s"} <b>${l[0].pct}%</b> · ${esc(l[0].name)} · ${offDay(l[0].starts)} → ${offDay(l[0].ends)}</span><button class="btn ghost sm" onclick="endOffer('item','${l.map(o => o.id).join(",")}')">End</button></div>`)];
   el.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:24px">🪔</span>
     <div style="flex:1;min-width:200px"><b style="color:#8A4B00">Festival offers</b><div class="sub" style="margin:0">Give a % discount on some items or the whole shop. Customers see the struck price and a badge; it ends by itself.</div></div>
     ${offSel ? `<button class="btn ghost" onclick="offSel=null;drawOffers();drawCat()">Cancel</button><button class="btn pink" ${offSel.size ? "" : "disabled"} onclick="offerForm('items')">Discount % on ${offSel.size} item${offSel.size === 1 ? "" : "s"}</button>`
@@ -490,7 +491,7 @@ async function offerForm(kind) {
     <label class="lbl">Discount % (1–90)</label><input class="in" id="opct" type="number" min="1" max="90" value="10">
     <label class="lbl">Offer name (customers see it)</label><input class="in" id="oname" maxlength="30" value="${esc(fest ? fest.name + " offer" : "Festival offer")}">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="lbl">From</label><input class="in" id="ofrom" type="date" min="${today}" value="${from}"></div><div><label class="lbl">Till</label><input class="in" id="oto" type="date" min="${today}" value="${to}"></div></div>
-    <div class="sub">Works on each item's price of 7 days ago (or today's if lower) and never goes above MRP. Size options get the same %. ${fest ? `Dates are set for ${esc(fest.name)} (${fest.day}).` : ""}</div>
+    <div class="sub">Works on each item's price of 7 days ago (or today's if lower) and never goes above MRP. Size options get the same %. ${fest ? `Dates are set for ${esc(fest.name)} (${offDay(fest.day)}).` : ""}</div>
     ${kind === "shop" ? `<label class="lbl">Leave these items out (optional)</label><div style="max-height:220px;overflow:auto;border:1px solid #EEE7F7;border-radius:12px;padding:8px">${D.items.map(i => `<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" class="oex" value="${i.id}">${esc(i.name)}</label>`).join("")}</div>` : ""}
     <button class="btn pink" style="width:100%;margin-top:14px" onclick="saveOffer('${kind}')">Save offer</button>`);
 }
@@ -504,7 +505,7 @@ async function saveOffer(kind) {
     ? await db.rpc("seller_item_offer", { p_items: [...offSel], p_pct: pct, p_starts: starts, p_ends: ends, p_name: name, p_fest: window._offFest })
     : await db.rpc("seller_shop_offer", { p_pct: pct, p_starts: starts, p_ends: ends, p_name: name, p_exclude: $$(".oex").filter(c => c.checked).map(c => c.value), p_fest: window._offFest });
   if (error) return toast(niceErr(error));
-  toast(`Offer saved — customers see it from ${from}`); closeDrawer(); offSel = null; loadOffers();
+  toast(`Offer saved — customers see it from ${offDay(from)}`); closeDrawer(); offSel = null; loadOffers();
 }
 function drawCat() {
   const q = catQ.toLowerCase().trim();

@@ -166,6 +166,7 @@
     document.addEventListener("visibilitychange", function () { if (document.hidden) { run = false; cancelAnimationFrame(raf); } else if (!run) { run = true; raf = requestAnimationFrame(frame); } });
   }
   var PARTICLES = { diwali: "sparks", igas: "sparks", holi: "gulal", christmas: "snow", phooldei: "petals" };
+  var ENGINE = { igas: 1, diwali: 1 };   // scenes drawn by fest-engine.js (others: layered SVG for now)
 
   function dayText(f) {
     var left = Math.round((Date.parse(f.day + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 864e5);
@@ -190,7 +191,16 @@
     if (!L) return;
     // home / guides hero: drawn scene + swinging decorations
     var hero = document.querySelector("header.hero, .hero");
-    if (hero && !hero.querySelector(".gbf-scene")) {
+    var home = P === "/" || P === "/index.html";
+    if (hero && home && ENGINE[L.key] && !hero.querySelector(".gbf-scene")) {
+      // the full scene engine (assets/fest-engine.js — same drawing as the app's FestEngine.kt), home hero only
+      document.documentElement.classList.add("gbf-engine");
+      var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
+      hero.insertBefore(sc0, hero.firstChild);
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1795910000";
+      js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
+      document.head.appendChild(js);
+    } else if (hero && !hero.querySelector(".gbf-scene")) {
       var sc = document.createElement("div"); sc.className = "gbf-scene"; sc.innerHTML = sceneHTML(t[6], t); hero.insertBefore(sc, hero.firstChild);
       if (P === "/" || P === "/index.html") animate(hero, PARTICLES[L.key]);   // moving parts only on the home page
       var dr = document.createElement("div"); dr.className = "gbf-deco-row"; dr.innerHTML = Array.from(deco).filter(function (c) { return c.trim(); }).slice(0, 4).map(function (c) { return "<span>" + c + "</span>"; }).join("");
