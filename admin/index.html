@@ -85,7 +85,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["photos","Photo review"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["photos","Photo review"],["customers","Customers"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -165,7 +165,7 @@ function go(k, silent) {
   if (location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page);   // keep the address in step, so the menu link for the page you came from works again
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, photos: photosPage, bank: bankPage, tax: taxPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, photos: photosPage, customers: customersPage, bank: bankPage, tax: taxPage };
   tdBanner().catch(() => {});
   // silent = a live update: no "Loading…", the page keeps its scroll place (nobody should notice a refresh)
   const y = window.scrollY, mh = $("#main").offsetHeight;
@@ -894,6 +894,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/photos.js?v=1796200000"></script>
+<script src="/admin/customers.js?v=1796210000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
 <script src="/admin/tax.js?v=1796030000"></script>
 <script src="/admin/books.js?v=1795530000"></script>

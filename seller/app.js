@@ -357,8 +357,19 @@ async function openOrder(id) {
     ${o.return_reason ? `<div class="note">Return reason: ${esc(o.return_reason)}</div>` : ""}
     ${cn.length ? `<div class="sub" style="margin-top:8px">Credit note${cn.length > 1 ? "s" : ""}: ${cn.map(c => `<b>${esc(c.cn_no || "")}</b> ${inr(c.amount)}${c.auto ? " (auto)" : ""}`).join(", ")}</div>` : ""}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">${actions(o)} ${o.status === "DELIVERED" || o.status === "OUT" || o.status === "ACCEPTED" ? `<button class="mini" onclick="printBill('${o.id}')">Print</button>` : ""}
-      ${["PLACED", "ACCEPTED"].includes(o.status) ? `<button class="mini" style="color:#BE185D" onclick="cancelOrder('${o.id}')">Cancel order</button>` : ""}</div>
+      ${["PLACED", "ACCEPTED"].includes(o.status) ? `<button class="mini" style="color:#BE185D" onclick="cancelOrder('${o.id}')">Cancel order</button>` : ""}<button class="mini" style="color:#C62828" onclick="reportCustomer('${o.id}')">Report customer</button></div>
     <h3 style="font-size:14px;margin:18px 0 6px">Timeline</h3>${(o.log || []).map(l => `<div class="sub" style="margin:2px 0">${dt(l.t)} · ${esc((STATUS[l.s] || [l.s])[0])}</div>`).join("")}`, true);
+}
+// update-86: "Report customer" → admin "Customer reports" queue (the customer isn't told who reported)
+async function reportCustomer(id) {
+  const o = findO(id); if (!o) return;
+  const R = ["fake order", "refused cash on delivery", "abusive", "other"];
+  const pick = prompt(`Report the customer of order ${short(o)} — type the number:\n1. Fake order\n2. Refused cash on delivery\n3. Abusive\n4. Other`, "1");
+  const reason = R[Number(pick) - 1]; if (!reason) return;
+  const note = prompt(reason === "other" ? "What happened? (needed)" : "What happened? (optional)", "") || "";
+  if (reason === "other" && note.trim().length < 3) return alert("Write what happened");
+  const { error } = await db.rpc("report_customer", { p_order: id, p_reason: reason, p_note: note.trim() || null });
+  if (error) return alert(niceErr(error)); toast("Reported to Gali Bazaar");
 }
 async function cancelOrder(id) { const o = findO(id); if (!confirm(`Cancel order ${short(o)}?`)) return; if (await setStatus(o, "CANCELLED")) { closeDrawer(); toast("Order cancelled"); page(); } }
 function printBill(id) {
