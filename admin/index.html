@@ -192,7 +192,7 @@ async function courierPage() {
   const nr = ords.filter(o => o.not_received_at && o.status === "OUT");
   const auto = ords.filter(o => o.auto_cancel_reason);
   const byShop = {}; ords.forEach(o => { const b = byShop[o.shop] = byShop[o.shop] || { n: 0, ref: 0, late: 0 }; b.n++; if (o.refused_at) b.ref++; if (o.auto_cancel_reason === "No tracking added by the dispatch date") b.late++; });
-  const perDay = {}; ords.forEach(o => { const d = o.created_at.slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; });
+  const perDay = {}; ords.forEach(o => { const d = String(o.created_at || "").slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; });
   const row = o => `<tr><td><b>#${esc(o.short_id)}</b><div class="sub" style="margin:0">${esc(o.cust_name)}</div></td><td>${esc(nm(o.shop))}<div class="sub" style="margin:0">${esc(S[o.shop]?.phone || "")}</div></td><td>${inr(o.total)}</td>
     <td>${o.awb ? esc(o.courier_name + " · " + o.awb) : o.dispatch_date ? "Dispatch " + esc(o.dispatch_date) : "—"}</td><td>${esc(o.auto_cancel_reason || (o.not_received_at ? "Not received" : o.refused_at ? "Refused: " + o.refuse_reason : "Late"))}</td></tr>`;
   const tbl = (l, empty) => l.length ? `<table><thead><tr><th>ORDER</th><th>SHOP</th><th>COD</th><th>COURIER</th><th>ISSUE</th></tr></thead><tbody>${l.map(row).join("")}</tbody></table>` : `<div class="sub" style="padding:10px 0">${empty}</div>`;
@@ -205,7 +205,7 @@ async function courierPage() {
         <td><button class="btn ${s.courier_blocked ? "pink" : "ghost"}" onclick="courierPause('${s.id}', ${!s.courier_blocked})">${s.courier_blocked ? "Turn courier back on" : "Pause courier"}</button></td></tr>`; }).join("") || `<tr><td colspan="6" class="sub">No shop sells by courier yet.</td></tr>`}</tbody></table></div>
     <div class="grid2"><div class="box"><h3>Courier orders per day</h3>${Object.entries(perDay).sort().reverse().slice(0, 14).map(([d, n]) => `<div class="row"><div><b>${esc(d)}</b></div><b>${n}</b></div>`).join("") || `<div class="sub">No orders yet.</div>`}</div>
     <div class="box"><h3>Customers with courier paused (${paused.length})</h3><div class="sub">2 refused parcels in 60 days without a valid reason → courier ordering paused 30 days.</div>
-      ${paused.map(p => `<div class="row"><div><b>${esc(p.name || "—")}</b><span>${esc(p.phone || "")} · till ${esc(p.courier_paused_until.slice(0, 10))}</span></div><button class="btn ghost" onclick="courierLift('${p.id}')">Lift</button></div>`).join("")}</div></div>`;
+      ${paused.map(p => `<div class="row"><div><b>${esc(p.name || "—")}</b><span>${esc(p.phone || "")} · till ${esc(String(p.courier_paused_until || "").slice(0, 10))}</span></div><button class="btn ghost" onclick="courierLift('${p.id}')">Lift</button></div>`).join("")}</div></div>`;
 }
 async function courierPause(id, pause) {
   if (!confirm(pause ? "Pause courier selling for this shop? Local delivery keeps working." : "Turn courier selling back on for this shop?")) return;
