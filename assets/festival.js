@@ -25,7 +25,7 @@
     ghughutiya: ["#FEE5BD", "#FFF0D9", "#C5CAE8", "#7F6157", "Kale kauva kale! Uttarayani ki badhai", "🐦‍⬛🌾🍯🐦‍⬛", "ghughutiya"]
   };
   // the drawn scene decides light or dark (text colour on it), not the theme colours — same map as the app's Themes.kt
-  var SCENE_DARK = { igas: true, diwali: true, phooldei: false, harela: false, ghughutiya: false };
+  var SCENE_DARK = { igas: true, diwali: true, chhath: true, phooldei: false, harela: false, ghughutiya: false };
   var ALIAS = { independence: "india", republic: "india", newyear: "christmas", xmas: "christmas", lohri: "sankranti", pongal: "sankranti",
     janmashtami: "ganesh", durga: "navratri", uttarayani: "ghughutiya" };
 
@@ -175,7 +175,7 @@
     if (window.IntersectionObserver) new IntersectionObserver(function (es) { if (es[0].isIntersecting) { if (!run) { run = true; raf = requestAnimationFrame(frame); } } else { run = false; cancelAnimationFrame(raf); } }).observe(cv);
   }
   var PARTICLES = { diwali: "sparks", igas: "sparks", holi: "gulal", christmas: "snow", phooldei: "petals" };
-  var ENGINE = { igas: 1, diwali: 1, phooldei: 1, harela: 1, ghughutiya: 1 };   // scenes drawn by fest-engine.js (others: layered SVG for now)
+  var ENGINE = { igas: 1, diwali: 1, chhath: 1, phooldei: 1, harela: 1, ghughutiya: 1 };   // scenes drawn by fest-engine.js (others: layered SVG for now)
 
   function dayText(f) {
     var left = Math.round((Date.parse(f.day + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 864e5);
@@ -206,7 +206,7 @@
       document.documentElement.classList.add("gbf-engine");
       var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
       hero.insertBefore(sc0, hero.firstChild);
-      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796040000";
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796080000";
       js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
       document.head.appendChild(js);
     } else if (hero && !hero.querySelector(".gbf-scene")) {

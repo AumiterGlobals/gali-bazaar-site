@@ -441,7 +441,109 @@
     ctx.save(); ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = rgba(P.warm, .12 + .04 * flick); ctx.fillRect(0, 0, W, H); ctx.restore();
     grain(ctx, W, H, t);
   }
-  var SCENES = { igas: igas, diwali: diwali, phooldei: dayScene("phooldei"), harela: dayScene("harela"), ghughutiya: dayScene("ghughutiya") };
+
+  // ---------- CHHATH (sunset ghat: the sinking sun on the river, arghya, floating diyas) ----------
+  function soopPerson(ctx, x, y, h, col, t, i) {
+    // standing waist-deep, both hands up holding the soop (winnow) towards the sun
+    ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
+    var sway = Math.sin(t * 1.1 + i) * h * .01;
+    ctx.beginPath(); ctx.arc(x + sway, y - h * .9, h * .085, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - h * .11, y - h * .78); ctx.lineTo(x + h * .11, y - h * .78); ctx.lineTo(x + h * .17, y - h * .3); ctx.lineTo(x - h * .17, y - h * .3); ctx.closePath(); ctx.fill();
+    // pallu over the head
+    ctx.beginPath(); ctx.moveTo(x - h * .1 + sway, y - h * .96); ctx.quadraticCurveTo(x - h * .2, y - h * .7, x - h * .16, y - h * .45); ctx.lineTo(x - h * .08, y - h * .78); ctx.fill();
+    var sx = x + h * .2, sy = y - h * 1.08;
+    ctx.lineWidth = h * .045; ctx.beginPath(); ctx.moveTo(x + h * .08, y - h * .74); ctx.lineTo(sx - h * .04, sy + h * .06); ctx.moveTo(x - h * .08, y - h * .74); ctx.lineTo(sx - h * .14, sy + h * .04); ctx.stroke();
+    // soop with fruit and a diya
+    ctx.fillStyle = "#3A1F14"; ctx.beginPath(); ctx.ellipse(sx - h * .08, sy, h * .17, h * .05, -.15, 0, TAU); ctx.fill();
+    return [sx - h * .02, sy - h * .03];
+  }
+  function chhath(ctx, W, H, t, o) {
+    var u = Math.min(H / 640, W / 480), cam = { u: u, mx: 0, my: 0, tc: o.tc }, S = o.pass !== "fx", D = o.pass !== "bg", lite = !!o.lite;
+    var wide = W > 900, hz = H * .6, sunX = W * (wide ? .5 : .5), sunY = hz - 26 * u, sunR = 42 * u;   // wide: the sun sits in the gap between the text and the phones
+    if (S) {
+      var sky = ctx.createLinearGradient(0, 0, 0, hz); sky.addColorStop(0, "#2A1238"); sky.addColorStop(.45, "#7A2E4A"); sky.addColorStop(.8, "#E0663A"); sky.addColorStop(1, "#FFB46A");
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hz + 2);
+      // the sun, half a disc above the far bank, with a wide warm glow
+      glow(ctx, sunX, sunY, sunR * 9, [255, 140, 70], .35); glow(ctx, sunX, sunY, sunR * 3.2, [255, 200, 120], .55);
+      ctx.fillStyle = "#FFE3A3"; ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,170,90,.35)"; ctx.beginPath(); ctx.arc(sunX, sunY, sunR * .82, 0, TAU); ctx.fill();
+      // thin clouds across the sun
+      for (var k = 0; k < 5; k++) { var cy = H * (.14 + k * .07), cw = W * (.35 + h1(k * 3) * .4), cx = h1(k * 7) * W;
+        ctx.fillStyle = "rgba(255,190,150," + (.10 + .05 * h1(k)) + ")"; ctx.beginPath(); ctx.ellipse(cx, cy, cw / 2, 3 * u + h1(k * 5) * 4 * u, 0, 0, TAU); ctx.fill(); }
+      // far bank: trees and a temple shikhar, dark against the sky
+      ctx.fillStyle = "#2A1424"; ctx.beginPath(); ctx.moveTo(-10, hz + 2);
+      for (var x = -10; x <= W + 10; x += 6) ctx.lineTo(x, hz - 6 * u - 16 * u * Math.pow(fbm(x / W * 7 + 3, 4), 1.4) * 2);
+      ctx.lineTo(W + 10, hz + 2); ctx.closePath(); ctx.fill();
+      var tx = W * .2; ctx.beginPath(); ctx.moveTo(tx - 14 * u, hz - 8 * u); ctx.lineTo(tx - 9 * u, hz - 34 * u); ctx.lineTo(tx, hz - 52 * u); ctx.lineTo(tx + 9 * u, hz - 34 * u); ctx.lineTo(tx + 14 * u, hz - 8 * u); ctx.fill();
+      ctx.fillRect(tx - 1, hz - 62 * u, 2, 11 * u);
+      // river
+      var wv = ctx.createLinearGradient(0, hz, 0, H); wv.addColorStop(0, "#C9603C"); wv.addColorStop(.35, "#6B2A3E"); wv.addColorStop(1, "#221024");
+      ctx.fillStyle = wv; ctx.fillRect(0, hz, W, H - hz);
+      // ghat steps, bottom left
+      for (var st = 0; st < 5; st++) { var sy = H * .84 + st * H * .035; ctx.fillStyle = st % 2 ? "#3B2230" : "#4A2C38";
+        ctx.beginPath(); ctx.moveTo(-10, sy); ctx.lineTo(W * (.36 - st * .03), sy); ctx.lineTo(W * (.36 - st * .03) + 8 * u, sy + H * .035); ctx.lineTo(-10, sy + H * .035); ctx.fill(); }
+      // kosi: sugarcane canopy with a pot, on the steps
+      var kx = W * (wide ? .42 : .1), ky = H * .845;
+      ctx.strokeStyle = "#2E5A23"; ctx.lineWidth = 3 * u; ctx.beginPath();
+      for (var c4 = 0; c4 < 4; c4++) { var bx = kx + (c4 - 1.5) * 16 * u; ctx.moveTo(bx, ky); ctx.lineTo(kx + (c4 - 1.5) * 4 * u, ky - 78 * u); } ctx.stroke();
+      ctx.strokeStyle = "#3F7A2E"; ctx.lineWidth = 1.6 * u; ctx.beginPath();
+      for (var lf = 0; lf < 8; lf++) { var lx = kx + (lf - 3.5) * 5 * u; ctx.moveTo(kx, ky - 76 * u); ctx.quadraticCurveTo(lx, ky - 100 * u, lx + (lf - 3.5) * 6 * u, ky - 84 * u); } ctx.stroke();
+      ctx.fillStyle = "#8A3A1E"; ctx.beginPath(); ctx.ellipse(kx, ky - 6 * u, 13 * u, 9 * u, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "#F4C542"; ctx.beginPath(); ctx.ellipse(kx, ky - 13 * u, 9 * u, 3 * u, 0, 0, TAU); ctx.fill();
+    }
+    if (!D) { post(ctx, W, H, t, [255, 150, 90], .5, o); return; }
+    // the sun's path on the water: shimmering streaks
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    var nL = lite ? 26 : 44;
+    for (var i = 0; i < nL; i++) {
+      var k2 = i / nL, y = hz + 3 + Math.pow(k2, 1.6) * (H - hz) * .92, wdt = (14 + k2 * 120) * u * (.6 + .4 * noise(t * 1.3 + i * 3.1));
+      var off = Math.sin(t * 1.7 + i * 1.9) * 6 * u * (1 + k2 * 2);
+      ctx.fillStyle = rgba([255, 205, 130], (.55 - k2 * .4) * (.5 + .5 * noise(t * 2.1 + i)));
+      ctx.fillRect(sunX - wdt / 2 + off, y, wdt, (1.2 + k2 * 2.5) * u);
+    }
+    ctx.restore();
+    // gentle ripples across the river
+    ctx.strokeStyle = "rgba(255,190,150,.10)"; ctx.lineWidth = 1;
+    for (var r = 0; r < (lite ? 6 : 10); r++) { var ry = hz + 12 * u + h1(r * 3) * (H - hz) * .8, rx = ((h1(r * 5) * W + t * (8 + r) * u) % (W + 120)) - 60;
+      ctx.beginPath(); ctx.moveTo(rx, ry); ctx.quadraticCurveTo(rx + 20 * u, ry - 2 * u, rx + 40 * u, ry); ctx.stroke(); }
+    // floating diyas, drifting and bobbing, each with its reflection
+    var nd = lite ? 7 : 11;
+    for (var d = 0; d < nd; d++) {
+      var dk = h1(d * 7.3), dy = hz + 20 * u + dk * (H * .82 - hz - 20 * u), sc = .55 + dk * .7;
+      var dx = ((h1(d * 3.1) * (W + 80) + t * (5 + h1(d) * 6) * u) % (W + 80)) - 40, bob = Math.sin(t * 1.6 + d * 2) * 1.6 * u;
+      glow(ctx, dx, dy + 6 * u * sc, 16 * u * sc, [255, 150, 60], .25);   // reflection
+      ctx.fillStyle = "#7A3418"; ctx.beginPath(); ctx.ellipse(dx, dy + bob, 6 * u * sc, 2.4 * u * sc, 0, 0, Math.PI); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; flame(ctx, dx, dy + bob - 1, 1.6 * u * sc, t, d); ctx.restore();
+    }
+    // people in the water offering arghya: water pours from the lota in a thin arc
+    var base = hz + (H - hz) * .55, ph = H * .2, ppl = wide ? [W * .5, W * .955] : [W * .2, W * .9];
+    var col = "#1C0C18";
+    for (var p = 0; p < ppl.length; p++) {
+      var hgt = ph * (p === 1 ? .95 : .85), px = ppl[p], py = base + p * 4 * u;
+      var hand = soopPerson(ctx, px, py, hgt, col, t, p);
+      // water hides below the waist line
+      ctx.fillStyle = "rgba(60,22,40,.92)"; ctx.fillRect(px - hgt * .3, py - hgt * .38, hgt * .6, hgt * .42);
+      ctx.strokeStyle = "rgba(255,200,150,.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(px, py - hgt * .38, hgt * .22 * (1 + .05 * Math.sin(t * 2 + p)), hgt * .03, 0, 0, TAU); ctx.stroke();
+      // the arghya stream
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for (var q = 0; q < (lite ? 8 : 14); q++) { var a = ((t * .9 + q / 14 + p * .3) % 1), wx = hand[0] + a * hgt * .12, wy = hand[1] + a * a * hgt * .7;
+        glow(ctx, wx, wy, 2.6 * u, [255, 220, 170], .55 * (1 - a)); }
+      ctx.restore();
+      // a diya on the soop
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; flame(ctx, hand[0] - hgt * .1, hand[1] - 1, 1.3 * u, t, p + 20); ctx.restore();
+    }
+    // birds heading home across the sun
+    ctx.strokeStyle = "rgba(30,12,24,.8)"; ctx.lineWidth = 1.4 * u; ctx.lineCap = "round";
+    for (var b = 0; b < (lite ? 4 : 7); b++) { var bl = 16 + h1(b * 4) * 8, ba = ((t + h1(b * 6) * bl) % bl) / bl, bx = W + 30 - ba * (W + 60), by = H * (.2 + h1(b * 8) * .2) + Math.sin(ba * 6 + b) * 8 * u, bs = (4 + h1(b) * 3) * u, f = Math.sin(t * 7 + b) * .7;
+      ctx.beginPath(); ctx.moveTo(bx - bs * 1.4, by - bs * f); ctx.quadraticCurveTo(bx - bs * .5, by - bs * .3, bx, by); ctx.quadraticCurveTo(bx + bs * .5, by - bs * .3, bx + bs * 1.4, by - bs * f); ctx.stroke(); }
+    // warm motes over the water
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (var m = 0; m < (lite ? 18 : 34); m++) { var ml = 5 + h1(m * 2) * 4, ma = (t + h1(m * 9) * ml) % ml, mk = ma / ml, mx2 = h1(m * 3.7) * W + Math.sin(ma + m) * 14 * u, my2 = H * .95 - ma * 22 * u;
+      glow(ctx, mx2, my2, 3.4 * u, [255, 190, 110], .45 * Math.sin(mk * Math.PI)); }
+    ctx.restore();
+  }
+
+  var SCENES = { igas: igas, diwali: diwali, chhath: chhath, phooldei: dayScene("phooldei"), harela: dayScene("harela"), ghughutiya: dayScene("ghughutiya") };
   var E = {
     has: function (k) { return !!SCENES[k]; },
     draw: function (ctx, W, H, t, k, o) { (SCENES[k] || igas)(ctx, W, H, t, o || {}); },
