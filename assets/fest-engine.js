@@ -116,16 +116,74 @@
     ctx.closePath(); ctx.fill();
   }
   // faceless person: head + kurta + legs; arm up to (ax, ay) if given
-  function person(ctx, x, y, h, col, armTo, bounce) {
-    y -= bounce || 0;
-    ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.arc(x, y - h * .9, h * .085, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - h * .1, y - h * .78); ctx.lineTo(x + h * .1, y - h * .78); ctx.lineTo(x + h * .16, y - h * .32); ctx.lineTo(x - h * .16, y - h * .32); ctx.closePath(); ctx.fill();
-    ctx.lineWidth = h * .055; ctx.beginPath(); ctx.moveTo(x - h * .06, y - h * .34); ctx.lineTo(x - h * .08, y); ctx.moveTo(x + h * .06, y - h * .34); ctx.lineTo(x + h * .08, y); ctx.stroke();
-    ctx.lineWidth = h * .045; ctx.beginPath();
-    if (armTo) { ctx.moveTo(x + h * .08, y - h * .74); ctx.lineTo(armTo[0], armTo[1]); ctx.moveTo(x - h * .08, y - h * .74); ctx.lineTo(x - h * .2, y - h * .5); }
-    else { ctx.moveTo(x - h * .08, y - h * .74); ctx.lineTo(x - h * .22, y - h * 1.08); ctx.moveTo(x + h * .08, y - h * .74); ctx.lineTo(x + h * .22, y - h * 1.08); }
-    ctx.stroke();
+  // ---------- people: real proportions, clothes and a rim of light from the fire / sun (faces are never drawn) ----------
+  // o: g = "saree" | "kurta" | "kid" | "kidg" (girl in a frock), arm = [x, y] where the right hand goes (else arms by o.pose:
+  // "up" both hands raised, "side" relaxed), rim = [r,g,b] light colour, side = +1 light from the right / -1 from the left, t, i
+  function ik(sx, sy, tx, ty, a, b, out) {   // two-bone arm: shoulder → elbow → hand, elbow bends outward/down
+    var dx = tx - sx, dy = ty - sy, d = Math.min(Math.hypot(dx, dy), a + b - .01), ang = Math.atan2(dy, dx);
+    var k = Math.acos(clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1)) * out;
+    return [sx + Math.cos(ang + k) * a, sy + Math.sin(ang + k) * a, sx + Math.cos(ang) * d, sy + Math.sin(ang) * d];
+  }
+  function human(ctx, x, y, h, col, o) {
+    o = o || {}; var g = o.g || "kurta", kid = g === "kid" || g === "kidg", t = o.t || 0, i = o.i || 0;
+    y -= o.bounce || 0;
+    var hr = h * (kid ? .085 : .066), hy = y - h + hr * 1.1, sh = y - h * (kid ? .76 : .81), sw = h * (kid ? .1 : .115);
+    var waist = y - h * (kid ? .5 : .52), hip = y - h * (kid ? .44 : .44), sway = Math.sin(t * 1.3 + i) * h * .012;
+    var A = h * (kid ? .15 : .165), B = h * (kid ? .14 : .155);   // upper arm, forearm
+    var rS = [x + sw * .92, sh + h * .015], lS = [x - sw * .92, sh + h * .015];
+    var rT = o.arm || (o.pose === "up" ? [x + sw * 1.3, sh - h * .36 + Math.sin(t * 5 + i) * h * .02] : [x + sw * .9, waist + h * .06]);
+    var lT = o.arm2 || (o.pose === "up" ? [x - sw * 1.3, sh - h * .36 + Math.cos(t * 5 + i) * h * .02] : [x - sw * .95 - (o.arm ? h * .05 : 0), waist + h * .07]);
+    var R = ik(rS[0], rS[1], rT[0], rT[1], A, B, o.pose === "up" ? -1 : 1), L = ik(lS[0], lS[1], lT[0], lT[1], A, B, o.pose === "up" ? 1 : -1);
+    function fig(c) {
+      ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      // legs / lower garment
+      if (g === "saree" || g === "kidg") {
+        var hem = g === "saree" ? h * .19 : h * .2, top = g === "saree" ? waist : sh + h * .06, bot = g === "saree" ? y : y - h * .2;
+        ctx.beginPath(); ctx.moveTo(x - sw * .7, top); ctx.quadraticCurveTo(x - sw * 1.05, (top + bot) / 2, x - hem / 2 + sway, bot);
+        ctx.lineTo(x + hem / 2 + sway, bot); ctx.quadraticCurveTo(x + sw * 1.05, (top + bot) / 2, x + sw * .7, top); ctx.closePath(); ctx.fill();
+        if (g === "kidg") { ctx.lineWidth = h * .05; ctx.beginPath(); ctx.moveTo(x - h * .04, bot); ctx.lineTo(x - h * .045, y); ctx.moveTo(x + h * .04, bot); ctx.lineTo(x + h * .045, y); ctx.stroke(); }
+      } else {
+        var step = Math.sin(t * 2 + i) * h * .01;
+        ctx.beginPath(); ctx.moveTo(x - sw * .78, hip); ctx.lineTo(x - h * .02, hip); ctx.lineTo(x - h * .03 + step, y); ctx.lineTo(x - h * .085 + step, y); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x + sw * .78, hip); ctx.lineTo(x + h * .02, hip); ctx.lineTo(x + h * .03 - step, y); ctx.lineTo(x + h * .085 - step, y); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x - h * .065 + step, y, h * .04, h * .014, 0, 0, TAU); ctx.ellipse(x + h * .065 - step, y, h * .04, h * .014, 0, 0, TAU); ctx.fill();
+      }
+      // torso: shoulders → waist (kurta runs down to the knee)
+      var tb = g === "kurta" ? y - h * .27 : g === "kid" ? hip + h * .03 : waist + h * .02, tw = g === "kurta" ? sw * 1.05 : sw * .78;
+      ctx.beginPath(); ctx.moveTo(x - sw, sh + h * .02); ctx.quadraticCurveTo(x - sw * 1.02, sh - h * .012, x - sw * .5, sh - h * .02);
+      ctx.lineTo(x + sw * .5, sh - h * .02); ctx.quadraticCurveTo(x + sw * 1.02, sh - h * .012, x + sw, sh + h * .02);
+      ctx.quadraticCurveTo(x + sw * .78, (sh + tb) / 2, x + tw, tb); ctx.lineTo(x - tw, tb); ctx.quadraticCurveTo(x - sw * .78, (sh + tb) / 2, x - sw, sh + h * .02); ctx.closePath(); ctx.fill();
+      // neck + head (slightly oval), hair bun for the women / girls
+      ctx.fillRect(x - h * .018, hy + hr * .6, h * .036, sh - hy - hr * .5);
+      ctx.beginPath(); ctx.ellipse(x, hy, hr * .86, hr, 0, 0, TAU); ctx.fill();
+      if (g === "saree" || g === "kidg") { ctx.beginPath(); ctx.arc(x - (o.side || 1) * hr * .8, hy + hr * .25, hr * .42, 0, TAU); ctx.fill(); }
+      // pallu: over the head, across the chest, falling behind the shoulder
+      if (g === "saree") {
+        ctx.beginPath(); ctx.moveTo(x - hr * 1.05, hy + hr * .2); ctx.quadraticCurveTo(x, hy - hr * 1.35, x + hr * 1.05, hy + hr * .2);
+        ctx.quadraticCurveTo(x + sw * 1.15, sh + h * .1, x + sw * .9, waist + h * .05 + sway); ctx.lineTo(x + sw * .5, waist);
+        ctx.quadraticCurveTo(x - sw * .2, sh + h * .12, x - sw * 1.08, sh + h * .02); ctx.closePath(); ctx.fill();
+      }
+      // arms: upper arm thicker than the forearm, small hands
+      ctx.lineWidth = h * (kid ? .05 : .045);
+      ctx.beginPath(); ctx.moveTo(rS[0], rS[1]); ctx.lineTo(R[0], R[1]); ctx.moveTo(lS[0], lS[1]); ctx.lineTo(L[0], L[1]); ctx.stroke();
+      ctx.lineWidth = h * (kid ? .04 : .036);
+      ctx.beginPath(); ctx.moveTo(R[0], R[1]); ctx.lineTo(R[2], R[3]); ctx.moveTo(L[0], L[1]); ctx.lineTo(L[2], L[3]); ctx.stroke();
+      ctx.beginPath(); ctx.arc(R[2], R[3], h * .022, 0, TAU); ctx.arc(L[2], L[3], h * .022, 0, TAU); ctx.fill();
+    }
+    if (o.rim) {   // a thin edge of warm light on the side facing the fire / sun
+      ctx.save(); ctx.translate((o.side || 1) * Math.max(1, h * .012), -Math.max(.5, h * .004)); fig(rgba(o.rim, .9)); ctx.restore();
+    }
+    fig(col);
+    if (g === "saree" && !o.flat) {   // a few pleat lines catch the light
+      ctx.strokeStyle = o.rim ? rgba(o.rim, .22) : "rgba(255,255,255,.08)"; ctx.lineWidth = Math.max(1, h * .006);
+      ctx.beginPath(); for (var pl = -1; pl <= 1; pl++) { ctx.moveTo(x + pl * h * .03, waist + h * .1); ctx.lineTo(x + pl * h * .05 + sway, y - h * .01); } ctx.stroke();
+    }
+    return [R[2], R[3], L[2], L[3]];
+  }
+  // older call shape kept: person(ctx, x, y, h, col, armTo, bounce, opts)
+  function person(ctx, x, y, h, col, armTo, bounce, o) {
+    o = o || {}; o.arm = armTo || null; o.bounce = bounce || 0; if (!armTo && !o.pose) o.pose = "up";
+    return human(ctx, x, y, h, col, o);
   }
   function flame(ctx, x, y, s, t, seed) {
     var f = .85 + .15 * noise(t * 9 + seed * 5);
@@ -204,11 +262,11 @@
         if (behind) { rope(); fire(); }
         // light pool on the ground
         ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(b[0], base); ctx.scale(1, .22); glow(ctx, 0, 0, ph * .9, [255, 140, 50], .22); ctx.restore();
-        person(ctx, px, base, ph, col, hand);
+        person(ctx, px, base, ph, col, hand, 0, { g: i ? "saree" : "kurta", rim: [255, 150, 60], side: b[0] > px ? 1 : -1, t: t, i: i });
         if (!behind) { rope(); fire(); }
       });
       var kids = near ? [W * .3, W * .55, W * .86] : [W * .3, W * .6, W * .86];
-      kids.forEach(function (kx, i) { person(ctx, kx, base + 2 * u, ph * .62, col, null, Math.abs(Math.sin(t * 4 + i * 1.3)) * 6 * u); });
+      kids.forEach(function (kx, i) { person(ctx, kx, base + 2 * u, ph * .62, col, null, Math.abs(Math.sin(t * 4 + i * 1.3)) * 6 * u, { g: i % 2 ? "kidg" : "kid", rim: [255, 140, 60], side: kx > W * .5 ? -1 : 1, t: t, i: i }); });
       o._fires = fires;
     });
     // particles: sparks from the bhailo fires, smoke, bokeh
@@ -404,16 +462,16 @@
       kids.forEach(function (kx, i) {
         var bob = Math.abs(Math.sin(t * 3 + i * 1.4)) * 4 * u, x = kx + Math.sin(t * .4 + i) * 6 * u, h = ph * (i === 1 ? .9 : .7);
         if (key === "harela") {   // planting: bent arm to a sapling
-          person(ctx, x, base, h, P.fig, [x + h * .3, base - h * .12], 0);
+          person(ctx, x, base, h, P.fig, [x + h * .3, base - h * .12], 0, { g: i % 2 ? "kid" : "kidg", rim: [255, 240, 210], side: 1, t: t, i: i });
           ctx.strokeStyle = "#2E6A24"; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(x + h * .32, base); ctx.lineTo(x + h * .32, base - h * .22); ctx.stroke();
           for (var l = 0; l < 3; l++) petal(ctx, x + h * .32 + (l - 1) * 4 * u, base - h * (.18 + l * .04), 3 * u, (l - 1) * .8 + Math.sin(t * 2 + i) * .2, "#4FA33A");
         } else if (key === "phooldei") {   // basket of flowers in hand
-          person(ctx, x, base, h, P.fig, [x + h * .22, base - h * .5], bob);
+          person(ctx, x, base, h, P.fig, [x + h * .22, base - h * .5], bob, { g: i % 2 ? "kid" : "kidg", rim: [255, 240, 210], side: 1, t: t, i: i });
           var bx = x + h * .26, by = base - h * .46 - bob; ctx.fillStyle = "#A0703F"; ctx.beginPath(); ctx.ellipse(bx, by, h * .14, h * .07, 0, 0, Math.PI); ctx.fill();
           ctx.strokeStyle = "#A0703F"; ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.arc(bx, by, h * .14, Math.PI, 0); ctx.stroke();
           for (var fl = 0; fl < 6; fl++) glow(ctx, bx + (fl - 2.5) * h * .045, by - 2 * u, 3.5 * u, fl % 2 ? [255, 200, 40] : [255, 110, 150], 1);
         } else {   // ghughutiya: arms up calling crows, mala on the neck
-          person(ctx, x, base, h, P.fig, null, bob);
+          person(ctx, x, base, h, P.fig, null, bob, { g: i % 2 ? "kid" : "kidg", rim: [255, 220, 180], side: 1, t: t, i: i });
           for (var m = 0; m < 7; m++) { var a = Math.PI * .15 + m / 6 * Math.PI * .7; ctx.fillStyle = "#C98A4B"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * h * .11, base - bob - h * .76 + Math.sin(a) * h * .1, 2.2 * u, 0, TAU); ctx.fill(); }
         }
       });
@@ -443,19 +501,13 @@
   }
 
   // ---------- CHHATH (sunset ghat: the sinking sun on the river, arghya, floating diyas) ----------
-  function soopPerson(ctx, x, y, h, col, t, i) {
-    // standing waist-deep, both hands up holding the soop (winnow) towards the sun
-    ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
-    var sway = Math.sin(t * 1.1 + i) * h * .01;
-    ctx.beginPath(); ctx.arc(x + sway, y - h * .9, h * .085, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - h * .11, y - h * .78); ctx.lineTo(x + h * .11, y - h * .78); ctx.lineTo(x + h * .17, y - h * .3); ctx.lineTo(x - h * .17, y - h * .3); ctx.closePath(); ctx.fill();
-    // pallu over the head
-    ctx.beginPath(); ctx.moveTo(x - h * .1 + sway, y - h * .96); ctx.quadraticCurveTo(x - h * .2, y - h * .7, x - h * .16, y - h * .45); ctx.lineTo(x - h * .08, y - h * .78); ctx.fill();
-    var sx = x + h * .2, sy = y - h * 1.08;
-    ctx.lineWidth = h * .045; ctx.beginPath(); ctx.moveTo(x + h * .08, y - h * .74); ctx.lineTo(sx - h * .04, sy + h * .06); ctx.moveTo(x - h * .08, y - h * .74); ctx.lineTo(sx - h * .14, sy + h * .04); ctx.stroke();
-    // soop with fruit and a diya
-    ctx.fillStyle = "#3A1F14"; ctx.beginPath(); ctx.ellipse(sx - h * .08, sy, h * .17, h * .05, -.15, 0, TAU); ctx.fill();
-    return [sx - h * .02, sy - h * .03];
+  function soopPerson(ctx, x, y, h, col, t, i, sunX) {
+    // standing waist-deep in a saree, both hands raised holding the soop (winnow) towards the sun
+    var sx = x + h * .2 * (sunX < x ? -1 : 1), sy = y - h * 1.08;
+    human(ctx, x, y, h, col, { g: "saree", arm: [sx + h * .04 * (sunX < x ? 1 : -1), sy + h * .05], arm2: [sx - h * .1 * (sunX < x ? -1 : 1), sy + h * .05],
+      rim: [255, 170, 100], side: sunX < x ? -1 : 1, t: t, i: i, flat: true });
+    ctx.fillStyle = "#3A1F14"; ctx.beginPath(); ctx.ellipse(sx - h * .04 * (sunX < x ? -1 : 1), sy, h * .17, h * .05, -.15, 0, TAU); ctx.fill();
+    return [sx, sy - h * .03];
   }
   function chhath(ctx, W, H, t, o) {
     var u = Math.min(H / 640, W / 480), cam = { u: u, mx: 0, my: 0, tc: o.tc }, S = o.pass !== "fx", D = o.pass !== "bg", lite = !!o.lite;
@@ -520,9 +572,11 @@
     var col = "#1C0C18";
     for (var p = 0; p < ppl.length; p++) {
       var hgt = ph * (p === 1 ? .95 : .85), px = ppl[p], py = base + p * 4 * u;
-      var hand = soopPerson(ctx, px, py, hgt, col, t, p);
-      // water hides below the waist line
-      ctx.fillStyle = "rgba(60,22,40,.92)"; ctx.fillRect(px - hgt * .3, py - hgt * .38, hgt * .6, hgt * .42);
+      // standing in the river: only the part above the water line is drawn, plus a faint reflection below
+      var wl = py - hgt * .38;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, wl); ctx.clip(); var hand = soopPerson(ctx, px, py, hgt, col, t, p, sunX); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.rect(0, wl, W, hgt * .5); ctx.clip(); ctx.globalAlpha = .12; ctx.translate(0, wl * 2); ctx.scale(1, -1);
+      soopPerson(ctx, px, py, hgt, col, t, p, sunX); ctx.restore();
       ctx.strokeStyle = "rgba(255,200,150,.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(px, py - hgt * .38, hgt * .22 * (1 + .05 * Math.sin(t * 2 + p)), hgt * .03, 0, 0, TAU); ctx.stroke();
       // the arghya stream
       ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -550,7 +604,7 @@
     // run on a canvas. Phone-friendly:
     //  - still layers drawn once into an offscreen canvas (again only on resize); each frame = drawImage + the moving parts
     //  - backing store: devicePixelRatio max 1.5 (phones: 1); the canvas is stretched by CSS
-    //  - 30 fps cap; after 8 s of play the last frame stays as a still
+    //  - 30 fps cap; after 8 s it keeps going at 20 fps (never freezes while on screen)
     //  - stops when off screen (IntersectionObserver) or the tab is hidden
     //  - low-end (≤ 4 cores, ≤ 3 GB, Save-Data) or reduced motion → one still frame, no loop
     run: function (canvas, k, opt) {
@@ -563,7 +617,7 @@
       var still = opt.still || low || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
       var dpr = phone ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       var ctx = canvas.getContext("2d"), W = 0, H = 0, raf = 0, played = 0, last = 0, o = { mx: 0, my: 0, tc: 2.2, lite: true };
-      var bg = document.createElement("canvas"), bctx = bg.getContext("2d"), visible = true, done = false, STEP = 1000 / 30, PLAY = 8;
+      var bg = document.createElement("canvas"), bctx = bg.getContext("2d"), visible = true, done = false, STEP = 1000 / 30, STEP_CALM = 1000 / 20, PLAY = 8;
       function size() {
         var b = canvas.getBoundingClientRect(); W = b.width; H = b.height; if (!W || !H) return;
         canvas.width = bg.width = Math.round(W * dpr); canvas.height = bg.height = Math.round(H * dpr);
@@ -578,8 +632,8 @@
         raf = 0; if (done || !visible || document.hidden) return;
         if (!last) last = now;
         var dt = now - last;
-        if (dt >= STEP) { played += Math.min(dt, 100) / 1000; last = now - (dt % STEP); paint(played); }
-        if (played >= PLAY) { done = true; return; }   // last frame stays on screen
+        var step = played >= PLAY ? STEP_CALM : STEP;   // after 8 s it keeps moving, a little calmer (saves battery)
+        if (dt >= step) { played += Math.min(dt, 100) / 1000; last = now - (dt % step); paint(played); }
         raf = requestAnimationFrame(frame);
       }
       function go() { if (!raf && !done && !still && visible && !document.hidden) { last = 0; raf = requestAnimationFrame(frame); } }

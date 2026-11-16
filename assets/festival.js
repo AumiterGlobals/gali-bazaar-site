@@ -159,8 +159,7 @@
     var lastF = 0, NMAX = innerWidth < 600 ? 30 : 60;
     function frame(now) {
       if (!run) return;
-      if (now - t0 > 8000) return;                                                   // 8 s, then the last frame stays
-      if (now - lastF < 33) { raf = requestAnimationFrame(frame); return; } lastF = now;   // 30 fps
+      if (now - lastF < (now - t0 > 8000 ? 50 : 33)) { raf = requestAnimationFrame(frame); return; } lastF = now;   // 30 fps, then 20 fps after 8 s
       var slow = 1, n = NMAX;
       cx.clearRect(0, 0, W, H);
       for (var i = 0; i < n; i++) { var p = P[i]; p.x += (p.vx + Math.sin((now / 900) + p.w) * .3) * slow; p.y += p.vy * slow;
@@ -206,7 +205,7 @@
       document.documentElement.classList.add("gbf-engine");
       var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
       hero.insertBefore(sc0, hero.firstChild);
-      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796100000";
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796120000";
       js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
       document.head.appendChild(js);
     } else if (hero && !hero.querySelector(".gbf-scene")) {
