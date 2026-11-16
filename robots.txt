@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /seller/
+Disallow: /sales/
+Allow: /sales/apply/
+Disallow: /panel/
+Disallow: /pay/
+
+Sitemap: https://galibazaar.site/sitemap.xml

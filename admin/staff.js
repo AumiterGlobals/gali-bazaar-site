@@ -142,3 +142,27 @@ async function activityPage() {
       <td>${esc(l.action)}${l.note ? `<div class="sub" style="margin:0">${esc(l.note)}</div>` : ""}</td><td>${esc(l.target_kind || "")} ${esc(String(l.target || "").slice(0, 36))}</td>
       <td style="font-size:12px;overflow-wrap:anywhere">${short(l.old_value)} → ${short(l.new_value)}</td></tr>`).join("")}</tbody></table>` : `<div class="sub" style="margin-top:10px">Nothing yet.</div>`}</div>`;
 }
+
+// ---------- Settings → Operator & Grievance Officer (update-88 legal_info; same values the app's admin edits) ----------
+const _settingsPage0 = settingsPage;
+settingsPage = async function () {
+  await _settingsPage0();
+  if (window.STAFF) return;
+  const { data: s } = await db.from("settings").select("legal_name,legal_address,legal_gstin,go_name,go_designation,go_email,go_phone,grievance_days").eq("id", 1).maybeSingle();
+  if (!s) return;   // update-88 not run yet
+  const F = [["legal_name", "OPERATED BY (LEGAL NAME)"], ["legal_address", "ADDRESS"], ["legal_gstin", "GSTIN"], ["go_name", "GRIEVANCE OFFICER"],
+    ["go_designation", "DESIGNATION"], ["go_email", "EMAIL"], ["go_phone", "PHONE"]];
+  const box = document.createElement("div"); box.className = "box"; box.id = "goBox";
+  box.innerHTML = `<h3>Operator &amp; Grievance Officer <span>• shown in the app (About &amp; grievance officer, complaints), on the website footer / Contact / Legal and in complaint emails</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">${F.map(([k, l]) => `<div><label>${l}</label><input class="in" id="go_${k}" value="${esc(s[k] ?? "")}"></div>`).join("")}</div>
+    <div class="sub">Complaints: acknowledged in 24 hours, resolved in ${esc(s.grievance_days ?? 7)} days (IT Rules 2021, 2026 amendment).</div>
+    <button class="btn pink" onclick="goSave()">Save</button> <span id="goM" class="msg"></span>`;
+  $("#main").appendChild(box);
+};
+async function goSave() {
+  const row = {}; for (const k of ["legal_name", "legal_address", "legal_gstin", "go_name", "go_designation", "go_email", "go_phone"]) row[k] = $("#go_" + k).value.trim() || null;
+  if (row.legal_gstin) row.legal_gstin = row.legal_gstin.toUpperCase();
+  if (row.go_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.go_email)) return alert("Email looks wrong");
+  const { error } = await db.from("settings").update(row).eq("id", 1);
+  const m = $("#goM"); m.className = error ? "msg err" : "msg ok"; m.textContent = error ? error.message : "Saved";
+}

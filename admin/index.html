@@ -7,7 +7,8 @@
 button,input{font:inherit}a{color:inherit}
 .app{display:flex;min-height:100vh}
 .side{width:236px;background:#1D0F30;color:#CFC6E3;padding:22px 16px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;overscroll-behavior:contain}
-.logo{background:#fff;border-radius:12px;padding:8px 14px;display:inline-block;font-weight:800;font-size:20px;color:#111111}
+.logo{background:none;border-radius:0;padding:0;display:inline-block;font-weight:800;font-size:20px;color:#111111}
+.side .logo,.mtop .logo{color:#fff}.side .logo .g,.mtop .logo .g{color:#D8B4FE}
 .logo .g{color:#6A1BB0}
 .kinds{display:grid;grid-template-columns:1fr 1fr;gap:6px}.kinds button{text-align:left;border:1.5px solid #E7E1F2;background:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;font:inherit}.kinds button b{display:block;font-size:13px}.kinds button span{font-size:11px;color:#6B6380}.kinds button.on{border-color:#6A1BB0;background:#F4EEFF}.kinds button[disabled]{opacity:.55;cursor:not-allowed}.kinds button[disabled].on{opacity:1}.logo .d{color:#F0287A}
 .side small{display:block;letter-spacing:1.5px;font-size:10.5px;margin:10px 0 26px 6px;color:#8E84A8}
@@ -62,7 +63,7 @@ body.staff [onclick^="csvDl"]{display:none}
  .app{display:block}.side{position:fixed;left:0;top:0;bottom:0;height:auto;z-index:20;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.3)}
  .side.open{transform:none}.scrim{display:none;position:fixed;inset:0;background:rgba(29,15,48,.4);z-index:15}.scrim.open{display:block}
  .mtop{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;background:#1D0F30;padding:12px 14px}
- .mtop button{background:none;border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:2px 6px}.mtop .logo{font-size:17px;padding:6px 11px}
+ .mtop button{background:none;border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:2px 6px}.mtop .logo{font-size:17px;padding:0}
  .mtop small{color:#CFC6E3;margin-left:auto;font-size:12px}
  .main{padding:16px 12px 60px}.top{flex-wrap:wrap}.top .sp{display:none}.top .btn{width:100%}h1{font-size:22px}
  .card{padding:4px 10px}th.hi,td.hi,th.hand,td.hand{display:none}td,th{padding:10px 4px}td b{font-size:13.5px}.tag{display:inline-block;margin:4px 0 0}
@@ -901,7 +902,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/tax.js?v=1796030000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
 <script src="/admin/setup.js?v=1796020000"></script>
-<script src="/admin/staff.js?v=1796240000"></script>
+<script src="/admin/staff.js?v=1796250000"></script>
 <script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";

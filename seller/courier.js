@@ -27,7 +27,7 @@ function courier() {
   const cur = T.find(t => t[0] === crTab) || T[0], list = C.filter(cur[2]);
   let visits = 0; try { visits = +localStorage.getItem("gb_cr_visits") || 0; localStorage.setItem("gb_cr_visits", visits + 1); } catch (e) {}
   $("#main").innerHTML = head("📦 Courier", "You book the courier (COD + open-box) and add the tracking here",
-    `<button class="btn ghost" onclick="courierRules(false)">?</button>${crTab === "ship" ? `<button class="btn ghost" onclick="trackUpload()">⇪ Tracking upload</button>` : ""}`) + `
+    `<button class="btn ghost" onclick="courierRules(false)" aria-label="How courier works">ⓘ How courier works</button>${crTab === "ship" ? `<button class="btn ghost" onclick="trackUpload()">⇪ Tracking upload</button>` : ""}`) + `
     ${!COURIER_SHOP() ? `<div class="box" style="border:1.5px solid #F5D08A;background:#FFF7E6">Courier selling is off. Turn it on in <a href="#" onclick="go('shop');return false" style="color:#7C3AED">Shop &amp; KYC → How do you sell?</a></div>` : ""}
     <details class="box" ${visits < 3 ? "open" : ""}><summary style="cursor:pointer;font-weight:600">How courier orders work — what your customer can do</summary>${rulesHtml(false)}</details>
     <div class="bar2"><div class="fchips">${T.map(([k, l, f]) => `<button class="fchip ${crTab === k ? "on" : ""}" onclick="crTab='${k}';courier()">${l} ${C.filter(f).length}</button>`).join("")}</div></div>

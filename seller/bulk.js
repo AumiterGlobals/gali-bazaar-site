@@ -14,7 +14,7 @@ function slotOf(base) {   // "atta-5kg-back-label" → ["atta-5kg", "label"]
 function bulk() {
   $("#main").innerHTML = head("Bulk upload", "Excel or CSV • up to 500 items • every row is checked before anything is saved",
     `<button class="btn ghost" onclick="go('catalog')">← Catalog</button>`) + `
-    <div class="grid2" style="grid-template-columns:1fr 1.35fr">
+    <div class="grid2 g-1-135">
       <div>
         <div class="box"><h3>1. Download the template made for your shop</h3>
           <div class="sub">Return and courier rules for ${esc((D.cats || []).find(c => c.key === S.type)?.name || "your category")} are filled in for you — dropdowns show only what's allowed. The “How to fill” sheet explains every column (English + हिंदी).</div>

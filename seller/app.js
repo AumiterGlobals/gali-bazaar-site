@@ -877,7 +877,7 @@ function staff() {
   const req = D.riders.filter(r => r.join_status === "REQUESTED" && r.active !== false), act = D.riders.filter(r => r.active !== false && r.join_status !== "REQUESTED");
   const cashOf = r => D.orders.filter(o => o.rider === r.id && o.status === "DELIVERED" && o.pay_mode === "CASH" && o.delivered_by !== "Shop" && !o.cash_settled_at);
   $("#main").innerHTML = head("Delivery staff", "Partners join your shop with your invite code • one partner can work for many shops") + `
-    <div class="grid2" style="grid-template-columns:1fr 1.6fr"><div>
+    <div class="grid2 g-1-16"><div>
       <div class="box" style="background:linear-gradient(135deg,#1D0F30,#4C1D95);color:#fff"><div style="font-size:12px;color:#CFC6E3">YOUR SHOP'S INVITE CODE</div>
         <div style="font-size:30px;font-weight:800;letter-spacing:3px;margin:6px 0">${esc(S.rider_code || "—")}</div>
         <div style="font-size:12px;color:#CFC6E3">Partner opens the app → Delivery partner → enters this code and their email. You accept the request here.</div>
