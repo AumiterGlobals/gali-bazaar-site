@@ -557,7 +557,9 @@
       opt = opt || {};
       var nav = navigator, conn = nav.connection || {};
       var phone = Math.min(screen.width || 9999, innerWidth) < 600 || /Mobi|Android/i.test(nav.userAgent);
-      var low = (nav.hardwareConcurrency && nav.hardwareConcurrency <= 4) || (nav.deviceMemory && nav.deviceMemory <= 3) || conn.saveData;
+      // iPhone / iPad Safari reports few cores on purpose (privacy), so cores only count on Android / desktop
+      var apple = /iPhone|iPad|iPod|Macintosh/.test(nav.userAgent);
+      var low = (!apple && nav.hardwareConcurrency && nav.hardwareConcurrency <= 4) || (nav.deviceMemory && nav.deviceMemory <= 3) || conn.saveData;
       var still = opt.still || low || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
       var dpr = phone ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       var ctx = canvas.getContext("2d"), W = 0, H = 0, raf = 0, played = 0, last = 0, o = { mx: 0, my: 0, tc: 2.2, lite: true };

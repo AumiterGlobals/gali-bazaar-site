@@ -141,7 +141,7 @@
   }
   // parallax (mouse + scroll, max ~10 px) and particles (max 60, slower after 8 s, off when the tab is hidden or reduced motion)
   var RM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var LOW = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.connection && navigator.connection.saveData);
+  var LOW = (!/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.connection && navigator.connection.saveData);
   function animate(hero, kind) {
     if (RM || LOW) return;   // low-end phone / Save-Data / reduced motion: the still scene only
     var ls = hero.querySelectorAll(".gbf-l"), mx = 0, my = 0, sy = 0;
@@ -206,7 +206,7 @@
       document.documentElement.classList.add("gbf-engine");
       var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
       hero.insertBefore(sc0, hero.firstChild);
-      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796080000";
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796100000";
       js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
       document.head.appendChild(js);
     } else if (hero && !hero.querySelector(".gbf-scene")) {
