@@ -15,14 +15,14 @@ async function customersPage() {
       <div class="sub" style="margin:0">${esc(r.shop_name)} · #${esc(r.short_id || "")} · ${inr(r.order_total)} · ${esc(r.order_status || "")} · ${cuDay(String(r.created_at).slice(0, 10))}</div>
       <div style="margin:6px 0">${esc(r.reason[0].toUpperCase() + r.reason.slice(1))}${r.note ? " — " + esc(r.note) : ""}</div>
       <div style="display:flex;gap:8px">${r.blocked_at ? `<span class="pill bad">Blocked</span>` : `<button class="btn" style="background:#C62828;color:#fff" onclick="cuBlock('${r.customer}')">Block customer</button>`}
-        <button class="btn ghost" onclick="cuDismiss('${r.id}')">Dismiss</button></div></div>`).join("") || `<div class="box"><div class="sub" style="margin:0">No open report ✓</div></div>`;
+        ${r.cod_paused_at ? `<button class="btn ghost" onclick="cuClearCod('${r.customer}')">Clear COD pause</button>` : `<button class="btn ghost" onclick="cuDismiss('${r.id}')">Dismiss</button>`}</div></div>`).join("") || `<div class="box"><div class="sub" style="margin:0">No open report ✓</div></div>`;
   } else {
     const { data, error } = await db.rpc("admin_find_customers", { p_q: CU.tab === "find" ? CU.q : "", p_blocked_only: CU.tab === "blocked" });
     body = (CU.tab === "find" ? `<div class="box"><input id="cuq" value="${esc(CU.q)}" placeholder="Name, email or phone" style="width:100%" onkeydown="if(event.key==='Enter'){CU.q=this.value;customersPage()}"></div>` : "") +
       (error ? `<div class="box"><div class="sub" style="margin:0">${esc(niceErr(error))}</div></div>` :
       `<div class="box" style="overflow:auto"><table><tr><th>Customer</th><th>Contact</th><th>Orders</th><th>Reports</th><th>Status</th><th></th></tr>${(data || []).map(c => `<tr>
         <td>${esc(c.name || "—")}</td><td>${esc([c.email, c.phone, c.city].filter(Boolean).join(" · "))}</td><td>${c.orders}</td><td>${c.reports}</td>
-        <td>${c.blocked_at ? `<span class="pill bad">Blocked ${cuDay(String(c.blocked_at).slice(0, 10))}</span><div class="sub" style="margin:0">${esc(c.blocked_reason || "")}</div>` : "Active"}</td>
+        <td>${c.blocked_at ? `<span class="pill bad">Blocked ${cuDay(String(c.blocked_at).slice(0, 10))}</span><div class="sub" style="margin:0">${esc(c.blocked_reason || "")}</div>` : c.cod_paused_at ? `<span class="pill warn">COD paused ${cuDay(String(c.cod_paused_at).slice(0, 10))}</span> <button class="btn ghost" onclick="cuClearCod('${c.id}')">Clear</button>` : "Active"}</td>
         <td>${c.blocked_at ? `<button class="btn ghost" onclick="cuUnblock('${c.id}')">Unblock</button>` : `<button class="btn ghost" style="color:#C62828" onclick="cuBlock('${c.id}')">Block</button>`}</td></tr>`).join("") || `<tr><td colspan="6" class="sub">Nothing here.</td></tr>`}</table></div>`);
   }
   $("#main").innerHTML = head("Customers", "A blocked customer can browse but can't place orders. Shops can report a customer from any order.") +
@@ -40,4 +40,8 @@ async function cuDismiss(id) {
   const note = prompt("Dismiss this report — note (optional):", "");
   if (note === null) return;
   const { error } = await db.rpc("admin_dismiss_customer_report", { p_id: id, p_note: note.trim() || null }); if (error) return alert(niceErr(error)); customersPage();
+}
+async function cuClearCod(id) {
+  if (!confirm("Clear the cash-on-delivery pause? The customer can order again.")) return;
+  const { error } = await db.rpc("admin_clear_cod", { p_user: id }); if (error) return alert(niceErr(error)); customersPage();
 }
