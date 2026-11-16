@@ -296,9 +296,12 @@ async function docs(id) {
     const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`;
   }));
   const checks = (s.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
+  const bc = s.biz_check || {}, lab = { pan: "PAN", firm_pan: "Firm PAN", mca: "MCA", gst: "GST" };
+  const official = Object.keys(lab).filter(k => bc[k]).map(k => `<div>${bc[k].state === "ok" ? "✓" : bc[k].state === "bad" ? "✗" : "•"} ${lab[k]}: ${esc(bc[k].msg)}</div>`).join("")
+    + (bc.auto ? `<div><b>${bc.auto.approved ? "Auto-approved" : "Needs a look"}</b>${(bc.auto.reasons || []).length ? ": " + esc(bc.auto.reasons.join(" · ")) : ""}</div>` : "");
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
   p.innerHTML = `<h2><span>${esc(s.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(s.pan_number || "—")} · Aadhaar XXXX ${esc(s.aadhaar_last4 || "")}</div>${firm}
-    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div>
+    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div><label>OFFICIAL RECORDS (Income Tax · MCA · GST)</label><div class="sub">${official || "Not checked yet"}</div>
     <div style="margin-top:16px"><button class="btn pink" onclick="kycSet('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="kycSet('${id}','REJECTED');closeForm()">Reject</button></div>`;
 }
 function claimTable(list, shops, featured) {
@@ -346,7 +349,7 @@ async function riderDocs(id) {
   const checks = (r.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
   p.innerHTML = `<h2><span>${esc(r.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(r.pan_number || "—")} · Aadhaar XXXX ${esc(r.aadhaar_last4 || "")}</div>
-    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div>
+    <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div><label>OFFICIAL RECORDS (Income Tax · MCA · GST)</label><div class="sub">${official || "Not checked yet"}</div>
     <div style="margin-top:16px"><button class="btn pink" onclick="riderKyc('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="riderKyc('${id}','REJECTED');closeForm()">Reject</button></div>`;
 }
 // ---------- Item list (master): products every shop picks from ----------
