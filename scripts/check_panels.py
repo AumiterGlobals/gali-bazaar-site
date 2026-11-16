@@ -23,5 +23,25 @@ with sync_playwright() as p:
         pg.close()
     for u in ["/pay/", "/seller/login/", "/sales/login/", "/admin/"] + pages: run(u)
     for t in admin_tabs: run("/admin/#" + t)
+    # festival look on (dark header): the open mobile menu (#mmenu) and the "Sign in" dropdown (.sidrop)
+    # must keep readable links — fail if a link's colour equals its panel's background
+    CHECK = """(sel) => { const panel = document.querySelector(sel); if (!panel) return ['no ' + sel];
+      const bg = getComputedStyle(panel).backgroundColor, out = [];
+      panel.querySelectorAll('a').forEach(a => { const c = getComputedStyle(a).color; if (a.offsetParent && c === bg) out.push((a.textContent || '').trim().slice(0, 30) + ' = ' + c); });
+      return out; }"""
+    for fest in ["diwali", "chhath"]:
+        for u in ["/", "/help/", "/pricing/"]:
+            for w, opener, panel in [(390, "button.menu-btn", "#mmenu"), (1300, "button.sibtn", ".sidrop")]:
+                pg = b.new_page(viewport={"width": w, "height": 850})
+                pg.route("**/supabase-js@2*", lambda r: r.fulfill(path=f"{ROOT}/scripts/supabase-stub.js", content_type="application/javascript"))
+                pg.route("https://**", lambda r: r.abort())
+                pg.goto(f"http://localhost:8765{u}?fest={fest}"); pg.wait_for_timeout(1500)
+                tag = f"{u}?fest={fest} {panel} @{w}px"
+                if pg.locator(opener).count() == 0: print("·", tag, "(no menu here)"); pg.close(); continue
+                pg.locator(opener).first.click(); pg.wait_for_timeout(400)
+                hidden = pg.evaluate(CHECK, panel)
+                if hidden: bad += 1; print("✗", tag, "invisible links:", hidden[:4])
+                else: print("✓", tag)
+                pg.close()
     b.close()
 print(f"\n{bad} page(s) with errors" if bad else "\nOK — no page errors"); sys.exit(1 if bad else 0)
