@@ -1,5 +1,6 @@
 // Gali Bazaar — festival theme for the website (same as the app; Themes.kt FEST_THEMES + ALIAS, Api.festivalNow()).
-// Rule: festivals.active is not false and the festival day (India date) is today … today + 2 — the first one wins.
+// Rule: festivals.active is not false and the festival day (India date) is today … today + 2, or a multi-day festival
+// (festivals.till) has started and runs till today or later — the first one wins.
 // Controlled only by the admin's festival switch (Admin → Festivals): no separate website setting.
 // Not on legal pages, /pay, admin, printed invoices / notes or emails. Preview any theme with ?fest=diwali (nothing is saved).
 (function () {
@@ -233,11 +234,12 @@
   if (q) return;   // preview: nothing fetched, nothing saved
   // known for today and checked in the last 30 min → nothing to do; otherwise ask again (an admin switch-off shows on the next page)
   try { var cached = JSON.parse(store.get(CK) || "null"); if (cached && Date.now() - cached.at < 18e5) return; } catch (e) {}
-  fetch(SB + "/rest/v1/festivals?select=name,day,theme,greeting,active&day=gte." + today + "&day=lte." + istDay(2) + "&order=day.asc&limit=3",
+  // festival day within today … today + 2, or a multi-day festival (till) still running today (update-79)
+  fetch(SB + "/rest/v1/festivals?select=*&day=gte." + istDay(-10) + "&day=lte." + istDay(2) + "&order=day.asc&limit=12",
     { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
     .then(function (r) { return r.ok ? r.json() : []; })
     .then(function (rows) {
-      var f = (rows || []).filter(function (x) { return x.active !== false; })[0] || null;
+      var f = (rows || []).filter(function (x) { return x.active !== false && (x.day >= today || (x.till && x.till >= today)); })[0] || null;
       var had = !!fest;
       store.set(CK, JSON.stringify({ f: f, at: Date.now() }));
       if (f && !had) { vars(f); ready(function () { decorate(f); }); }

@@ -678,15 +678,16 @@ async function complaints() {
 const FEST_KEYS = ["diwali","holi","eid","christmas","navratri","ganesh","india","sankranti","rakhi","chhath","igas","phooldei","harela","ghughutiya"];
 async function festivals() {
   const today = istIso(Date.now() - 86400000);
-  const { data, error } = await db.from("festivals").select("*").gte("day", today).order("day");
+  let { data, error } = await db.from("festivals").select("*").or(`day.gte.${today},till.gte.${today}`).order("day");
+  if (error) ({ data, error } = await db.from("festivals").select("*").gte("day", today).order("day"));   // before update-79 (no till column)
   if (error) throw error;
   const hasCols = (data || []).length === 0 || "show_chips" in data[0];
-  $("#main").innerHTML = head("Festivals", "Shows in the app and on the website (home, guides, seller &amp; sales panels) from 2 days before the date until the festival day ends. The same switch controls both. Preview the website look: galibazaar.site/?fest=diwali") +
+  $("#main").innerHTML = head("Festivals", "Shows in the app and on the website (home, guides, seller &amp; sales panels) from 2 days before the date until the festival day ends — or until the <b>Till</b> date for a festival of several days (e.g. Chhath 13–16 Nov). The same switch controls both. Preview the website look: galibazaar.site/?fest=diwali") +
     (hasCols ? "" : `<div class="soon err" style="padding:16px;margin-bottom:14px">Run <b>update-24-festival-switch.sql</b> in Supabase to use the on/off switches.</div>`) +
     `<div class="box"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn ghost" onclick="festAll('show_chips',false)">Item chips: all OFF</button><button class="btn ghost" onclick="festAll('show_chips',true)">Item chips: all ON</button>
       <button class="btn ghost" onclick="festAll('active',false)">Festival look: all OFF</button><button class="btn ghost" onclick="festAll('active',true)">Festival look: all ON</button></div>
       <table><thead><tr><th>DATE</th><th>FESTIVAL</th><th>THEME</th><th>FESTIVAL LOOK</th><th>ITEM CHIPS</th><th></th></tr></thead><tbody>${(data || []).map(f => `<tr>
-      <td>${esc(f.day)}</td><td><b>${esc(f.name)}</b><br><span class="sub">${esc(f.greeting || "")}</span></td><td>${esc(f.theme)}</td>
+      <td>${esc(f.day)}${f.till && f.till !== f.day ? `<br><span class="sub">till ${esc(f.till)}</span>` : ""}</td><td><b>${esc(f.name)}</b><br><span class="sub">${esc(f.greeting || "")}</span></td><td>${esc(f.theme)}</td>
       <td><button class="tog ${f.active !== false ? "on" : ""}" onclick="festSet(this,'${f.id}','active')" aria-label="Festival look"></button></td>
       <td><button class="tog ${f.show_chips !== false ? "on" : ""}" onclick="festSet(this,'${f.id}','show_chips')" aria-label="Item chips"></button></td>
       <td><button class="btn ghost" onclick="festDel('${f.id}','${esc(f.name).replace(/'/g, "")}')">Delete</button></td></tr>`).join("")}</tbody></table>
@@ -694,7 +695,8 @@ async function festivals() {
     <div class="box" style="margin-top:14px"><h3>Add festival</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input class="in" id="fn" placeholder="Name e.g. Diwali" style="flex:1;min-width:140px">
-        <input class="in" id="fd" type="date" style="flex:1;min-width:140px">
+        <input class="in" id="fd" type="date" style="flex:1;min-width:140px" title="Festival day">
+        <input class="in" id="fu" type="date" style="flex:1;min-width:140px" title="Till (optional) — last day of a festival of several days">
         <select class="in" id="ft" style="flex:1;min-width:120px">${FEST_KEYS.map(k => `<option>${k}</option>`).join("")}</select>
         <input class="in" id="fg" placeholder="Greeting (optional)" style="flex:2;min-width:180px">
         <button class="btn pink" onclick="festAdd()">Add</button></div><div class="msg" id="fm"></div></div>`;
@@ -722,7 +724,9 @@ async function festDel(id, name) {
 async function festAdd() {
   const name = $("#fn").value.trim(), day = $("#fd").value;
   if (!name || !day) { $("#fm").className = "msg err"; $("#fm").textContent = "Enter name and date"; return; }
-  const { error } = await db.from("festivals").insert({ name, day, theme: $("#ft").value, greeting: $("#fg").value.trim() || null });
+  const till = $("#fu").value || null;
+  if (till && till < day) { $("#fm").className = "msg err"; $("#fm").textContent = "Till date is before the festival day"; return; }
+  const { error } = await db.from("festivals").insert({ name, day, theme: $("#ft").value, greeting: $("#fg").value.trim() || null, ...(till ? { till } : {}) });
   if (error) { $("#fm").className = "msg err"; $("#fm").textContent = error.message; return; }
   festivals();
 }
