@@ -290,13 +290,14 @@ async function kycSet(id, st) {
   if (error) alert(error.message); else go(page);
 }
 async function docs(id) {
-  const [s] = await q("shops", "name,kyc_files,pan_number,aadhaar_last4,kyc_report", x => x.eq("id", id));
+  const [s] = await q("shops", "*", x => x.eq("id", id));   // * so the update-83 business fields come when present
+  const firm = s.biz_type && s.biz_type !== "proprietor" ? `<div class="sub">${esc({ partnership: "Partnership firm", llp: "LLP", pvt: "Pvt Ltd company" }[s.biz_type] || s.biz_type)} · ${esc(s.legal_name || "—")} · Firm PAN ${esc(s.firm_pan || "—")}${s.cin ? " · " + (s.biz_type === "llp" ? "LLPIN " : "CIN ") + esc(s.cin) : ""}<br>Signatory ${esc(s.pan_name || "—")}</div>` : "";
   const links = await Promise.all(Object.entries(s.kyc_files || {}).map(async ([k, path]) => {
     const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`;
   }));
   const checks = (s.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
-  p.innerHTML = `<h2><span>${esc(s.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(s.pan_number || "—")} · Aadhaar XXXX ${esc(s.aadhaar_last4 || "")}</div>
+  p.innerHTML = `<h2><span>${esc(s.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(s.pan_number || "—")} · Aadhaar XXXX ${esc(s.aadhaar_last4 || "")}</div>${firm}
     <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div>
     <div style="margin-top:16px"><button class="btn pink" onclick="kycSet('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="kycSet('${id}','REJECTED');closeForm()">Reject</button></div>`;
 }
