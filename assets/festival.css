@@ -8,6 +8,7 @@ html.gbf-dark .gbf-strip .gbf-x{background:rgba(255,255,255,.18)}html:not(.gbf-d
 /* home / guides: header + hero */
 html.gbf-on nav#nav{background:linear-gradient(90deg,var(--fest-top),var(--fest-mid))!important}
 html.gbf-on.gbf-dark nav#nav a:not(.logo):not(.btn),html.gbf-on.gbf-dark nav#nav .navlinks a{color:#fff}
+html.gbf-on.gbf-dark nav#nav .mmenu a:not(.btn),html.gbf-on.gbf-dark nav#nav .sidrop a{color:#1E1A1C}html.gbf-on.gbf-dark nav#nav .mmenu .mhead{color:#8E84A8}
 html.gbf-on .hero{position:relative;background:linear-gradient(180deg,var(--fest-top) 0%,var(--fest-mid) 55%,var(--fest-low) 100%)!important;isolation:isolate}
 html.gbf-on.gbf-dark .hero h1,html.gbf-on.gbf-dark .hero p,html.gbf-on.gbf-dark .hero .lead{color:#fff}
 .gbf-scene{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
