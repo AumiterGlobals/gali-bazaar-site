@@ -205,7 +205,7 @@
       document.documentElement.classList.add("gbf-engine");
       var sc0 = document.createElement("div"); sc0.className = "gbf-scene"; sc0.innerHTML = '<canvas class="gbf-e" aria-hidden="true"></canvas><div class="gbf-shade"></div>';
       hero.insertBefore(sc0, hero.firstChild);
-      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796120000";
+      var js = document.createElement("script"); js.src = "/assets/fest-engine.js?v=1796130000";
       js.onload = function () { window.GBFestEngine.run(sc0.querySelector("canvas"), L.key, { hover: hero, still: /[?&]still=1/.test(location.search) }); };
       document.head.appendChild(js);
     } else if (hero && !hero.querySelector(".gbf-scene")) {
