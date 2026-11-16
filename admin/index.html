@@ -48,6 +48,7 @@ label{display:block;font-size:11px;letter-spacing:.6px;font-weight:600;color:#6B
 body.po .main{padding-right:430px}
 @media(max-width:900px){body.po .main{padding-right:18px}}
 .mtop{display:none}
+body.staff [onclick^="csvDl"]{display:none}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}.kpi{background:#fff;border-radius:20px;padding:16px 18px}
 .kpi span{font-size:12.5px;color:#6B6380}.kpi b{display:block;font-size:26px;margin:6px 0 2px}.kpi small{font-size:11.5px;font-weight:600}
 .grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
@@ -85,7 +86,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["photos","Photo review"],["customers","Customers"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["photos","Photo review"],["customers","Customers"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["orders","Orders lookup"],["team","Team"],["activity","Activity log"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -97,6 +98,8 @@ async function start() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) return loginView();
   const { data: me } = await db.from("profiles").select("role,name,email").eq("id", session.user.id).single();
+  // staff (update-89): Support / KYC / Accounts / Tax accountant see only their pages; removed or 12 h old → stopped
+  if (me && me.role !== "admin" && typeof staffStart === "function" && await staffStart(session)) return;
   // accountant (tax team, update-74): signs in here and sees only Tax & TDS
   if (me && me.role !== "admin") { const { data: tax } = await db.rpc("is_tax_user"); if (tax === true) { window.ACCOUNTANT = true; NAV.splice(0, NAV.length, ["tax", "Tax & TDS"]); page = "tax"; shell(); go("tax"); return; } }
   if (!me || me.role !== "admin") {
@@ -129,11 +132,12 @@ async function start() {
 
 function loginView() {
   let sent = false;
-  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">Sign in with the admin or accountant email. We send a code.</p>
+  $("#root").innerHTML = `<div class="login">${LOGO}<h1>Admin console</h1><p class="sub">${sessionStorage.getItem("gbExpired") ? "<b>Your 12-hour sign-in ended.</b> " : ""}Sign in with the admin or team email. We send a code.</p>
     <label>EMAIL</label><input class="in" id="em" type="email" placeholder="admin email">
     <div id="cw" style="display:none"><label>CODE FROM YOUR EMAIL</label><input class="in" id="cd" inputmode="numeric" maxlength="10"></div>
     <div class="msg" id="lm"></div><button class="btn pink full" id="lb">Get code</button>
     <a href="/" style="display:block;text-align:center;margin-top:16px;color:#7C3AED;font-weight:600;text-decoration:none">← Go to galibazaar.site</a></div>`;
+  sessionStorage.removeItem("gbExpired");
   $("#lb").onclick = async () => {
     const email = $("#em").value.trim().toLowerCase(), m = $("#lm");
     m.textContent = ""; $("#lb").disabled = true;
@@ -150,7 +154,7 @@ function loginView() {
 }
 
 function shell() {
-  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>${window.ACCOUNTANT ? "TAX &amp; TDS · ACCOUNTANT" : "ADMIN CONSOLE"}</small><nav class="nav">
+  $("#root").innerHTML = `<div class="app"><aside class="side">${LOGO}<small>${window.STAFF ? esc((STAFF_ROLES[window.STAFF.role] || window.STAFF.role).toUpperCase()) + " TEAM" : window.ACCOUNTANT ? "TAX &amp; TDS · ACCOUNTANT" : "ADMIN CONSOLE"}</small><nav class="nav">
     ${NAV.map(([k, l]) => `<a data-k="${k}" href="#${k}" onclick="if(location.hash==='#${k}'){event.preventDefault();go('${k}')}">${l}</a>`).join("")}
     <a href="/" style="margin-top:20px">← Website</a><a onclick="db.auth.signOut().then(()=>location.reload())">Sign out</a></nav></aside>
     <main class="main" id="main"></main></div><div class="panel" id="panel"></div><div class="scrim" id="scrim" onclick="menu(false)"></div>`;
@@ -161,16 +165,17 @@ function shell() {
 function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").classList.toggle("open", open); }
 function go(k, silent) {
   page = k || "categories"; if (!silent) menu(false);
-  if (window.ACCOUNTANT) page = "tax";
+  if (window.STAFF && !NAV.some(n => n[0] === page)) page = NAV[0][0];
+  else if (window.ACCOUNTANT && !window.STAFF) page = "tax";
   if (location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page);   // keep the address in step, so the menu link for the page you came from works again
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, photos: photosPage, customers: customersPage, bank: bankPage, tax: taxPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, photos: photosPage, customers: customersPage, bank: bankPage, tax: taxPage, orders: ordersPage, team: teamPage, activity: activityPage };
   tdBanner().catch(() => {});
   // silent = a live update: no "Loading…", the page keeps its scroll place (nobody should notice a refresh)
   const y = window.scrollY, mh = $("#main").offsetHeight;
   if (pages[page]) { if (silent) $("#main").style.minHeight = mh + "px"; else $("#main").innerHTML = `<div class="sub">Loading…</div>`;
-    return pages[page]().then(() => { if ((page === "dashboard" || page === "settings") && !window.ACCOUNTANT && window.setupCard) return setupCard(page); })
+    return pages[page]().then(() => { if ((page === "dashboard" || page === "settings") && !window.ACCOUNTANT && !window.STAFF && window.setupCard) return setupCard(page); })
       .then(() => { if (silent) { $("#main").style.minHeight = ""; window.scrollTo(0, y); } })
       .catch(e => { $("#main").style.minHeight = ""; if (!silent) $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`; }); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
@@ -288,15 +293,13 @@ async function idRecheck(id) {
 async function kycSet(id, st) {
   const reason = st === "REJECTED" ? prompt("Reason (the shop sees this)") : null;
   if (st === "REJECTED" && !reason) return;
-  const { error } = await db.from("shops").update({ kyc: st, kyc_reason: reason }).eq("id", id);
+  const { error } = await db.rpc("staff_set_kyc", { p_kind: "shop", p_id: id, p_status: st, p_reason: reason });
   if (error) alert(error.message); else go(page);
 }
 async function docs(id) {
   const [s] = await q("shops", "*", x => x.eq("id", id));   // * so the update-83 business fields come when present
   const firm = s.biz_type && s.biz_type !== "proprietor" ? `<div class="sub">${esc({ partnership: "Partnership firm", llp: "LLP", pvt: "Pvt Ltd company" }[s.biz_type] || s.biz_type)} · ${esc(s.legal_name || "—")} · Firm PAN ${esc(s.firm_pan || "—")}${s.cin ? " · CIN " + esc(s.cin) : ""}${s.llpin ? " · LLPIN " + esc(s.llpin) : ""}<br>Signatory ${esc(s.pan_name || "—")}</div>` : "";
-  const links = await Promise.all(Object.entries(s.kyc_files || {}).map(async ([k, path]) => {
-    const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`;
-  }));
+  const links = await Promise.all(Object.entries(s.kyc_files || {}).map(([k, path]) => docLink(k, path, "shop " + id)));
   const checks = (s.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
   const bc = s.biz_check || {}, lab = { pan: "PAN", firm_pan: "Firm PAN", mca: "MCA", gst: "GST" };
   const official = Object.keys(lab).filter(k => bc[k]).map(k => `<div>${bc[k].state === "ok" ? "✓" : bc[k].state === "bad" ? "✗" : "•"} ${lab[k]}: ${esc(bc[k].msg)}</div>`).join("")
@@ -349,12 +352,11 @@ async function kyc() {
       <td style="white-space:nowrap"><button class="mini" onclick="riderDocs('${r.id}')">Docs</button><button class="mini dk" onclick="riderKyc('${r.id}','APPROVED')">Approve</button><button class="mini" onclick="riderKyc('${r.id}','REJECTED')">Reject</button></td></tr>`).join("")}</tbody></table>` : '<div class="sub">None.</div>'}</div>`;
 }
 async function riderKyc(id, st) { const reason = st === "REJECTED" ? prompt("Reason") : null; if (st === "REJECTED" && !reason) return;
-  const { error } = await db.from("riders").update({ kyc: st, kyc_reason: reason }).eq("id", id); if (error) alert(error.message); else go(page); }
+  const { error } = await db.rpc("staff_set_kyc", { p_kind: "rider", p_id: id, p_status: st, p_reason: reason }); if (error) alert(error.message); else go(page); }
 async function riderDocs(id) {
   const [r] = await q("riders", "name,kyc_files,pan_number,aadhaar_last4,kyc_report", x => x.eq("id", id));
   const order = ["pan", "aadhaar front", "aadhaar back", "selfie"];
-  const links = await Promise.all(Object.entries(r.kyc_files || {}).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(async ([k, path]) => {
-    const { data } = await db.storage.from("kyc").createSignedUrl(path, 600); return `<a href="${data?.signedUrl}" target="_blank">${esc(k)}</a>`; }));
+  const links = await Promise.all(Object.entries(r.kyc_files || {}).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(([k, path]) => docLink(k, path, "rider " + id)));
   const checks = (r.kyc_report?.checks || []).map(c => `<div>${c.ok ? "✓" : "✗"} ${esc(c.name)}: ${esc(c.note)}</div>`).join("");
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
   p.innerHTML = `<h2><span>${esc(r.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(r.pan_number || "—")} · Aadhaar XXXX ${esc(r.aadhaar_last4 || "")}</div>
@@ -899,6 +901,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/tax.js?v=1796030000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
 <script src="/admin/setup.js?v=1796020000"></script>
+<script src="/admin/staff.js?v=1796240000"></script>
 <script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
