@@ -110,7 +110,7 @@ async function start() {
     if ($("#panel").classList.contains("open") || page === "accounts") return;                 // never wipe a form being filled
     if (page === "festivals" && Date.now() - (window.FEST_QUIET || 0) < 4000) return;          // my own switch change — page already shows it
     const a = document.activeElement; if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && $("#main").contains(a)) return;
-    go(page); }, 600); };
+    go(page, true); }, 600); };
   // voice alerts ("New KYC for approval"…) — the same tones as the app
   const TONE = {}, tone = k => { try { const a = TONE[k] || (TONE[k] = new Audio(`/sounds/${k}.mp3`)); a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} };
   const alertFor = p => {
@@ -120,9 +120,11 @@ async function start() {
     if (t === "pay_claims" && p.eventType === "INSERT" && n.status === "PENDING") return tone("pay_verify");
     if (t === "support_messages" && p.eventType === "INSERT" && !n.from_admin) return tone("seller_help");
   };
-  let ch = db.channel("admin-live");
-  ["shops", "pay_claims", "complaints", "categories", "category_requests", "festivals", "sales_people", "commissions", "payouts", "settings", "riders", "support_messages"].forEach(t => ch = ch.on("postgres_changes", { event: "*", schema: "public", table: t }, p => { alertFor(p); fire(); }));
-  ch.subscribe();
+  // every table in Supabase Realtime (update-80 adds the tax, books and partner tables) → the open page updates by itself
+  db.channel("admin-live").on("postgres_changes", { event: "*", schema: "public" }, p => { alertFor(p); fire(); }).subscribe();
+  // things Realtime can't see (edge-function secrets in the setup checklist, a new day): check again when the tab comes back and every 2 min
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) fire(); });
+  setInterval(() => { if (!document.hidden && (page === "dashboard" || page === "settings" || page === "tax")) fire(); }, 120000);
 }
 
 function loginView() {
@@ -157,17 +159,20 @@ function shell() {
 }
 
 function menu(open) { $(".side").classList.toggle("open", open); $("#scrim").classList.toggle("open", open); }
-function go(k) {
-  page = k || "categories"; menu(false);
+function go(k, silent) {
+  page = k || "categories"; if (!silent) menu(false);
   if (window.ACCOUNTANT) page = "tax";
   if (location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page);   // keep the address in step, so the menu link for the page you came from works again
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
   const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage, tax: taxPage };
   tdBanner().catch(() => {});
-  if (pages[page]) { $("#main").innerHTML = `<div class="sub">Loading…</div>`;
-    return pages[page]().then(() => { if ((page === "dashboard" || page === "settings") && !window.ACCOUNTANT && window.setupCard) setupCard(page); })
-      .catch(e => $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`); }
+  // silent = a live update: no "Loading…", the page keeps its scroll place (nobody should notice a refresh)
+  const y = window.scrollY, mh = $("#main").offsetHeight;
+  if (pages[page]) { if (silent) $("#main").style.minHeight = mh + "px"; else $("#main").innerHTML = `<div class="sub">Loading…</div>`;
+    return pages[page]().then(() => { if ((page === "dashboard" || page === "settings") && !window.ACCOUNTANT && window.setupCard) return setupCard(page); })
+      .then(() => { if (silent) { $("#main").style.minHeight = ""; window.scrollTo(0, y); } })
+      .catch(e => { $("#main").style.minHeight = ""; if (!silent) $("#main").innerHTML = `<div class="soon err">${esc(e.message || e)}</div>`; }); }
   const label = (NAV.find(n => n[0] === page) || ["", "This page"])[1];
   $("#main").innerHTML = `<div class="top"><div><h1>${label}</h1></div></div>
     <div class="soon"><b>Coming to the web console soon.</b><br>Until then, use the Admin panel inside the Gali Bazaar app (same admin email).</div>`;

@@ -232,16 +232,32 @@
 
   if (fest) ready(function () { decorate(fest); });
   if (q) return;   // preview: nothing fetched, nothing saved
-  // known for today and checked in the last 30 min → nothing to do; otherwise ask again (an admin switch-off shows on the next page)
-  try { var cached = JSON.parse(store.get(CK) || "null"); if (cached && Date.now() - cached.at < 18e5) return; } catch (e) {}
-  // festival day within today … today + 2, or a multi-day festival (till) still running today (update-79)
-  fetch(SB + "/rest/v1/festivals?select=*&day=gte." + istDay(-10) + "&day=lte." + istDay(2) + "&order=day.asc&limit=12",
-    { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
-    .then(function (r) { return r.ok ? r.json() : []; })
-    .then(function (rows) {
-      var f = (rows || []).filter(function (x) { return x.active !== false && (x.day >= today || (x.till && x.till >= today)); })[0] || null;
-      var had = !!fest;
-      store.set(CK, JSON.stringify({ f: f, at: Date.now() }));
-      if (f && !had) { vars(f); ready(function () { decorate(f); }); }
-    }).catch(function () {});
+
+  // take the festival look off again (admin switched it off / the festival is over) — no page reload
+  function undecorate() {
+    document.querySelectorAll(".gbf-strip, .gbf-scene, .gbf-deco-row, .gbf-band").forEach(function (n) { n.remove(); });
+    var r = document.documentElement;
+    r.classList.remove("gbf-has", "gbf-on", "gbf-dark", "gbf-engine"); r.removeAttribute("data-fest");
+    ["--fest-top", "--fest-mid", "--fest-low", "--fest-accent", "--fest-ink"].forEach(function (k) { r.style.removeProperty(k); });
+  }
+  var keyOf = function (f) { return f ? f.theme + "|" + f.day + "|" + (f.greeting || "") : ""; };
+  // Live: the cached look shows at once; the server is asked again on every page, when the tab comes back and every
+  // 2 min while it is open — a change (admin switch, new day) is applied in place, so nobody has to refresh.
+  function check() {
+    today = istDay(0); CK = "gb_fest_" + today;
+    fetch(SB + "/rest/v1/festivals?select=*&day=gte." + istDay(-10) + "&day=lte." + istDay(2) + "&order=day.asc&limit=12",
+      { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) {
+        if (!rows) return;
+        // festival day within today … today + 2, or a multi-day festival (till) still running today (update-79)
+        var f = rows.filter(function (x) { return x.active !== false && (x.day >= today || (x.till && x.till >= today)); })[0] || null;
+        store.set(CK, JSON.stringify({ f: f, at: Date.now() }));
+        if (keyOf(f) === keyOf(fest)) return;
+        ready(function () { if (fest) undecorate(); fest = f; if (f) { vars(f); decorate(f); } });
+      }).catch(function () {});
+  }
+  check();
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
+  setInterval(function () { if (!document.hidden) check(); }, 120000);
 })();
