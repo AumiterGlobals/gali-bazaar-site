@@ -85,7 +85,7 @@ const KINDS = [
 ];
 const kindOf = k => KINDS.find(x => x.k === k);
 const COLORS = ["#FFF0D6", "#D5F3C9", "#FCD9E6", "#DDEBFF", "#EFE6FF", "#FFE7A3", "#FFDCC8", "#D9F5F1"];
-const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
+const NAV = [["dashboard","Dashboard"],["sellers","Sellers"],["kyc","KYC queue"],["deletes","Shop delete requests"],["takedowns","Reports & takedowns"],["photos","Photo review"],["payments","Payments"],["bank","Bank statement"],["tax","Tax & TDS"],["accounts","Accounts & books"],["categories","Categories"],["items","Item list"],["featured","Featured shops"],["sales","Sales team"],["support","Seller support"],["complaints","Complaints"],["courier","Courier issues"],["festivals","Festivals"],["blocked","Blocked items"],["settings","Settings"]];
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -165,7 +165,7 @@ function go(k, silent) {
   if (location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page);   // keep the address in step, so the menu link for the page you came from works again
   document.querySelectorAll(".nav a[data-k]").forEach(a => a.classList.toggle("on", a.dataset.k === page));
   if (page === "categories") return loadCats();
-  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, bank: bankPage, tax: taxPage };
+  const pages = { courier: courierPage, dashboard: dash, sellers, kyc, payments, featured, sales, complaints, festivals, accounts, items: itemList, settings: settingsPage, blocked: blockedPage, support: supportPage, deletes: deletesPage, takedowns: takedownsPage, photos: photosPage, bank: bankPage, tax: taxPage };
   tdBanner().catch(() => {});
   // silent = a live update: no "Loading…", the page keeps its scroll place (nobody should notice a refresh)
   const y = window.scrollY, mh = $("#main").offsetHeight;
@@ -249,7 +249,8 @@ async function dash() {
     <div class="kpi"><span>On free trial</span><b>${trial.length}</b><small style="color:#B45309">${trial.filter(s => s.sub_until <= istIso(Date.now() + 7 * 864e5)).length} end this week</small></div>
     <div class="kpi"><span>Inactive</span><b>${inact.length}</b><small style="color:#BE185D">plan / trial ended</small></div>
     <div class="kpi"><span>Revenue this month</span><b>${inr(month)}</b><small style="color:#6B6380">approved payments</small></div>
-    <div class="kpi"><span>Orders today</span><b>${orders.length}</b><small style="color:#6B6380">all shops</small></div></div>
+    <div class="kpi"><span>Orders today</span><b>${orders.length}</b><small style="color:#6B6380">all shops</small></div>
+    <div class="kpi" id="kpiPhotos" style="cursor:pointer" onclick="go('photos')"><span>Photos to review</span><b>…</b><small style="color:#6B6380">new + fixed again</small></div></div>
   <div class="grid2"><div class="box"><h3>KYC queue <span>• auto-checker</span> <a href="#kyc" style="float:right;color:#EF287B;font-size:13px">View all ${kq.length}</a></h3>${kycTable(kq.slice(0, 5))}</div>
     <div class="box"><h3>Revenue (₹, last 7 days)</h3><svg viewBox="0 0 500 160" style="width:100%;height:170px"><polyline fill="none" stroke="#8B5CF6" stroke-width="3" points="${pts}"/>
       ${rev.map((v, i) => `<circle cx="${10 + i * 80}" cy="${150 - v / max * 130}" r="4" fill="#EF287B"/>`).join("")}</svg>
@@ -258,6 +259,7 @@ async function dash() {
     <div class="box"><h3>Payments <span>• latest</span></h3>${claimTable(claims.filter(c => (c.purpose || "PLAN") === "PLAN").slice(0, 5), shops, false)}</div>
     <div class="box"><h3>Featured requests <span>• Be #1 boost</span></h3>${claimTable(claims.filter(c => c.purpose === "FEATURED" && c.status === "PENDING").slice(0, 5), shops, true) || '<div class="sub">No requests.</div>'}</div>
     <div class="box"><h3>Sales team <span>• lifetime commission</span></h3>${bySales.map(p => `<div class="req"><b>${esc(p.name)}<br><span class="sub">${p.n} sellers onboarded</span></b><b style="flex:0;color:#16A34A">${inr(p.amt)}</b></div>`).join("") || '<div class="sub">No sales people yet.</div>'}</div></div>`;
+  db.rpc("admin_photo_counts").then(({ data }) => { const k = document.querySelector("#kpiPhotos b"); if (k) k.textContent = data ? (data.new || 0) + (data.refixed || 0) : "—"; });
 }
 
 function kycTable(list) {
@@ -891,6 +893,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/sales-partner.js?v=1796030000"></script>
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
+<script src="/admin/photos.js?v=1796200000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
 <script src="/admin/tax.js?v=1796030000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
