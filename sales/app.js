@@ -194,7 +194,7 @@ async function load() {
   ]);
   let list = shops.data;
   if (shops.error) { const r = await db.rpc("my_referrals"); list = r.data || []; }
-  D = { shops: list || [], com: com.data || [], pay: pay.data || [], tds: tds.data || null, sum: sum.data || null };
+  D = { shops: list || [], com: com.data || [], pay: pay.data || [], tds: tds.data || null, sum: fillSum(sum.data, me) };
   const byShop = {};
   D.com.forEach(c => { const b = byShop[c.shop] || (byShop[c.shop] = { earned: 0, last: null }); b.earned += Number(c.amount || 0); if (!b.last || c.created_at > b.last) b.last = c.created_at; });
   D.byShop = byShop;

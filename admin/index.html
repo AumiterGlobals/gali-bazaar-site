@@ -394,7 +394,7 @@ async function ilSave(id) {
 }
 // ---------- Settings: plan price, trial, payments ----------
 async function settingsPage() {
-  const [s] = await q("settings", "*", x => x.eq("id", 1));
+  const s = (await q("settings", "*", x => x.eq("id", 1)))[0] || {};
   const d = s.plan_discounts || {};
   const f = (k, l, v, ty = "text") => `<div><label>${l}</label><input class="in" id="st_${k}" type="${ty}" value="${esc(v ?? "")}"></div>`;
   $("#main").innerHTML = head("Settings", "Plan price, free trial, discounts and the UPI that shops pay to") + `<div class="box"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">

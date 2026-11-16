@@ -72,24 +72,35 @@ function commissionGate(S, onOut) {
   });
 }
 
+// summary row from my_sales_summary; an empty / partial one falls back to the sales_people row (never print "undefined")
+function fillSum(S, me) {
+  if (Array.isArray(S)) S = S[0];
+  if (!S || typeof S !== "object" || !Object.keys(S).length) return null;
+  const pick = (v, f) => (v === undefined || v === null || v === "") ? f : v;
+  S.code = pick(S.code, me && me.code); S.pct = pick(S.pct, me && me.commission_pct);
+  S.type = pick(S.type, me && me.commission_type); S.months = pick(S.months, me && me.commission_months);
+  return S;
+}
+const dash = v => (v === undefined || v === null || v === "") ? "—" : v;
+
 // ---------- status strip + code card ----------
 function statusStrip(S) {
   const steps = ["Applied", "Approved", "KYC", "Active"], n = S.status === "active" ? 4 : S.kyc === "PENDING" ? 3 : 2;
   return `<div class="box" style="padding:14px 16px"><div style="display:flex;gap:6px">${steps.map((l, i) => `<div style="flex:1"><div style="height:5px;border-radius:5px;background:${i < n ? "#6A1BB0" : "#EEE7F6"}"></div><div style="font-size:12px;margin-top:4px;color:${i < n ? "#1D0F30" : "#8E84A8"};font-weight:${i === n - 1 ? 700 : 400}">${l}</div></div>`).join("")}</div>
-    <div style="margin-top:10px;font-weight:600">Your commission: ${S.pct}% · ${CTYPE(S.type, S.months)} <span class="sub" style="margin:0;font-weight:400">· of each plan amount after GST</span></div>
+    <div style="margin-top:10px;font-weight:600">Your commission: ${S.pct == null ? "—" : S.pct + "%"} · ${S.type ? CTYPE(S.type, S.months) : "—"} <span class="sub" style="margin:0;font-weight:400">· of each plan amount after GST</span></div>
     ${S.status === "blocked" ? `<div class="warnline">Your sales account is blocked. Contact the Gali Bazaar admin.</div>` : ""}</div>`;
 }
 const refLink = code => `https://galibazaar.site/r/${encodeURIComponent(code)}`;
-function shareShopsMsg(code) { return `🛍️ Apni dukaan ko Gali Bazaar pe laao — 0% commission, apne mohalle ke customers.\nApp kholke *Register your shop* mein mera code daalo: *${code}*\n${refLink(code)}`; }
+function shareShopsMsg(code) { return `🛍️ Bring your shop to Gali Bazaar — 0% commission, customers from your own neighbourhood.\nOpen the app, tap *I own a shop* and enter my code: *${code}*\n${refLink(code)}`; }
 function shareCustMsg() { return `🛒 Order from your gali's shops on Gali Bazaar — groceries, sweets, food & more, delivered from shops near you.\nDownload: https://galibazaar.site/`; }
 function codeCard(S) {
-  const on = S.code_active, letters = String(S.code).split("");
+  const on = S.code_active, letters = String(dash(S.code)).split("");
   const tiles = letters.map(c => `<span style="display:inline-flex;width:34px;height:44px;align-items:center;justify-content:center;border-radius:10px;font-weight:800;font-size:22px;${on ? "background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff" : "background:#fff;border:1px solid #E6E1EF;color:#C4BCD6"}">${esc(c)}</span>`).join("");
   return `<div class="grid2">
     <div class="box" style="${on ? "background:linear-gradient(135deg,#6A1BB0,#C026D3);color:#fff;border:0" : "border:1.5px dashed #D8D0E6;background:#FAF8FD"}">
       <div style="font-size:12px;letter-spacing:1.5px;font-weight:700;opacity:.85">YOUR CODE</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin:12px 0">${tiles}</div>
-      ${on ? `<div style="display:flex;justify-content:space-between;font-size:13px;opacity:.9"><span>✓ Active · ${S.pct}% · ${CTYPE(S.type, S.months)}</span><span>${S.shops} shop${S.shops === 1 ? "" : "s"} joined</span></div>
+      ${on ? `<div style="display:flex;justify-content:space-between;font-size:13px;opacity:.9"><span>✓ Active · ${S.pct == null ? "—" : S.pct + "%"} · ${S.type ? CTYPE(S.type, S.months) : "—"}</span><span>${S.shops || 0} shop${S.shops === 1 ? "" : "s"} joined</span></div>
         <div style="display:flex;gap:10px;margin-top:14px"><button class="btn" style="background:#fff;color:#6A1BB0;flex:1" onclick="copyCode()">⧉ Copy</button>
         <a class="btn" style="background:#22C55E;color:#fff;flex:1;text-align:center" target="_blank" href="https://wa.me/?text=${encodeURIComponent(shareShopsMsg(S.code))}">Share with shops</a></div>`
       : `<div style="color:#B45309;font-weight:600">🔒 Not active yet — complete your KYC</div><button class="btn pink full" style="margin-top:12px" onclick="go('kyc')">Complete KYC</button>`}</div>
@@ -111,7 +122,7 @@ async function kycPage() {
   const S = D.sum, bank = (await db.rpc("my_sales_bank")).data;
   if (S.kyc === "APPROVED") {
     $("#main").innerHTML = head("KYC & bank", "Your verified details") + `<div class="box" style="max-width:680px">
-      <div class="okline">✓ KYC approved — your code ${esc(S.code)} is active</div>
+      <div class="okline">✓ KYC approved — your code ${esc(dash(S.code))} is active</div>
       ${bank ? [["Account holder", bank.holder], ["Account", bank.masked + " · " + bank.acct_type], ["IFSC", `${bank.ifsc}${bank.bank_name ? " · " + bank.bank_name : ""}${bank.branch ? " · " + bank.branch : ""}`], ["UPI", me.upi || "—"], ["Status", bank.status === "approved" ? "Approved" : bank.status === "pending" ? "Bank details under review — payouts on hold" : "Rejected — add the details again"]]
         .map(([k, v]) => `<div class="row"><div><b>${k}</b><span>${esc(v)}</span></div></div>`).join("") : ""}
       ${S.kyc_reason && S.bank_hold ? `<div class="warnline">${esc(S.kyc_reason)}</div>` : ""}
@@ -126,7 +137,7 @@ function bankForm(change) {
   const S = D.sum;
   $("#main").innerHTML = head(change ? "Change bank details" : "Complete your KYC", change ? "Payouts wait until the admin checks the new account" : "") + `<div class="box" style="max-width:720px">
     ${change ? `<div class="warnline">Changing bank details puts payouts on hold until we re-approve them. We'll email you about this change.</div>`
-      : `<div class="note" style="background:#FFF7E6">Your code <b>${esc(S.code)}</b> starts working after KYC is approved.${S.kyc === "REJECTED" && S.kyc_reason ? `<br><b>Fix needed:</b> ${esc(S.kyc_reason)}` : ""}</div>
+      : `<div class="note" style="background:#FFF7E6">Your code <b>${esc(dash(S.code))}</b> starts working after KYC is approved.${S.kyc === "REJECTED" && S.kyc_reason ? `<br><b>Fix needed:</b> ${esc(S.kyc_reason)}` : ""}</div>
     <h3 style="margin-top:14px">IDENTITY</h3>
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:0 12px"><div><label>NAME AS ON PAN</label><input class="in" id="k_pn" value="${esc(me.pan_name || me.name || "")}"></div>
       <div><label>PAN</label><input class="in" id="k_pan" maxlength="10" style="text-transform:uppercase" value="${esc(me.pan || "")}"></div></div>
@@ -194,8 +205,19 @@ async function payoutsPage() {
   const S = D.sum, f16 = (await db.from("form16a").select("*").eq("sales", me.id).order("fy", { ascending: false })).data || [];
   const name = id => D.shops.find(s => s.id === id)?.name || "Shop";
   $("#main").innerHTML = head("Payouts", "Every payout with UTR, TDS and a PDF advice") + `
-    <div class="box" style="background:linear-gradient(135deg,#4C1D95,#7C3AED 60%,#BE185D);color:#fff;border:0"><div style="font-weight:700;opacity:.85">FY ${esc(S.fy)}</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">${[["Earned", S.earned], ["TDS", S.tds], ["Received", S.received], ["Due", S.due]].map(([k, v]) => `<div><div style="font-size:12px;opacity:.8">${k}</div><b style="font-size:20px">${mny(v)}</b></div>`).join("")}</div></div>
+    ${(() => {   // this month: commission (exact paise) − TDS on the monthly total, whole rupees = to be paid (same as the app)
+      const due = Number(S.due || 0), rate = Number(S.tds_rate ?? 2), tdsNow = Math.round(due * rate / 100), pay = Math.round((due - tdsNow) * 100) / 100;
+      const rateTxt = String(rate).replace(/\.0+$/, "");
+      return `<div class="box"><div style="display:flex;align-items:center"><b style="flex:1">FY ${esc(dash(S.fy))}</b><span class="pill grey">Paid once a month</span></div>
+        <div style="background:#F1E8FA;border-radius:14px;padding:12px 14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:14px"><span>Commission</span><b>${mny(due)}</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:#6E6468;margin-top:6px"><span>TDS ${rateTxt}% (whole rupees)</span><span>− ₹${tdsNow.toLocaleString("en-IN")}</span></div>
+          <div style="height:1px;background:#ECE4DC;margin:10px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><b>To be paid</b><b style="font-size:22px;color:#6A1BB0">${mny(pay)}</b></div>
+          <div class="sub" style="margin:6px 0 0">TDS is worked out on the month's total and rounded to the rupee.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">${[["Earned", S.earned], ["Received", S.received]].map(([k, v]) => `<div><div class="sub" style="margin:0">${k}</div><b style="font-size:20px">${mny(v || 0)}</b></div>`).join("")}</div></div>`;
+    })()}
     ${S.bank_hold ? `<div class="warnline">Bank details under review — payouts are on hold until we check them.</div>` : ""}
     <div class="box">${D.pay.length ? D.pay.map(p => `<div class="row" style="align-items:flex-start"><div style="flex:1"><b>${dmyy(p.pdate)}</b> <span class="sub" style="margin:0">${esc(p.advice_no || "")}</span>
         <span>Gross ${mny(p.gross)} · TDS ${rup(p.tds)} · ${esc(p.mode || "—")}<br>UTR ${esc(p.utr || p.ref || "—")}</span>
@@ -203,8 +225,8 @@ async function payoutsPage() {
         <div style="text-align:right"><b style="color:#16A34A">Net ${mny(p.net)}</b><br><button class="btn pink" style="margin-top:8px;padding:8px 14px" onclick="advicePdf('${p.id}')">⇩ PDF</button></div></div>`).join("")
       : `<div class="sub">No payouts yet.</div>`}</div>
     <div class="box"><h3>Form 131 (earlier Form 16A)</h3>${f16.length ? f16.map(f => `<div class="row"><div><b>📄 Form 131 — Q${f.quarter} FY ${esc(f.fy)}</b></div><a href="#" style="color:#6A1BB0;font-weight:600" onclick="f16dl('${esc(f.path)}');return false">Download</a></div>`).join("") : `<div class="sub">Form 131 (earlier Form 16A) is added every quarter after TDS is deducted.</div>`}</div>
-    <div class="box"><h3>Commission entries</h3>${D.com.length ? `<table><thead><tr><th>DATE</th><th>SHOP</th><th class="hm">PLAN · AFTER GST</th><th>%</th><th>AMOUNT</th><th></th></tr></thead><tbody>${D.com.map(c => `<tr>
-        <td>${dmy(c.created_at)}</td><td><b>${esc(name(c.shop))}</b>${c.kind === "ADJUST" ? `<div class="sub" style="margin:0">Refund adjustment</div>` : ""}</td><td class="hm">${c.plan_amount != null ? mny(c.plan_amount) + " · " + mny(c.taxable) : inr(c.base_amount)}</td><td>${c.pct}%</td>
+    <div class="box"><h3>Commission entries</h3>${D.com.length ? `<table><thead><tr><th>DATE</th><th>SHOP</th><th class="hm">AFTER GST</th><th>%</th><th>AMOUNT</th><th></th></tr></thead><tbody>${D.com.map(c => `<tr>
+        <td>${dmy(c.created_at)}</td><td><b>${esc(name(c.shop))}</b>${c.kind === "ADJUST" ? `<div class="sub" style="margin:0">Refund adjustment</div>` : ""}</td><td class="hm">${c.plan_amount != null ? mny(c.taxable) : inr(c.base_amount)}</td><td>${c.pct}%</td>
         <td><b>${mny(c.amount)}</b></td><td><span class="pill ${c.status === "PAID" ? "grey" : c.status === "CANCELLED" ? "bad" : "warn"}">${c.status}</span></td></tr>`).join("")}</tbody></table>` : `<div class="sub">No commission yet.</div>`}</div>`;
 }
 async function poDetails(id) {
