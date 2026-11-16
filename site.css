@@ -318,7 +318,7 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
   .df .lcards{grid-template-columns:1fr 1fr;gap:8px}.df .lcards a{display:flex;align-items:center;gap:10px;padding:10px}
   .df .lcards .li{margin:0;width:28px;height:28px}.df .lcards .ch,.df .lcards small{display:none}.df .lcards b{font-size:12.5px}
   .df .ddisc{padding:12px}.df .ddisc .di{display:none}.df .ddisc p{font-size:11.5px}
-  .df .mlinks2{display:flex;justify-content:space-between;margin-top:16px}.df .mlinks2 a{color:#E4DEF2;text-decoration:none;font-size:13px}
+  .df .mlinks2{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.df .mlinks2 a{color:#E4DEF2;text-decoration:none;font-size:12.5px;padding:6px 12px;border:1px solid rgba(255,255,255,.16);border-radius:30px;white-space:nowrap}
   .df .dbot{font-size:11px}.df .dbot span:nth-child(2){display:none}
   .fs .stage,.fs .stats,.fs .live{display:none}
   .fs{padding-bottom:0}
