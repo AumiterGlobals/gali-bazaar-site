@@ -302,6 +302,13 @@ async function docs(id) {
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
   p.innerHTML = `<h2><span>${esc(s.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(s.pan_number || "—")} · Aadhaar XXXX ${esc(s.aadhaar_last4 || "")}</div>${firm}
     <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div><label>OFFICIAL RECORDS (Income Tax · MCA · GST)</label><div class="sub">${official || "Not checked yet"}</div>
+    <label>CHECK BY HAND ON THE OFFICIAL SITES (free)</label><div class="docs">
+      <a href="https://eportal.incometax.gov.in/iec/foservices/#/pre-login/verifyYourPAN" target="_blank" rel="noopener">Income Tax · Verify PAN ${esc(s.pan_number || "")}</a>
+      ${s.firm_pan ? `<a href="https://eportal.incometax.gov.in/iec/foservices/#/pre-login/verifyYourPAN" target="_blank" rel="noopener">Income Tax · Firm PAN ${esc(s.firm_pan)}</a>` : ""}
+      ${s.cin ? `<a href="https://www.mca.gov.in/content/mca/global/en/mca/master-data/MDS.html" target="_blank" rel="noopener">MCA · Master data ${esc(s.cin)}</a>` : ""}
+      ${s.gstin ? `<a href="https://services.gst.gov.in/services/searchtp" target="_blank" rel="noopener">GST · Search ${esc(s.gstin)}</a>` : ""}
+      ${s.fssai ? `<a href="https://foscos.fssai.gov.in/" target="_blank" rel="noopener">FSSAI · FBO search ${esc(s.fssai)}</a>` : ""}
+    </div>
     <div style="margin-top:16px"><button class="btn pink" onclick="kycSet('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="kycSet('${id}','REJECTED');closeForm()">Reject</button></div>`;
 }
 function claimTable(list, shops, featured) {
@@ -350,6 +357,13 @@ async function riderDocs(id) {
   const p = $("#panel"); p.classList.add("open"); document.body.classList.add("po");
   p.innerHTML = `<h2><span>${esc(r.name)}</span><button class="x" onclick="closeForm()">×</button></h2><div class="sub">PAN ${esc(r.pan_number || "—")} · Aadhaar XXXX ${esc(r.aadhaar_last4 || "")}</div>
     <label>DOCUMENTS (links work 10 minutes)</label><div class="docs">${links.join("") || "None"}</div><label>AUTO-CHECK</label><div class="sub">${checks || "No report"}</div><label>OFFICIAL RECORDS (Income Tax · MCA · GST)</label><div class="sub">${official || "Not checked yet"}</div>
+    <label>CHECK BY HAND ON THE OFFICIAL SITES (free)</label><div class="docs">
+      <a href="https://eportal.incometax.gov.in/iec/foservices/#/pre-login/verifyYourPAN" target="_blank" rel="noopener">Income Tax · Verify PAN ${esc(s.pan_number || "")}</a>
+      ${s.firm_pan ? `<a href="https://eportal.incometax.gov.in/iec/foservices/#/pre-login/verifyYourPAN" target="_blank" rel="noopener">Income Tax · Firm PAN ${esc(s.firm_pan)}</a>` : ""}
+      ${s.cin ? `<a href="https://www.mca.gov.in/content/mca/global/en/mca/master-data/MDS.html" target="_blank" rel="noopener">MCA · Master data ${esc(s.cin)}</a>` : ""}
+      ${s.gstin ? `<a href="https://services.gst.gov.in/services/searchtp" target="_blank" rel="noopener">GST · Search ${esc(s.gstin)}</a>` : ""}
+      ${s.fssai ? `<a href="https://foscos.fssai.gov.in/" target="_blank" rel="noopener">FSSAI · FBO search ${esc(s.fssai)}</a>` : ""}
+    </div>
     <div style="margin-top:16px"><button class="btn pink" onclick="riderKyc('${id}','APPROVED');closeForm()">Approve</button> <button class="btn ghost" onclick="riderKyc('${id}','REJECTED');closeForm()">Reject</button></div>`;
 }
 // ---------- Item list (master): products every shop picks from ----------
