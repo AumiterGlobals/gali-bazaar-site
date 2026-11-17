@@ -269,9 +269,24 @@ function dash() {
           <div class="fu"><div><b style="font-weight:500">Live with 3 photos</b></div><span class="pill ok">${liveI} items</span></div></div>
         <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Plan + any TDS · pay by UPI</div></div>
           <a class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
+        ${S.kyc === "APPROVED" ? `<div class="box" id="topBox" style="background:#F1E8FA"><div class="sub">Loading…</div></div>` : ""}
       </div></div>`;
+  topBox();
   rulesCard();   // IT Rules 2026: content-rules reminder every 3 months
   cookedCard();  // Food Corner: calls this month
+}
+
+// Top spot (featured): plans + buy button straight to the payment page (QR, UTR, date, screenshot → admin approves)
+async function topBox() {
+  const el = document.getElementById("topBox"); if (!el) return;
+  const { data: st } = await db.from("settings").select("feat_week_price,feat_month_price").eq("id", 1).maybeSingle();
+  const on = S.featured_until && S.featured_until >= todayStr();
+  const opt = (d, p) => `<a class="btn" style="flex:1;min-width:130px;background:#fff;color:#1D0F30;text-align:center" href="/pay/?shop=${S.id}&purpose=featured&days=${d}">
+      <b>${d === 7 ? "1 week" : "1 month"}</b><br><span style="font-size:13px">${p != null ? inr(p) : ""}</span></a>`;
+  el.innerHTML = `<b style="font-size:16px;color:#6A1BB0">Be the #1 shop in your area</b>
+    <div class="sub" style="margin:4px 0 12px">${on ? "You're on top of every customer's home till " + dmyFull(S.featured_until) + ". Extend it below." : "Show at the top of every customer's home in your delivery areas, marked Sponsored."}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${opt(7, st?.feat_week_price)}${opt(30, st?.feat_month_price)}</div>
+    <a class="btn pink" style="display:block;text-align:center;margin-top:10px" href="/pay/?shop=${S.id}&purpose=featured&days=30">Buy to get No. 1 spot</a>`;
 }
 
 // ================= Orders =================
