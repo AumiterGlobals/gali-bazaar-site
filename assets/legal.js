@@ -16,4 +16,24 @@
         document.querySelectorAll("[data-go-phone]").forEach(function (el) { el.textContent = L.go_phone || ""; el.style.display = L.go_phone ? "" : "none"; });
       }).catch(function () {});
   } catch (e) {}
+  // update-93: Legal page → "What changed" (newest first), from the same list the app shows before re-accepting
+  var box = document.querySelector("[data-terms-changes]");
+  if (box) try {
+    fetch(SB + "/rest/v1/terms_changes?select=version,doc,ord,en,hi&order=version.desc,doc.asc,ord.asc&limit=200", { headers: { apikey: KEY, Authorization: "Bearer " + KEY } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) {
+        if (!rows || !rows.length) return;
+        var hi = /^hi/i.test(navigator.language || "") || new URLSearchParams(location.search).get("lang") === "hi";
+        var names = { terms: ["Terms of Use", "उपयोग की शर्तें"], "seller-terms": ["Seller Terms", "सेलर नियम"], "partner-terms": ["Delivery Partner Terms", "डिलीवरी पार्टनर नियम"],
+          "sales-terms": ["Sales Partner Terms", "सेल्स पार्टनर नियम"], privacy: ["Privacy Policy", "प्राइवेसी पॉलिसी"] };
+        var e = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+        var byV = {}; rows.forEach(function (r) { (byV[r.version] = byV[r.version] || []).push(r); });
+        box.innerHTML = "<h2>" + (hi ? "क्या बदला" : "What changed") + "</h2>" + Object.keys(byV).sort().reverse().map(function (v) {
+          var d = new Date(v + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+          return "<p><b>" + e(d) + "</b></p><ul>" + byV[v].map(function (r) {
+            return "<li><b>" + e((names[r.doc] || [r.doc, r.doc])[hi ? 1 : 0]) + ":</b> " + e(hi ? r.hi : r.en) + "</li>"; }).join("") + "</ul>";
+        }).join("");
+        box.style.display = "";
+      }).catch(function () {});
+  } catch (e) {}
 })();

@@ -79,14 +79,14 @@
   const st2 = document.createElement("style"); st2.textContent = css2; document.head.appendChild(st2);
   const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
   const loadJs = src => new Promise((ok, bad) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.append(s); });
-  async function sellerSign(db, onSignOut) {
+  async function sellerSign(db, onSignOut, changes = "") {
     const [{ data: info }, terms] = await Promise.all([db.rpc("seller_terms_info"), fetch("/legal/seller-terms.json", { cache: "no-store" }).then(r => r.json()).catch(() => null)]);
     const otpOn = !!(info && info.otp), fb = info && info.firebase_web;
     return new Promise(res => {
       const w = document.createElement("div"); w.className = "gbs";
       const body = terms ? (HI ? terms.hi : terms.en).map(b => b.t === "li" ? `<li>${md(b.s)}</li>` : `<p>${md(b.s)}</p>`).join("") : `<p><a href="${LEGAL}#seller-terms" target="_blank">${esc(S2.t)}</a></p>`;
       w.innerHTML = `<div class="gbs-c"><div class="gbs-h"><h2>${esc(S2.t)}</h2><p>${esc(S2.sub)}${info && info.version ? " · v" + esc(info.version) : ""}</p></div>
-        <div class="gbs-t" id="gbs-t">${body}<div class="e">${esc(S2.end)}</div></div>
+        ${changes ? `<div style="padding:0 16px">${changes}</div>` : ""}<div class="gbs-t" id="gbs-t">${body}<div class="e">${esc(S2.end)}</div></div>
         <div class="gbs-f"><div class="w" id="gbs-w">${esc(S2.scroll)}</div>
           <input id="gbs-n" placeholder="${esc(S2.name)}" disabled autocomplete="name">
           ${otpOn ? (fb ? `<div id="gbs-rc"></div><input id="gbs-o" placeholder="${esc(S2.otp)} · ••••${esc(info.phone_last4 || "")}" inputmode="numeric" maxlength="6" style="display:none">` : `<div class="er">${esc(S2.app)}</div>`) : ""}
@@ -127,14 +127,29 @@
     });
   }
 
+  /** update-93: "What changed" since this person last accepted (empty for a first acceptance). */
+  async function whatsNew(db, role) {
+    const { data, error } = await db.rpc("terms_whats_new", { p_role: role });
+    if (error || !data || !data.length) return "";
+    const names = HI ? { terms: "उपयोग की शर्तें", "seller-terms": "सेलर नियम", "partner-terms": "डिलीवरी पार्टनर नियम", "sales-terms": "सेल्स पार्टनर नियम", privacy: "प्राइवेसी पॉलिसी" }
+      : { terms: "Terms of Use", "seller-terms": "Seller Terms", "partner-terms": "Delivery Partner Terms", "sales-terms": "Sales Partner Terms", privacy: "Privacy Policy" };
+    const groups = {}; data.forEach(c => (groups[c.version + "|" + c.doc] = groups[c.version + "|" + c.doc] || []).push(c));
+    const day = v => new Date(v + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    return `<div class="gbw"><b>${HI ? "क्या बदला" : "What changed"}</b>${Object.entries(groups).map(([k, l]) => `<div class="gbw-h">${esc(names[k.split("|")[1]] || k.split("|")[1])} · ${esc(day(k.split("|")[0]))}</div><ul>${l.map(c => `<li>${esc(HI ? c.hi : c.en)}</li>`).join("")}</ul>`).join("")}</div>`;
+  }
+  const st3 = document.createElement("style");
+  st3.textContent = `.gbw{background:#F4EEFF;border-radius:14px;padding:12px 14px;margin:0 0 12px;max-height:220px;overflow:auto;font-size:13px;line-height:1.5;color:#3F3854;text-align:left}.gbw>b{color:#6A1BB0;font-size:14px}.gbw-h{font-weight:600;margin-top:8px;color:#1D0F30}.gbw ul{margin:4px 0 0 18px;padding:0}`;
+  document.head.appendChild(st3);
+
   /** Resolves once this person has accepted the current version for [role] (shows the sheet if needed). */
   async function gate(db, role, onSignOut) {
     const { data, error } = await db.rpc("terms_ok", { p_role: role });
     if (error || data !== false) return;   // DB not updated yet / offline → don't block
-    if (role === "seller") return sellerSign(db, onSignOut);
+    const changes = await whatsNew(db, role);
+    if (role === "seller") return sellerSign(db, onSignOut, changes);
     return new Promise(res => {
       const w = document.createElement("div"); w.className = "gbt-sheet";
-      w.innerHTML = `<div class="gbt-card"><h2>${esc(L.title)}</h2><p class="s">${esc(L.sub)}</p>${html(role, "gbt-gate")}<button class="go" id="gbt-go">${esc(L.btn)}</button><button class="so" id="gbt-so">${esc(L.out)}</button></div>`;
+      w.innerHTML = `<div class="gbt-card"><h2>${esc(L.title)}</h2><p class="s">${esc(L.sub)}</p>${changes}${html(role, "gbt-gate")}<button class="go" id="gbt-go">${esc(L.btn)}</button><button class="so" id="gbt-so">${esc(L.out)}</button></div>`;
       document.body.appendChild(w);
       const go = w.querySelector("#gbt-go"); bind("gbt-gate", go);
       go.onclick = async () => {
