@@ -697,9 +697,17 @@ async function spSet(id, on) {
 }
 async function complaints() {
   const [list, shops] = await Promise.all([q("complaints", "*", x => x.order("created_at", { ascending: false }).limit(100)), q("shops", "id,name")]);
-  $("#main").innerHTML = head("Complaints", `${list.filter(c => !c.reply).length} waiting for the shop's reply`) + `<div class="box"><table><thead><tr><th>DATE</th><th>SHOP</th><th>PROBLEM</th><th>STATUS</th></tr></thead><tbody>${list.map(c => `<tr>
+  $("#main").innerHTML = head("Complaints", `${list.filter(c => c.status === "OPEN").length} open · ${list.filter(c => c.status === "OPEN" && Date.now() - new Date(c.created_at) > 7 * 86400000).length} past 7 days`) + `<div class="box"><table><thead><tr><th>DATE</th><th>SHOP</th><th>PROBLEM</th><th>STATUS</th></tr></thead><tbody>${list.map(c => `<tr>
     <td>${(c.created_at || "").slice(0, 10)}</td><td>${esc(shops.find(s => s.id === c.shop)?.name || "")}</td><td>${esc(c.reason)}<br><span class="sub">${esc((c.items || []).join(", "))}</span></td>
-    <td><span class="pill ${c.reply ? "ok" : "warn"}">${c.reply ? "Replied" : "Open"}</span></td></tr>`).join("")}</tbody></table></div>`;
+    <td><span class="pill ${c.status === "OPEN" ? "warn" : "ok"}">${c.status === "OPEN" ? (c.reply ? "Replied · open" : "Open") : esc(c.status || "Closed")}</span>${c.status === "OPEN" ? cplDue(c.created_at) : ""}</td></tr>`).join("")}</tbody></table></div>`;
+}
+// update-88: 7-day resolution deadline (IT Rules 2026) — amber under 3 days, red under 1 day / overdue
+function cplDue(created) {
+  if (!created) return "";
+  const d = (new Date(created).getTime() + 7 * 86400000 - Date.now()) / 86400000;
+  const cls = d < 1 ? "bad" : d < 3 ? "warn" : "grey";
+  const t = d < 0 ? `Overdue by ${Math.ceil(-d)} day${Math.ceil(-d) === 1 ? "" : "s"}` : `${Math.max(0, Math.floor(d))} day${Math.floor(d) === 1 ? "" : "s"} left`;
+  return `<br><span class="pill ${cls}" style="margin-top:4px">${t}</span>`;
 }
 
 // ---------------- Festivals ----------------
@@ -902,7 +910,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 <script src="/admin/tax.js?v=1796030000"></script>
 <script src="/admin/books.js?v=1795530000"></script>
 <script src="/admin/setup.js?v=1796020000"></script>
-<script src="/admin/staff.js?v=1796250000"></script>
+<script src="/admin/staff.js?v=1796270000"></script>
 <script>
 // ================= Seller support chat =================
 let supT = null, supShop = null, supSig = "";
