@@ -151,7 +151,7 @@ async function spPayOpen(id) {
     const { data, error } = await db.rpc("admin_tds_preview", { p_sales: id, p_ids: ids() });
     $("#tdsv").innerHTML = error ? `<span class="err">${esc(spErr(error))}</span>` : `${data.paid_this_month ? `<div class="warnline" style="margin-bottom:8px">Already paid this month (${esc(data.last_advice || "")} on ${esc(data.last_paid || "")}). Payouts go once a month — record this only if it is really due now.</div>` : ""}
       <div style="display:flex;justify-content:space-between"><span>All due commission (${data.count ?? list.length} entr${(data.count ?? list.length) === 1 ? "y" : "ies"})</span><b>${mny2(data.gross)}</b></div>
-      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}% = ${mny2(data.gross * data.rate / 100)} → rounded to the rupee` : Number(data.threshold) > 0 ? `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})` : "(nil)"}</span><b>− ₹${Math.round(data.tds)}</b></div>
+      <div style="display:flex;justify-content:space-between"><span>TDS u/s 393(1) (earlier 194H) ${data.tds > 0 ? `@ ${data.rate}% = ${mny2(data.gross * data.rate / 100)} → rounded up to the rupee` : Number(data.threshold) > 0 ? `(FY total ${mny2(data.fy_credited)} — below ${mny2(data.threshold)})` : "(nil)"}</span><b>− ₹${Math.round(data.tds)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:16px;margin-top:4px"><span><b>Pay this</b></span><b style="color:#16A34A">${mny2(data.net)}</b></div>${data.has_pan ? "" : `<div class="warnline">No PAN — higher TDS rate</div>`}`;
   };
   prev();

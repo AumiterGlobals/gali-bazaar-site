@@ -262,7 +262,7 @@ async function dash() {
       ${rev.map((v, i) => `<circle cx="${10 + i * 80}" cy="${150 - v / max * 130}" r="4" fill="#EF287B"/>`).join("")}</svg>
       <div class="sub" style="display:flex;justify-content:space-between">${days.map(d => `<span>${d.slice(8)}</span>`).join("")}</div></div></div>
   <div class="grid3">
-    <div class="box"><h3>Payments <span>• latest</span></h3>${claimTable(claims.filter(c => (c.purpose || "PLAN") === "PLAN").slice(0, 5), shops, false)}</div>
+    <div class="box"><h3>Payments <span>• latest</span></h3>${claimTable(claims.filter(c => (c.purpose || "PLAN") !== "FEATURED").slice(0, 5), shops, false)}</div>
     <div class="box"><h3>Featured requests <span>• Be #1 boost</span></h3>${claimTable(claims.filter(c => c.purpose === "FEATURED" && c.status === "PENDING").slice(0, 5), shops, true) || '<div class="sub">No requests.</div>'}</div>
     <div class="box"><h3>Sales team <span>• lifetime commission</span></h3>${bySales.map(p => `<div class="req"><b>${esc(p.name)}<br><span class="sub">${p.n} sellers onboarded</span></b><b style="flex:0;color:#16A34A">${inr(p.amt)}</b></div>`).join("") || '<div class="sub">No sales people yet.</div>'}</div></div>`;
   db.rpc("admin_photo_counts").then(({ data }) => { const k = document.querySelector("#kpiPhotos b"); if (k) k.textContent = data ? (data.new || 0) + (data.refixed || 0) : "—"; });
@@ -321,7 +321,7 @@ function claimTable(list, shops, featured) {
   if (!list.length) return "";
   const nm = id => esc(shops.find(s => s.id === id)?.name || "Shop");
   return `<table><thead><tr><th>SHOP</th><th>${featured ? "DAYS" : "PLAN"}</th><th>AMOUNT</th><th>STATUS</th>${featured || list.some(c => ["PENDING", "NOT_FOUND"].includes(c.status)) ? "<th></th>" : ""}</tr></thead><tbody>${list.map(c => `<tr>
-    <td>${nm(c.shop)}<br><span class="sub">UTR ${esc(c.utr)}</span></td><td>${featured ? (c.days || "") + " days" : c.months + " month" + (c.months > 1 ? "s" : "")}</td><td><b>${inr(c.amount)}</b></td>
+    <td>${nm(c.shop)}<br><span class="sub">UTR ${esc(c.utr)}</span></td><td>${c.purpose === "DUES" ? "TDS / dues" : featured ? (c.days || "") + " days" : c.months + " month" + (c.months > 1 ? "s" : "")}</td><td><b>${inr(c.amount)}</b></td>
     <td><span class="pill ${c.status === "APPROVED" ? "ok" : c.status === "PENDING" ? "warn" : "bad"}">${c.status === "APPROVED" ? (c.verified_by === "BANK" ? "Verified · bank" : "Verified") : c.status === "PENDING" ? "Checking" : c.status === "NOT_FOUND" ? `Not found${c.not_found_count > 1 ? " ×" + c.not_found_count : ""}` : "Rejected"}</span>
       ${c.inv_no ? `<div class="sub" style="font-size:11.5px">${esc(c.inv_no)}</div>` : ""}${c.verify_reason && c.verified_by === "ADMIN" ? `<div class="sub" style="font-size:11.5px">${esc(c.verify_reason)}</div>` : ""}</td>
     ${["PENDING", "NOT_FOUND"].includes(c.status) ? `<td style="white-space:nowrap">${c.shot_url && !c.shot_deleted_at ? `<button class="mini" onclick="claimShot('${esc(c.shot_url)}')">Screenshot</button>` : ""}<button class="mini dk" onclick="claimOk('${c.id}')">Mark verified</button><button class="mini" onclick="claimNo('${c.id}')">Decline</button></td>` : (featured || list.some(x => ["PENDING", "NOT_FOUND"].includes(x.status)) ? "<td></td>" : "")}</tr>`).join("")}</tbody></table>`;
@@ -552,7 +552,7 @@ async function blockedPage() {
     <div class="sub" style="margin-top:12px">Hindi spellings (सिगरेट, बीड़ी, गुटखा, तंबाकू, खैनी, ज़र्दा, शराब, दारू) are blocked too. Medicines are not allowed either.</div></div>`;
 }
 async function payments() {
-  const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.eq("purpose", "PLAN").order("created_at", { ascending: false }).limit(200)), q("shops", "id,name")]);
+  const [claims, shops] = await Promise.all([q("pay_claims", "*", x => x.in("purpose", ["PLAN", "DUES"]).order("created_at", { ascending: false }).limit(200)), q("shops", "id,name")]);
   $("#main").innerHTML = head("Payments", `${claims.filter(c => c.status === "PENDING").length} waiting to be checked · ${claims.filter(c => c.status === "NOT_FOUND").length} not found`, `<button class="btn" onclick="go('bank')">Upload bank statement</button>`) + `<div class="box">${claimTable(claims, shops, false) || '<div class="sub">No payments yet.</div>'}</div>`;
 }
 async function featured() {
@@ -901,14 +901,14 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 </script>
 <script src="/panel/fy.js?v=1795530000"></script>
 <script>(function(){for(const k of ["toLocaleString","toLocaleDateString","toLocaleTimeString"]){const o=Date.prototype[k];Date.prototype[k]=function(l,p){return o.call(this,l||"en-IN",Object.assign({timeZone:"Asia/Kolkata"},p||{}))}}})();</script>
-<script src="/admin/sales-partner.js?v=1796030000"></script>
+<script src="/admin/sales-partner.js?v=1796330000"></script>
 <script src="/admin/shop-delete.js?v=1795660000"></script>
 <script src="/admin/takedowns.js?v=1795700000"></script>
 <script src="/admin/photos.js?v=1796200000"></script>
 <script src="/admin/customers.js?v=1796220000"></script>
 <script src="/admin/bank.js?v=1795860000"></script>
-<script src="/admin/tax.js?v=1796030000"></script>
-<script src="/admin/books.js?v=1795530000"></script>
+<script src="/admin/tax.js?v=1796330000"></script>
+<script src="/admin/books.js?v=1796330000"></script>
 <script src="/admin/setup.js?v=1796020000"></script>
 <script src="/admin/staff.js?v=1796300000"></script>
 <script>

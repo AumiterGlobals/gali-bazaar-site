@@ -262,7 +262,7 @@ function overview() {
         <div class="bars">${shown.map((x, i) => `<div class="b ${i === nowI ? "now" : ""}"><em>${x.v ? inr(x.v) : ""}</em><i style="height:${Math.max(4, x.v / max * 170)}px"></i><span>${MON[x.m]}</span></div>`).join("")}</div></div>
       <div>
         <div class="box"><h3>TDS this year</h3>
-          ${first ? `<div class="sub" style="margin-top:4px">TDS <b>${t.rate_pan ?? 2}%</b> from the first payout (with PAN); <b>${t.rate_no_pan ?? 20}%</b> if PAN is missing. Commission this year <b>${inr2(credited)}</b>${t.tds_done ? ` · TDS cut so far <b>₹${Math.round(t.tds_done)}</b>` : ""}.</div><div class="sub" style="margin-top:4px">Paid once a month with all your due commission. TDS is rounded to the nearest rupee; it is worked out on each month's payout, not on each shop.</div>`
+          ${first ? `<div class="sub" style="margin-top:4px">TDS <b>${t.rate_pan ?? 2}%</b> from the first payout (with PAN); <b>${t.rate_no_pan ?? 20}%</b> if PAN is missing. Commission this year <b>${inr2(credited)}</b>${t.tds_done ? ` · TDS cut so far <b>₹${Math.round(t.tds_done)}</b>` : ""}.</div><div class="sub" style="margin-top:4px">Paid once a month with all your due commission. TDS is rounded up to the next rupee; it is worked out on each month's payout, not on each shop.</div>`
           : `${over ? `<span class="pill warn" style="float:right;margin-top:-30px">Limit crossed</span>` : ""}
           <div class="tdsbar"><i class="${over ? "over" : ""}" style="width:${pct}%;--lim:${(limPct / pct * 100).toFixed(1)}%"></i><u style="left:${limPct}%"></u></div>
           <div class="lims"><span>₹0</span><span>${inr(lim)} limit</span><span>${inr(credited)}</span></div>

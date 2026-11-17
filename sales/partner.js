@@ -7,11 +7,11 @@ const mny = x => "₹" + Number(x || 0).toLocaleString("en-IN", { minimumFractio
 // worked example from the live plan price: ₹99 → GST ₹15.10 → ₹83.90 → 20% = ₹16.78 per shop;
 // monthly payout (update-78): 10 shops × ₹16.78 = ₹167.80 → TDS 2% = ₹3.36 → ₹3 (whole rupees, on the month's total) → ₹164.80
 function cExample(price, gst, pct, tdsRate, shops = 10) { const after = r2(price / (1 + gst / 100)), com = r2(after * pct / 100), rate = tdsRate ?? 2;
-  const tot = r2(com * shops), tdsRaw = r2(tot * rate / 100), tds = Math.round(tot * rate / 100);
+  const tot = r2(com * shops), tdsRaw = r2(tot * rate / 100), tds = Math.ceil(Math.round(tot * rate) / 100);
   return { price, gst: r2(price - after), after, com, shops, tot, tdsRate: rate, tdsRaw, tds, net: r2(tot - tds) }; }
 const rup = x => "₹" + Math.round(Number(x || 0)).toLocaleString("en-IN");
-const TDS_LINE = "TDS is rounded to the nearest rupee; it is worked out on each month's payout, not on each shop.";
-const TDS_LINE_HI = "TDS पूरे रुपये में गोल किया जाता है; यह हर महीने के कुल पेमेंट पर बनता है, हर दुकान पर अलग नहीं।";
+const TDS_LINE = "TDS is rounded up to the next rupee; it is worked out on each month's payout, not on each shop.";
+const TDS_LINE_HI = "TDS ऊपर के पूरे रुपये में गोल किया जाता है; यह हर महीने के कुल पेमेंट पर बनता है, हर दुकान पर अलग नहीं।";
 
 // ---------- 9a. "How your commission works" — every sign-in until the current text + this person's % / type is accepted ----------
 function commissionText(S, hi) {
@@ -22,7 +22,7 @@ function commissionText(S, hi) {
     [`Your commission: ${S.pct}% · ${CTYPE(t, m)}.`, ""],
     ["It is calculated on the plan amount after GST.", `Plan prices include ${S.gst_rate || 18}% GST, which goes to the government. We first take out GST, then pay ${S.pct}% of the rest.`],
     ["Example:", `a shop pays ₹${e.price} → GST ${mny(e.gst)} → amount after GST ${mny(e.after)} → your commission ${S.pct}% = ${mny(e.com)}.`],
-    ["Monthly payout:", `${e.shops} shops × ${mny(e.com)} = ${mny(e.tot)} → TDS ${e.tdsRate}% = ${mny(e.tdsRaw)} → ${rup(e.tds)} (rounded to the rupee) → you get <b>${mny(e.net)}</b>. ${TDS_LINE}`],
+    ["Monthly payout:", `${e.shops} shops × ${mny(e.com)} = ${mny(e.tot)} → TDS ${e.tdsRate}% = ${mny(e.tdsRaw)} → ${rup(e.tds)} (rounded up to the rupee) → you get <b>${mny(e.net)}</b>. ${TDS_LINE}`],
     ["You earn only when a shop that joined with your code pays for a plan,", "and the payment is approved. No commission on customer orders, featured listings, refunds or free trials."],
     [`${CTYPE(t, m)}:`, typeLine + "."],
     ["Your code works and commission is paid only after your KYC", "(PAN, Aadhaar, selfie, bank, UPI) is approved."],
@@ -265,7 +265,7 @@ async function advicePdf(id, dbc) {
   }
   y += 4; doc.line(L, y, R, y); y += 20;
   const tot = (k, v, b) => { doc.setFont("helvetica", b ? "bold" : "normal"); doc.setFontSize(b ? 12 : 10); doc.text(k, 300, y); doc.text(v, R, y, { align: "right" }); y += b ? 20 : 16; };
-  tot("Gross commission", rs(a.gross)); Number(a.tds) > 0 ? tot(`TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}% (rounded to the rupee)`, "- " + rs(Math.round(Number(a.tds)))) : tot("TDS", "nil"); tot("Net paid", rs(a.net), true);
+  tot("Gross commission", rs(a.gross)); Number(a.tds) > 0 ? tot(`TDS u/s 393(1) (earlier 194H) @ ${a.tds_rate || ""}% (rounded up to the rupee)`, "- " + rs(Math.round(Number(a.tds)))) : tot("TDS", "nil"); tot("Net paid", rs(a.net), true);
   y += 6; doc.setFillColor(232, 248, 239); doc.roundedRect(L, y, R - L, 28, 6, 6, "F"); doc.setFontSize(10); doc.setFont("helvetica", "bold");
   doc.text(`Payment: ${a.mode || "—"} · UTR ${a.utr || "—"} · ${a.date}`, L + 10, y + 18); y += 48;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(110, 99, 128);

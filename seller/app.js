@@ -267,13 +267,36 @@ function dash() {
           <div class="fu"><div><b style="font-weight:500">Missing photos</b></div><a class="pill bad" href="#" onclick="event.preventDefault();catF='missing';go('catalog')">${miss} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Out of stock</b></div><a class="pill warn" href="#" onclick="event.preventDefault();catF='oos';go('catalog')">${oos} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Live with 3 photos</b></div><span class="pill ok">${liveI} items</span></div></div>
-        <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Plan + any TDS · pay by UPI</div></div>
-          <a class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
+        <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Plan + any TDS · pay by UPI</div></div>
+          <a class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px;white-space:normal;text-align:center" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
+        <div id="duesBox"></div>
         ${S.kyc === "APPROVED" ? `<div class="box" id="topBox" style="background:#F1E8FA"><div class="sub">Loading…</div></div>` : ""}
       </div></div>`;
-  topBox();
+  topBox(); duesBox();
   rulesCard();   // IT Rules 2026: content-rules reminder every 3 months
   cookedCard();  // Food Corner: calls this month
+}
+
+// update-98: TDS due on a plan that already covers the month (3/6/12 months) — box + a popup once a month
+async function duesBox() {
+  const el = document.getElementById("duesBox"); if (!el || S.kyc !== "APPROVED") return;
+  const { data: b } = await db.rpc("my_billing", { p_shop: S.id });
+  if (!b || !(Number(b.pay_now) > 0) || Number(b.plan_due) > 0) { el.innerHTML = ""; return; }
+  const amt = inr(Math.round(Number(b.pay_now))), by = b.due_by ? dmyFull(b.due_by) : "the 5th", link = `/pay/?shop=${S.id}&purpose=dues`;
+  const msg = b.paused ? `Your shop is paused and hidden from customers because the TDS of ${amt} was not paid by the due date. It comes back as soon as the payment is verified.`
+    : `TDS of ${amt} has been generated on last month's sales. Kindly pay it by ${by}, otherwise your shop will be paused and will not be visible to any customer.`;
+  el.innerHTML = `<div class="box" style="background:${b.paused ? "#FDECEC" : "#FFF4DE"}"><b style="font-size:15px">${b.paused ? "Shop paused — TDS " + amt + " pending" : "TDS " + amt + " is due"}</b>
+    <div class="sub" style="margin:4px 0 10px">${msg}</div><a class="btn pink" href="${link}">Pay TDS ${amt}</a></div>`;
+  const key = "gb_dues_pop_" + new Date().toISOString().slice(0, 7) + (b.paused ? "_p" : "");
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) {}
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(29,15,48,.55);display:flex;align-items:center;justify-content:center;padding:18px";
+  ov.innerHTML = `<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:20px"><h3 style="margin:0 0 8px">${b.paused ? "Your shop is paused" : "TDS " + amt + " is due"}</h3>
+    <div style="font-size:14px;line-height:1.5;color:#3b3046">${msg}</div>
+    <div style="display:flex;gap:10px;margin-top:16px"><a class="btn pink" href="${link}" style="flex:1;text-align:center">Pay TDS ${amt}</a><button class="btn ghost" style="flex:1" id="duesLater">Later</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector("#duesLater").onclick = () => ov.remove();
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
 }
 
 // Top spot (featured): plans + buy button straight to the payment page (QR, UTR, date, screenshot → admin approves)
@@ -596,7 +619,7 @@ function editItem(id) {
       <div><label>${amountLabel(S.type)}</label><div style="display:flex;gap:6px"><input class="in" id="fq" inputmode="decimal" style="flex:1;min-width:0" value="${esc(splitUnit(i?.unit)[0])}" placeholder="1">
         <select class="in" id="fuu" style="flex:1;min-width:0">${(() => { const cu = splitUnit(i?.unit)[1] || unitsFor(S.type)[0]; return [...new Set([...unitsFor(S.type), ...(i ? [cu] : [])])].map(u => `<option ${u === cu ? "selected" : ""}>${esc(u)}</option>`).join(""); })()}</select></div>
         <input type="hidden" id="fu" value="${esc(i?.unit || "")}"></div>
-      <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${numTxt(i?.mrp)}"></div><div><label>YOUR PRICE ₹${S.gst_billing ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${numTxt(i?.price)}"></div></div>
+      <div><label>MRP ₹</label><input class="in" id="fm" inputmode="decimal" value="${numTxt(i?.mrp)}"></div><div><label>YOUR PRICE ₹${EXGST() ? " (before GST — GST is added on top)" : S.gst_billing && S.gstin ? " (incl. GST)" : ""}</label><input class="in" id="fp" inputmode="decimal" value="${numTxt(exBase(i?.price, i?.gst_rate))}"></div></div>
     <div id="off"></div>
     ${!["food_fresh", "flowers"].includes(K.key) ? `<div class="row" style="border:1px solid #EEE7F6;border-radius:16px;padding:12px 14px;margin-top:12px"><div><b>Packaged item</b><span>Maker, net qty, MRP and country of origin are shown to customers</span></div><button class="tog ${F_.packaged ? "on" : ""}" id="fpk"></button></div>
     <div id="pkbox" style="display:${F_.packaged ? "block" : "none"}">
@@ -632,7 +655,7 @@ function editItem(id) {
       <label>${specSets(S.type).length === 0 ? "PRODUCT DETAILS (OPTIONAL)" : (specSets(S.type).includes("general") && specSets(S.type).length === 1) ? "PRODUCT DETAILS * (AT LEAST 20 LETTERS)" : "MORE DETAILS (OPTIONAL)"}</label><textarea class="in" id="fx" rows="3" placeholder="What it is, size, material, how to use">${esc(i?.descr || "")}</textarea>
       ${S.gst_billing ? `<label>GST %</label><select class="in" id="fgst">${["", 0, 5, 12, 18, 28, 40].map(v => `<option value="${v}" ${String(i?.gst_rate ?? "") === String(v) ? "selected" : ""}>${v === "" ? "—" : v + "%"}</option>`).join("")}</select>
         <label>HSN CODE (OPTIONAL — printed on the tax invoice)</label><input class="in" id="fh" inputmode="numeric" maxlength="8" value="${esc(i?.hsn || "")}" placeholder="e.g. 11010000">` : ""}
-      <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${numTxt(v.p)}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
+      <label>SIZES (OPTIONAL) — e.g. Half=140; Full=260</label><input class="in" id="fv" value="${esc((i?.variants || []).map(v => `${v.n}=${numTxt(exBase(v.p, i?.gst_rate))}`).join("; "))}" placeholder="250g=12; 500g=22; 1kg=40"></details>
     <div class="msg" id="fe"></div>
     <button class="btn pink full" id="fsave" style="margin-top:10px;padding:15px">Save item</button>
     ${i ? `<button class="btn ghost full" style="margin-top:8px;color:#BE185D" onclick="delItem('${i.id}')">Delete item</button>` : ""}`);
@@ -681,6 +704,10 @@ function useMaster(k) {
   $("#msug").innerHTML = `<div class="okline">Details taken from the Gali Bazaar item list${(c.images || []).length ? "" : " — add the photos"}. Set your price.</div>`; drawPhotos();
 }
 function paintPol() { const R = RET(); if (R.max === 0) F_.pol = 0; else if (F_.pol === 2 && !R.refund) F_.pol = 1; $$("#pol .fchip").forEach(b => { const on = +b.dataset.k === F_.pol; b.classList.toggle("on", on); }); $("#dw").style.display = F_.pol ? "block" : "none"; }
+// GST: shop setting "prices excluding GST" → the seller types the price before GST; we store the final price (same as the app)
+const EXGST = () => !!(S.gst_billing && S.gstin && S.price_incl_gst === false);
+const exBase = (v, r) => EXGST() && +r > 0 && v != null ? Math.round(v / (1 + r / 100) * 100) / 100 : v;
+const exFin = (v, r) => EXGST() && +r > 0 ? Math.round(v * (1 + r / 100) * 100) / 100 : v;
 function offLine() { const m = +$("#fm").value, p = +$("#fp").value; $("#off").innerHTML = m > p && p > 0 ? `<div class="okline">⚡ ${Math.round((m - p) / m * 100)}% off shown to customers automatically</div>` : ""; }
 // photos needed: grocery = front + back label, fruits & veg = 2, food / sweets / stationery = 1
 // category master per shop type + unit master (same lists as the app)
@@ -768,8 +795,9 @@ function drawPhotos() {
 }
 async function saveItem() {
   const e = $("#fe"), name = $("#fn").value.trim(), grp = $("#fg").value.trim(), desc = $("#fx").value.trim(), K = KIND();
-  const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: +p.trim() || 0 }));
-  const price = +$("#fp").value || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(RET().max, +$("#fd").value || 0));
+  const gr = S.gst_billing && $("#fgst") ? +$("#fgst").value || 0 : 0;
+  const vs = $("#fv").value.split(";").map(x => x.split("=")).filter(kv => kv.length === 2 && kv[0].trim()).map(([n, p]) => ({ n: n.trim(), p: exFin(+p.trim() || 0, gr) }));
+  const price = (+$("#fp").value ? exFin(+$("#fp").value, gr) : 0) || (vs.length ? Math.min(...vs.map(v => v.p)) : 0), days = Math.max(0, Math.min(RET().max, +$("#fd").value || 0));
   if (RET().max === 0) F_.pol = 0; else if (F_.pol === 2 && !RET().refund) F_.pol = 1;
   const pk = F_.packaged && !["food_fresh", "flowers"].includes(K.key), val = id => ($(id)?.value || "").trim();
   if ($("#specbox")) specRead();
@@ -1065,6 +1093,11 @@ function shop() {
       ${f("fssai", FOOD() ? "FSSAI NO. (14 DIGITS) — REQUIRED" : "FSSAI NO. (OPTIONAL)", S.fssai)}${f("gstin", "GSTIN (optional)", S.gstin)}</div>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12.5px;line-height:1.45"><input type="checkbox" id="gul" ${S.gst_under_limit ? "checked" : ""} style="margin-top:3px">
         <span>No GSTIN? Tick this: I'm not GST registered — my shop's yearly sales are under the GST limit (₹40 lakh for goods; ₹20 lakh in some states). If sales cross the limit, I'll add my GSTIN.</span></label>
+      <div style="margin-top:10px;padding:10px 12px;border:1px solid var(--line,#eee);border-radius:12px">
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="gbill" ${S.gst_billing ? "checked" : ""}><b>Issue GST bills (tax invoice)</b> — needs your GSTIN</label>
+        <div id="gbox" style="margin-top:8px;${S.gst_billing ? "" : "display:none"}"><label>YOUR ITEM PRICES ARE</label>
+          <select class="in" id="gincl"><option value="1" ${S.price_incl_gst !== false ? "selected" : ""}>Including GST</option><option value="0" ${S.price_incl_gst === false ? "selected" : ""}>Excluding GST</option></select>
+          <div class="sub" id="gnote" style="margin-top:6px"></div></div></div>
       <div class="msg" id="shm"></div><button class="btn pink" style="margin-top:12px" onclick="saveShopForm()">Save details</button></div>
       ${sellBox()}
     <div><div class="box"><h3>KYC <span class="pill ${kycTxt[1]}" style="float:right">${kycTxt[0]}</span></h3>
@@ -1074,6 +1107,10 @@ function shop() {
       <div class="box" style="background:#1D0F30;color:#fff"><b style="font-size:16px">${S.kyc !== "APPROVED" ? "Plan starts after KYC" : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`}</b>
         <div style="font-size:12px;color:#CFC6E3;margin:4px 0 12px">${S.sub_until ? "Till " + dmyy(S.sub_until) + " • " : ""}Plan + any TDS · pay by UPI</div><a class="btn" style="background:#fff;color:#1D0F30" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
       <div class="box"><h3>Status</h3><div class="row" style="border:0;margin:0"><div><b>${S.closed ? "Shop closed" : "Shop open"}</b><span>Customers ${S.closed ? "can't" : "can"} order right now</span></div><button class="tog ${S.closed ? "" : "on"}" onclick="toggleOpen()"></button></div></div></div></div>`;
+  const gn = () => { if ($("#gnote")) $("#gnote").textContent = $("#gincl")?.value === "0"
+    ? "You type the price before GST (e.g. ₹100) and pick the item's GST %. Customers see ₹105 and the bill shows ₹100 + ₹5 GST."
+    : "You type the final price (e.g. ₹105). The bill shows how much of it is GST. Customer pays ₹105."; };
+  if ($("#gbill")) { $("#gbill").onchange = () => { $("#gbox").style.display = $("#gbill").checked ? "" : "none"; }; $("#gincl").onchange = gn; gn(); }
   $("#main").insertAdjacentHTML("beforeend", `<div class="box" id="taBox"><div class="sub">Loading…</div></div><div class="box" id="delBox"><div class="sub">Loading…</div></div>`); sdBox(); taBox();
 }
 // update-75: signed Seller Terms (version, time, name typed, OTP) — download as PDF
@@ -1162,7 +1199,8 @@ async function saveShopForm() {
   if (!v("name") || !/^\d{10}$/.test(v("phone").replace(/\D/g, "").slice(-10))) { m.className = "msg err"; m.textContent = "Enter shop name and a 10-digit phone"; return; }
   const patch = { name: v("name"), phone: v("phone"), addr: v("addr"), locality: v("locality"), city: v("city"), pin: v("pin"), min_order: n("min_order") || 0, delivery_fee: n("delivery_fee") || 0,
     free_above: n("free_above"), upi_id: v("upi_id") || null, fssai: v("fssai").replace(/\D/g, "") || null, gstin: v("gstin") || null };
-  if (!patch.gstin) patch.gst_billing = false;
+  patch.gst_billing = !!patch.gstin && !!($("#gbill") && $("#gbill").checked);
+  if ($("#gincl")) patch.price_incl_gst = $("#gincl").value === "1";
   patch.gst_under_limit = !patch.gstin && !!($("#gul") && $("#gul").checked);
   if (patch.fssai && !/^[12][0-9]{13}$/.test(patch.fssai)) return toast("FSSAI number has 14 digits and starts with 1 or 2 — check your certificate");
   if (FOOD() && !patch.fssai) return toast("Add your 14-digit FSSAI number — it's required for food shops");
@@ -1207,7 +1245,7 @@ function planDraw() {
         <td>${r.status === "RECOVERED" ? '<span class="pill ok">Paid</span>' : '<span class="pill warn">Pending</span>'}</td></tr>`)) +
       "";
   if (planTab === "pay") body = T(["Date", "UTR", "For", "Status", "Amount"], (b.payments || []).map(c => `<tr><td>${dmyFull(c.paid_on)}</td><td>${esc(c.utr)}</td>
-      <td>${c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
+      <td>${c.purpose === "DUES" ? "TDS / dues" : c.purpose === "FEATURED" ? "Top placement" : `Plan ${c.months} month${c.months > 1 ? "s" : ""}`}${c.inv_no ? `<div class="sub" style="font-size:11.5px">Invoice ${esc(c.inv_no)}</div>` : ""}</td>
       <td>${c.status === "APPROVED" ? '<span class="pill ok">Verified</span>' : c.status === "PENDING" ? '<span class="pill warn">Checking</span>' : `<span class="pill bad">${esc(c.status === "REJECTED" ? "Not accepted" : "Not found")}</span>${c.reason ? `<div class="sub" style="font-size:11.5px">${esc(c.reason)}</div>` : ""}`}</td>${R(c.amount)}</tr>`));
   if (planTab === "stmt") body = T(["Date", "Entry", "Doc no", "Amount", "Balance"], (b.statement || []).map(l => `<tr><td>${dmyFull(l.at)}</td><td>${esc(KIND_L[l.kind] || l.kind)}<div class="sub" style="font-size:11.5px">${esc(l.note || "")}</div></td>
       <td>${esc(l.doc_no || "")}</td><td style="text-align:right;color:${l.amount < 0 ? "#C62828" : "#12A866"}">${l.amount < 0 ? "– " : "+ "}${inr2(Math.abs(l.amount))}</td>${R(l.running)}</tr>`));
@@ -1218,7 +1256,8 @@ function planDraw() {
       <div style="flex:1;min-width:200px"><div class="sub">${b.paused ? "Shop paused — pending" : "Pending"}</div><div style="font-size:26px;font-weight:800;color:${pay > 0 ? "#C62828" : "#12A866"}">${inr2(pay)}</div>
         <div class="sub">${pay > 0 ? `Plan ${inr2(b.plan_due)}${Number(b.tds_this_month) ? ` + TDS ${inr2(b.tds_this_month)}` : ""}${bal > 0 ? ` – balance ${inr2(bal)}` : ""}${b.due_by ? ` · pay by ${dmyFull(b.due_by)}` : " · pay now"}` : "Nothing to pay"}</div></div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <a class="btn pink" href="/pay/?shop=${S.id}&months=1">Pay / renew</a>
+        ${pay > 0 && !(Number(b.plan_due) > 0) ? `<a class="btn pink" href="/pay/?shop=${S.id}&purpose=dues">Pay TDS ${inr2(pay)}</a>` : ""}
+        <a class="btn ${pay > 0 && !(Number(b.plan_due) > 0) ? "ghost" : "pink"}" href="/pay/?shop=${S.id}&months=1">${pay > 0 && !(Number(b.plan_due) > 0) ? "Extend plan" : "Pay / renew"}</a>
         ${q1 && bal >= Number(q1.amount) ? `<button class="btn" onclick="useBalance()">Use balance for plan</button>` : ""}</div></div>
     <div class="sub" style="margin:-4px 0 12px">Plans renew on the 1st of every month (first month pro-rata). Pay by the 5th — unpaid shops are paused on the 6th and come back as soon as the payment is verified. Extra money stays as balance.</div>
     ${(b.payments || []).filter(c => c.status === "NOT_FOUND").map(c => `<div class="box" style="background:#FDE7EE;border-color:#F6B9CC;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -1313,7 +1352,7 @@ function planInvoice(id) {
   const tax = Number(c.cgst || 0) + Number(c.sgst || 0) + Number(c.igst || 0), taxable = Number(c.taxable ?? c.amount), gst = tax > 0;
   const rate = taxable ? Math.round(tax / taxable * 100) : 0, half = rate / 2, gstin = c.bill_gstin || S.gstin;
   const sac = c.sac || (c.purpose === "FEATURED" ? "998365" : (st.plan_sac || "998439"));
-  const desc = c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — listing &amp; order tools`;
+  const desc = c.purpose === "DUES" ? `TDS recovery / dues` : c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — listing &amp; order tools`;
   const m = v => "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const row = (l, v, b) => `<tr><td>${l}</td><td style="text-align:right;${b ? "font-weight:700;font-size:16px" : ""}">${v}</td></tr>`;
   const w = window.open("", "_blank"); if (!w) { alert("Allow pop-ups to view the invoice"); return; }

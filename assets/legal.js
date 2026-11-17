@@ -29,7 +29,7 @@
         var e = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
         var byV = {}; rows.forEach(function (r) { (byV[r.version] = byV[r.version] || []).push(r); });
         box.innerHTML = "<h2>" + (hi ? "क्या बदला" : "What changed") + "</h2>" + Object.keys(byV).sort().reverse().map(function (v) {
-          var d = new Date(v + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+          var d = new Date(v.slice(0, 10) + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) + (v.length > 10 ? " · update " + (Number(v.split(".")[1] || 0) + 1) : "");
           return "<p><b>" + e(d) + "</b></p><ul>" + byV[v].map(function (r) {
             return "<li><b>" + e((names[r.doc] || [r.doc, r.doc])[hi ? 1 : 0]) + ":</b> " + e(hi ? r.hi : r.en) + "</li>"; }).join("") + "</ul>";
         }).join("");

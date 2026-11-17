@@ -134,7 +134,7 @@
     const names = HI ? { terms: "उपयोग की शर्तें", "seller-terms": "सेलर नियम", "partner-terms": "डिलीवरी पार्टनर नियम", "sales-terms": "सेल्स पार्टनर नियम", privacy: "प्राइवेसी पॉलिसी" }
       : { terms: "Terms of Use", "seller-terms": "Seller Terms", "partner-terms": "Delivery Partner Terms", "sales-terms": "Sales Partner Terms", privacy: "Privacy Policy" };
     const groups = {}; data.forEach(c => (groups[c.version + "|" + c.doc] = groups[c.version + "|" + c.doc] || []).push(c));
-    const day = v => new Date(v + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    const day = v => new Date(String(v).slice(0, 10) + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + (String(v).length > 10 ? " · update " + (Number(String(v).split(".")[1] || 0) + 1) : "");
     return `<div class="gbw"><b>${HI ? "क्या बदला" : "What changed"}</b>${Object.entries(groups).map(([k, l]) => `<div class="gbw-h">${esc(names[k.split("|")[1]] || k.split("|")[1])} · ${esc(day(k.split("|")[0]))}</div><ul>${l.map(c => `<li>${esc(HI ? c.hi : c.en)}</li>`).join("")}</ul>`).join("")}</div>`;
   }
   const st3 = document.createElement("style");

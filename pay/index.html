@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@600;700&family=Baloo+2:wght@800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css?v=1796250000">
+<link rel="stylesheet" href="/site.css?v=1796320000">
 <script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
 .page{min-height:100vh}
@@ -229,7 +229,7 @@ h3{font-size:18px;margin:44px 0 16px;font-weight:600}
       <div class="upibox">
         <div id="qr"></div>
         <div class="upiid">Scan with any UPI app · UPI ID <code id="upi">—</code></div>
-        <span class="paid" style="margin:4px 0 12px">After paying, fill these from your UPI app. We check every payment with our bank statement — the tax invoice comes on the day it's verified.</span>
+        <span class="paid" id="afterPay" style="margin:4px 0 12px">After paying, fill these from your UPI app. We check every payment with our bank statement — the tax invoice comes on the day it's verified.</span>
         <div class="pf">
           <div class="full"><label for="utr">UTR / UPI reference no.</label><input id="utr" inputmode="numeric" placeholder="12-digit UTR" autocomplete="off"></div>
           <div><label for="amt">Amount paid (₹)</label><input id="amt" inputmode="numeric" placeholder="0"></div>
@@ -277,6 +277,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   const qp = new URLSearchParams(location.search);
   const shop = qp.get("shop") || "";
   const featured = qp.get("purpose") === "featured";
+  const duesMode = qp.get("purpose") === "dues";   // update-98: pay only the TDS / dues
   let info = null;
   try { info = shop ? await rpc("pay_info", { p_shop: shop }) : null } catch (e) { info = null }
   if (!info) {
@@ -313,6 +314,13 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   let days = qp.get("days") === "7" ? 7 : 30;
   let amt = 0, note = "", label = "", till = new Date();
 
+  if (duesMode) {
+    if ($("afterPay")) $("afterPay").textContent = "After paying, fill these from your UPI app. We check every payment with our bank statement and email you when it's verified.";
+    $("h1").innerHTML = 'Pay your TDS<br><span class="z">and dues.</span>';
+    $("lead").textContent = "TDS on your last month's sales (and any earlier dues). Your plan stays as it is.";
+    $("perks").innerHTML = "";
+    $("plans").style.gridTemplateColumns = "1fr";
+  }
   if (featured) {
     $("h1").innerHTML = 'Be the #1 shop<br><span class="z">in your area.</span>';
     $("lead").textContent = "Your shop shows at the top of every customer's home, marked Sponsored.";
@@ -323,12 +331,22 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
   const shopBox = (plan) => `<div class="shop"><div class="av">🛒</div><div><b>${esc(info.name)}</b><small>${plan ? esc(plan) : esc(info.city || "")} • ${sid}</small></div>
       ${plan ? '<button class="chg" onclick="document.getElementById(\'back\').click()">Change</button>' : ""}</div>
       ${info.pending ? '<div class="note warn">A payment you sent earlier is being checked. You don\'t need to pay again.</div>' : ""}
-      ${!featured ? `<div class="note">Plans renew on the 1st of every month — pay by the 5th.${info.paused ? " Your shop is paused and comes back as soon as this payment is verified." : ""}</div>` : ""}
+      ${!featured && !duesMode && info.plan_covers_month && Number(info.dues) > 0 ? `<div class="note warn">Your plan already covers this month — only TDS of ${inr(Math.round(info.dues))} is due. <a href="?shop=${shop}&purpose=dues"><b>Pay only the TDS</b></a></div>` : ""}
+      ${duesMode ? `<div class="note">TDS is worked out on your last month's sales. Pay by the ${info.due_day || 5}th, otherwise the shop is paused until the payment is verified.${info.paused ? " Your shop is paused and comes back as soon as this payment is verified." : ""}</div>` : ""}
+      ${!featured && !duesMode ? `<div class="note">Plans renew on the 1st of every month — pay by the 5th.${info.paused ? " Your shop is paused and comes back as soon as this payment is verified." : ""}</div>` : ""}
       `;
 
   const draw = () => {
     let full, lines;
-    if (featured) {
+    if (duesMode) {
+      amt = full = Math.round(Number(info.dues || 0));
+      label = "TDS / dues"; till = null;
+      $("plans").innerHTML = amt > 0
+        ? `<button class="pl on"><h4>TDS / dues</h4><b>${inr(amt)}</b><span class="pm">Pay by the ${info.due_day || 5}th so your shop stays live</span><span class="rd"></span></button>`
+        : `<div class="note">Nothing is due right now.</div>`;
+      lines = `<div class="ln"><span>TDS / earlier dues</span><span>${inr(amt)}</span></div>`;
+      note = `GaliBazaar TDS ${shop.slice(0, 8).toUpperCase()}`;
+    } else if (featured) {
       $("plans").innerHTML = [7, 30].map(d => { const p = d === 7 ? info.feat_week : info.feat_month;
         return `<button class="pl ${d === days ? "on" : ""}" data-d="${d}"><h4>${d === 7 ? "1 week" : "1 month"}</h4><b>${inr(p)}</b>
           <span class="pm">Top spot for ${d} days</span><span class="sv">Sponsored</span><span class="rd"></span></button>`; }).join("");
@@ -356,9 +374,10 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
       note = `GaliBazaar ${shop.slice(0, 8).toUpperCase()} ${months}M`;
     }
     $("shopBox").innerHTML = shopBox(null);
-    $("shopBox2").innerHTML = shopBox(featured ? "Top spot · " + label : (months === 1 ? "1-month" : months + "-month") + " plan");
+    $("shopBox2").innerHTML = shopBox(duesMode ? "TDS / dues" : featured ? "Top spot · " + label : (months === 1 ? "1-month" : months + "-month") + " plan");
     $("lines").innerHTML = lines; $("lines2").innerHTML = lines;
-    $("tot").textContent = inr(amt) + " (incl. GST)"; $("tot2").textContent = inr(amt) + " (incl. GST)";
+    const gx = duesMode ? "" : " (incl. GST)"; $("tot").textContent = inr(amt) + gx; $("tot2").textContent = inr(amt) + gx;
+    document.querySelectorAll(".goPay").forEach(b => { b.disabled = amt <= 0; b.style.opacity = amt <= 0 ? .5 : 1; });
     $("payD").querySelector("span").textContent = `Pay ${inr(amt)} securely`;
     $("upiLabel").textContent = isPhone ? `Pay ${inr(amt)} securely` : `Pay ${inr(amt)} · scan the QR`;
     $("mTot").textContent = inr(amt); $("mFull").textContent = full > amt ? inr(full) : "";
@@ -416,7 +435,7 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
       const up = await fetch(`${SUPABASE_URL}/storage/v1/object/plan-shots/${path}`, { method: "POST", headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "image/jpeg" }, body: shotBlob });
       if (!up.ok) throw new Error("Couldn't upload the screenshot — please try again");
       await rpc("submit_payment", { p_shop: shop, p_utr: $("utr").value, p_amount: +$("amt").value, p_paid_on: $("date").value, p_shot: path,
-        p_months: months, p_purpose: featured ? "FEATURED" : "PLAN", p_days: featured ? days : null });
+        p_months: months, p_purpose: featured ? "FEATURED" : duesMode ? "DUES" : "PLAN", p_days: featured ? days : null });
       const colors = ["#FFC21A", "#EF287B", "#8B5CF6", "#12A866"];
       const conf = Array.from({ length: 10 }, (_, i) => `<span class="conf" style="background:${colors[i % 4]};left:${i % 2 ? 72 + Math.random() * 22 : 4 + Math.random() * 22}%;top:${10 + Math.random() * 120}px;transform:rotate(${Math.random() * 90 - 45}deg)"></span>`).join("");
       $("vDone").innerHTML = `<div class="done">${conf}
@@ -424,12 +443,12 @@ addEventListener("scroll", () => $("nav").classList.toggle("scrolled", scrollY >
         <h2>Payment sent for checking</h2>
         <span class="okpill">We check it with our bank statement — usually within a day</span>
         <div class="rec">
-          <div><span>${featured ? "Top spot" : "Plan"}</span><b>${esc(label)}</b></div>
+          <div><span>${featured ? "Top spot" : duesMode ? "For" : "Plan"}</span><b>${esc(label)}</b></div>
           <div><span>Amount paid</span><b>${inr(+$("amt").value)}</b></div>
-          <div><span>Valid till</span><b>${fmt(till)}</b></div>
+          ${till ? `<div><span>Valid till</span><b>${fmt(till)}</b></div>` : ""}
           <div><span>UTR</span><b>${esc($("utr").value.trim())}</b></div>
         </div>
-        <div class="mailnote"><svg class="ic"><use href="#i-mail"/></svg>Once we verify the UTR with our bank, your tax invoice is emailed and is in the app under Account → Subscription &amp; bills</div>
+        <div class="mailnote"><svg class="ic"><use href="#i-mail"/></svg>${duesMode ? "Once we verify the UTR with our bank, you get an email and it shows in the app under Account → Subscription &amp; bills" : "Once we verify the UTR with our bank, your tax invoice is emailed and is in the app under Account → Subscription &amp; bills"}</div>
         <a class="bigbtn dark" href="intent://#Intent;package=com.galibazaar.app;end"><svg class="ic"><use href="#i-store"/></svg>Open seller app</a>
         <button class="bigbtn white" onclick="print()"><svg class="ic"><use href="#i-upload"/></svg>Download receipt</button></div>`;
       show("vDone");

@@ -28,6 +28,7 @@
 .lp .toc a:hover{color:var(--ink);border-left-color:#EF287B}
 .lp .toc .pdf{border:0;color:#7C3AED;font-weight:600;display:flex;align-items:center;gap:6px;margin-top:10px}.lp .toc .pdf .ic{width:15px;height:15px}
 .lp .cards2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media(max-width:640px){.lp .cards2{grid-template-columns:1fr}.lp .cards2>div{align-content:start}}
 .lp .cards2 span{overflow-wrap:anywhere}
 .lp .cards2>div{border-radius:18px;padding:16px;display:grid;gap:4px}
 .lp .cards2 .ic{width:20px;height:20px}

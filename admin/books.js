@@ -281,7 +281,7 @@ async function acInvoices() {
     q("shops", "id,name,addr,locality,city,state,pin,gstin"), q("settings", "*", x => x.eq("id", 1))]);
   AC.st = st[0] || {}; AC.shops = shops; AC.own = own || []; AC.claims = claims;
   const rows = [["Invoice no", "Date", "Billed to", "For", "Taxable", "CGST", "SGST", "IGST", "Total", "Status", "UTR", "UTR date"],
-    ...claims.map(c => { const sh = shops.find(x => x.id === c.shop) || {}; return [c.inv_no || "", c.paid_on, sh.name || "", c.purpose === "FEATURED" ? `Featured ${c.days}d` : `Plan ${c.months}m`, n2(c.taxable ?? c.amount), n2(c.cgst), n2(c.sgst), n2(c.igst), n2(c.amount), "Paid", c.utr, c.paid_on]; }),
+    ...claims.map(c => { const sh = shops.find(x => x.id === c.shop) || {}; return [c.inv_no || "", c.paid_on, sh.name || "", c.purpose === "DUES" ? "TDS / dues" : c.purpose === "FEATURED" ? `Featured ${c.days}d` : `Plan ${c.months}m`, n2(c.taxable ?? c.amount), n2(c.cgst), n2(c.sgst), n2(c.igst), n2(c.amount), "Paid", c.utr, c.paid_on]; }),
     ...AC.own.map(i => [i.inv_no, i.inv_date, i.bill_to, (i.lines || []).map(l => l.d).join("; "), n2(i.taxable), n2(i.cgst), n2(i.sgst), n2(i.igst), n2(i.total), i.paid ? "Paid" : "To collect", i.utr || "", i.utr_date || ""])]
     ;
   AC.dl = { inv: rows };
@@ -293,7 +293,7 @@ async function acInvoices() {
       <td style="text-align:right"><b>${inr2(i.total)}</b></td><td>${i.paid ? `<span class="pill ok">Paid</span><br><span class="sub">${esc(i.utr || "")} ${i.utr_date || ""}</span>` : `<span class="pill warn">To collect</span>`}</td>
       <td style="white-space:nowrap"><button class="edit" onclick="acInvPrint('own','${i.id}')">Print / PDF</button>${i.paid ? "" : ` <button class="edit" onclick="acInvPaid('${i.id}')">Mark paid</button>`}</td></tr>`).join("")}
     ${claims.map(c => { const sh = shops.find(x => x.id === c.shop) || {}; return `<tr><td><b>${esc(c.inv_no || "—")}</b></td><td>${c.paid_on}</td><td>${esc(sh.name || "")}</td>
-      <td class="sub">${c.purpose === "FEATURED" ? `Featured ${c.days} days` : `Seller plan ${c.months} month${c.months > 1 ? "s" : ""}`}</td><td style="text-align:right"><b>${inr2(c.amount)}</b></td>
+      <td class="sub">${c.purpose === "DUES" ? "TDS / dues" : c.purpose === "FEATURED" ? `Featured ${c.days} days` : `Seller plan ${c.months} month${c.months > 1 ? "s" : ""}`}</td><td style="text-align:right"><b>${inr2(c.amount)}</b></td>
       <td><span class="pill ok">Paid</span><br><span class="sub">UTR ${esc(c.utr)}</span></td><td><button class="edit" onclick="acInvPrint('plan','${c.id}')">Print / PDF</button></td></tr>`; }).join("")}
     </tbody></table>${claims.length + AC.own.length ? "" : '<div class="sub">No invoices in this period.</div>'}</div>`;
 }
@@ -356,7 +356,7 @@ async function acInvPrint(kind, id) {
       taxable: i.taxable, cgst: i.cgst, sgst: i.sgst, igst: i.igst, total: i.total, rate: i.gst_rate, paid: i.paid ? `Paid${i.utr ? " · UTR " + i.utr : ""}${i.utr_date ? " · " + i.utr_date : ""}` : "Payment due" };
   } else {
     const c = AC.claims.find(x => x.id === id), sh = AC.shops.find(x => x.id === c.shop) || {};
-    const tx = Number(c.taxable ?? c.amount), d = c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — ${c.months} month${c.months > 1 ? "s" : ""} listing & order tools`;
+    const tx = Number(c.taxable ?? c.amount), d = c.purpose === "DUES" ? "TDS recovery / dues (no GST)" : c.purpose === "FEATURED" ? `Featured listing (sponsored placement) — ${c.days} days` : `Seller plan — ${c.months} month${c.months > 1 ? "s" : ""} listing & order tools`;
     inv = { no: c.inv_no, date: c.paid_on, to: sh.name, addr: [sh.addr, sh.locality, sh.city, sh.state, sh.pin].filter(Boolean).join(", "), gstin: sh.gstin || "", pos: c.place_of_supply || sh.state || "",
       lines: [{ d, sac: c.purpose === "FEATURED" ? "998365" : "998439", q: 1, r: tx, amt: tx }], taxable: tx, cgst: c.cgst, sgst: c.sgst, igst: c.igst, total: c.amount, rate: null, paid: `Paid · UTR ${c.utr} · ${c.paid_on}` };
   }

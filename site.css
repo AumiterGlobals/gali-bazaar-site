@@ -378,3 +378,6 @@ footer.df{background:radial-gradient(500px 400px at 0% 0%,#3B1468 0%,transparent
 .cat h3,.cat p,.cat .ctag,.cat .fcbadge{position:relative;z-index:2}
 .cat img{z-index:1}
 @media(max-width:640px){.cat .ctag,.cat .fcbadge{font-size:10.5px;padding:3px 8px}.cat.dyn img,.cat img{width:58px;right:8px;bottom:6px;opacity:.95}.cat.dyn{padding-bottom:58px}}
+/* phones: the category picture sits below the name (long names like "Mobile Accessories & Electrical" no longer run under it) */
+@media(max-width:640px){.cat.dyn{display:flex;flex-direction:column;padding-bottom:12px}.cat.dyn h3{font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+  .cat.dyn img{position:static;align-self:flex-end;margin-top:auto;padding-top:6px}.cat.dyn .ctag,.cat.dyn .fcbadge{align-self:flex-start}}
