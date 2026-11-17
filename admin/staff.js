@@ -13,7 +13,7 @@ const STAFF_ROLES = { SUPPORT: "Support", KYC: "KYC", ACCOUNTS: "Accounts", ACCO
 async function staffStart(session) {
   const { data: st, error } = await db.rpc("my_staff_role");
   if (error) return false;                                  // update-89 not run yet: old behaviour
-  if (!st) return false;                                    // not staff
+  if (!st || typeof st !== "object" || !(st.role || st.removed)) return false;   // not staff
   const out = (title, text) => { $("#root").innerHTML = `<div class="login">${LOGO}<h1>${title}</h1><p class="sub">${text}</p>
     <button class="btn ghost" onclick="db.auth.signOut().then(()=>location.reload())">Sign out</button></div>`; };
   if (st.removed) { await db.auth.signOut().catch(() => {}); out("Your access was removed", `${esc(session.user.email)} is no longer in the Gali Bazaar team. Ask the owner if this is a mistake.`); return true; }
