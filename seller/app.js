@@ -250,7 +250,7 @@ function dash() {
       <div class="kpi"><span>Cash with staff</span><b class="or">${inr(cash)}</b><small>${who.length ? esc(who.join(", ")) + " • not handed over" : "All cash received"}</small></div>
       <div class="kpi"><span>Returns coming back</span><b class="pu">${back.length}</b><small>${inr(backV)} • check in</small></div>
     </div>
-    ${!live() ? `<div class="warnline" style="margin:0 0 16px">Your shop is hidden from customers: ${S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC is being checked." : "finish KYC in the app.") : S.quality_hold ? "paused for quality — reply to your complaints." : S.dues_paused ? "paused for dues — pay in Subscription & bills." : S.closed ? "you closed the shop." : "plan ended — send yourself the renewal link below."}</div>` : ""}
+    ${!live() ? `<div class="warnline" style="margin:0 0 16px">Your shop is hidden from customers: ${S.kyc !== "APPROVED" ? (S.kyc === "PENDING" ? "KYC is being checked." : "finish KYC in the app.") : S.quality_hold ? "paused for quality — reply to your complaints." : S.dues_paused ? "paused for dues — pay in Subscription & bills." : S.closed ? "you closed the shop." : "plan ended — tap Get link for subscription payment below."}</div>` : ""}
     <div class="grid2">
       <div class="box"><h3>New orders <a href="/seller/orders/" onclick="event.preventDefault();go('orders')" style="float:right;color:#7C3AED;font-size:13px;text-decoration:none">All orders →</a></h3>
         ${news.length ? orderTable(news.slice(0, 8), true) : `<div class="sub" style="padding:18px 0">No new orders right now. New orders appear here by themselves.</div>`}</div>
@@ -267,18 +267,11 @@ function dash() {
           <div class="fu"><div><b style="font-weight:500">Missing photos</b></div><a class="pill bad" href="#" onclick="event.preventDefault();catF='missing';go('catalog')">${miss} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Out of stock</b></div><a class="pill warn" href="#" onclick="event.preventDefault();catF='oos';go('catalog')">${oos} items</a></div>
           <div class="fu"><div><b style="font-weight:500">Live with 3 photos</b></div><span class="pill ok">${liveI} items</span></div></div>
-        <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Renewal link goes to your email</div></div>
-          <button class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" onclick="sendLink(this)">Send link</button></div>
+        <div class="box" style="background:#1D0F30;color:#fff;display:flex;align-items:center;gap:12px"><div style="flex:1"><b style="font-size:15px">${esc(plan)}</b><div style="font-size:12px;color:#CFC6E3">Plan + any TDS · pay by UPI</div></div>
+          <a class="btn" style="background:#fff;color:#1D0F30;padding:9px 14px" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
       </div></div>`;
   rulesCard();   // IT Rules 2026: content-rules reminder every 3 months
   cookedCard();  // Food Corner: calls this month
-}
-async function sendLink(b) {
-  b.disabled = true; b.textContent = "Sending…";
-  const { data, error } = await db.functions.invoke("push", { body: { action: "renewal_link", shop: S.id } });
-  b.disabled = false; b.textContent = "Send link";
-  if (error || !data?.ok) return toast("Couldn't send the link. Try again.");
-  toast(`Renewal link sent to ${data.email || "your email"}`);
 }
 
 // ================= Orders =================
@@ -1064,7 +1057,7 @@ function shop() {
         <div class="row"><div><b>Aadhaar</b><span>${S.aadhaar_last4 ? "•••• " + esc(S.aadhaar_last4) : "—"}</span></div></div>
         ${S.kyc_reason && S.kyc !== "APPROVED" ? `<div class="warnline">${esc(S.kyc_reason)}</div>` : ""}<div class="note">KYC documents are uploaded and changed in the app (Account → KYC), with the camera.</div></div>
       <div class="box" style="background:#1D0F30;color:#fff"><b style="font-size:16px">${S.kyc !== "APPROVED" ? "Plan starts after KYC" : dl == null ? "Plan not started" : dl < 0 ? "Plan ended — shop is offline" : `${S.trial_used ? "Plan" : "Free trial"} • ${dl} day${dl === 1 ? "" : "s"} left`}</b>
-        <div style="font-size:12px;color:#CFC6E3;margin:4px 0 12px">${S.sub_until ? "Till " + dmyy(S.sub_until) + " • " : ""}Renewal link goes to your email</div><button class="btn" style="background:#fff;color:#1D0F30" onclick="sendLink(this)">Send link</button></div>
+        <div style="font-size:12px;color:#CFC6E3;margin:4px 0 12px">${S.sub_until ? "Till " + dmyy(S.sub_until) + " • " : ""}Plan + any TDS · pay by UPI</div><a class="btn" style="background:#fff;color:#1D0F30" href="/pay/?shop=${S.id}&months=1">Get link for subscription payment</a></div>
       <div class="box"><h3>Status</h3><div class="row" style="border:0;margin:0"><div><b>${S.closed ? "Shop closed" : "Shop open"}</b><span>Customers ${S.closed ? "can't" : "can"} order right now</span></div><button class="tog ${S.closed ? "" : "on"}" onclick="toggleOpen()"></button></div></div></div></div>`;
   $("#main").insertAdjacentHTML("beforeend", `<div class="box" id="taBox"><div class="sub">Loading…</div></div><div class="box" id="delBox"><div class="sub">Loading…</div></div>`); sdBox(); taBox();
 }
