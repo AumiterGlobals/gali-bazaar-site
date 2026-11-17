@@ -159,20 +159,20 @@ settingsPage = async function () {
     <button class="btn pink" onclick="goSave()">Save</button> <span id="goM" class="msg"></span>`;
   $("#main").appendChild(box);
   // update-90: unaccepted local orders + the customer's answer when items aren't available
-  const { data: t } = await db.from("settings").select("accept_remind_min,accept_cancel_min,change_wait_min").eq("id", 1).maybeSingle();
+  const { data: t } = await db.from("settings").select("accept_remind_sec,accept_cancel_sec,change_wait_min").eq("id", 1).maybeSingle();
   if (!t) return;   // update-90 not run yet
   const b2 = document.createElement("div"); b2.className = "box";
   b2.innerHTML = `<h3>Order timers <span>• counted only in each shop's opening hours · 0 = off</span></h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
-      <div><label>REMIND THE SHOP AFTER (MIN)</label><input class="in" id="ot_r" type="number" min="0" max="240" value="${esc(t.accept_remind_min)}"></div>
-      <div><label>AUTO-CANCEL NOT ACCEPTED AFTER (MIN)</label><input class="in" id="ot_c" type="number" min="0" max="1440" value="${esc(t.accept_cancel_min)}"></div>
+      <div><label>REMIND THE SHOP AFTER (SECONDS)</label><input class="in" id="ot_r" type="number" min="0" max="86400" value="${esc(t.accept_remind_sec)}"></div>
+      <div><label>AUTO-CANCEL NOT ACCEPTED AFTER (SECONDS)</label><input class="in" id="ot_c" type="number" min="0" max="86400" value="${esc(t.accept_cancel_sec)}"></div>
       <div><label>CUSTOMER'S ANSWER — ITEM NOT AVAILABLE (MIN)</label><input class="in" id="ot_w" type="number" min="1" max="120" value="${esc(t.change_wait_min)}"></div></div>
     <button class="btn pink" onclick="otSave()">Save</button> <span id="otM" class="msg"></span>`;
   $("#main").appendChild(b2);
 };
 async function otSave() {
   const n = (id, lo, hi, d) => Math.min(hi, Math.max(lo, parseInt($(id).value, 10) || d));
-  const { error } = await db.from("settings").update({ accept_remind_min: n("#ot_r", 0, 240, 10), accept_cancel_min: n("#ot_c", 0, 1440, 20), change_wait_min: n("#ot_w", 1, 120, 10) }).eq("id", 1);
+  const { error } = await db.from("settings").update({ accept_remind_sec: n("#ot_r", 0, 86400, 30), accept_cancel_sec: n("#ot_c", 0, 86400, 60), change_wait_min: n("#ot_w", 1, 120, 10) }).eq("id", 1);
   const m = $("#otM"); m.className = error ? "msg err" : "msg ok"; m.textContent = error ? error.message : "Saved";
 }
 async function goSave() {
