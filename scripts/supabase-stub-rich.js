@@ -6,13 +6,17 @@
   const later = new Date(Date.now() + 19800000 + 200 * 864e5).toISOString().slice(0, 10);
   const shop = { id: "s1", owner: "u1", name: "Sharma General Store", type: "grocery", addr: "K-17, Gali No. 3", locality: "Laxmi Nagar", city: "Delhi", state: "Delhi", pin: "110092",
     phone: "9876500000", kyc: "APPROVED", sub_until: later, gst_billing: true, gstin: "07ABCDE1234F1Z5", price_incl_gst: false, gst_under_limit: false, min_order: 0, delivery_fee: 20,
-    free_above: 299, upi_id: "sharma@upi", fssai: null, open: true, closed: false, dues_paused: false, featured_until: null, pan_name: "RAKESH SHARMA", pan_number: "ABCPS1234K",
+    free_above: 299, pickup_mode: "both", upi_id: "sharma@upi", fssai: null, open: true, closed: false, dues_paused: false, featured_until: null, pan_name: "RAKESH SHARMA", pan_number: "ABCPS1234K",
     aadhaar_last4: "1234", created_at: "2026-10-01T10:00:00Z", rating: 4.5, slots: [], areas: [], hours: {} };
   const items = [1, 2, 3, 4].map(i => ({ id: "i" + i, shop: "s1", name: ["Aashirvaad Atta 5 kg", "Amul Butter 500 g", "Tata Salt 1 kg", "Parle-G 800 g"][i - 1], price: [262.5, 299, 28, 95][i - 1],
     mrp: [280, 305, 30, 100][i - 1], unit: ["5 kg", "500 g", "1 kg", "800 g"][i - 1], in_stock: true, gst_rate: [5, 12, 0, 18][i - 1], hsn: "1101", grp: "Atta & Rice", images: [], photos: {}, variants: [] }));
   const orders = [1, 2, 3].map(i => ({ id: "o" + i, short_id: "GB24" + i, shop: "s1", customer: "c" + i, cust_name: ["Neha", "Ravi", "Asha"][i - 1], status: ["NEW", "PACKING", "DELIVERED"][i - 1],
     items: [{ n: "Amul Butter 500 g", p: 299, q: 1, g: 12 }, { n: "Tata Salt 1 kg", p: 28, q: 2, g: 0 }], subtotal: 355, fee: 20, total: 375, created_at: new Date().toISOString(),
     bill_no: i === 3 ? "GB/26-27/0039" : null, delivered_at: new Date().toISOString(), slot_date: today, slot_label: "5–7 pm", addr: "B-12, Gali 4, Laxmi Nagar", phone: "98765xxxxx", returned: [], log: [] }));
+  // update-100: two pickup orders (packing, ready)
+  ["ACCEPTED", "OUT"].forEach((st, k) => orders.push({ id: "pk" + k, short_id: "GB26" + k, shop: "s1", customer: "c9", cust_name: ["Mohan", "Sita"][k], status: st, delivery_type: "pickup",
+    items: [{ n: "Tata Salt 1 kg", p: 28, q: 2, g: 0 }, { n: "Parle-G 800 g", p: 95, q: 1, g: 18 }], subtotal: 151, fee: 0, total: 151, created_at: new Date().toISOString(),
+    slot_date: today, slot_label: "Today 5–7 pm", addr: "Pickup from shop", returned: [], log: [] }));
   const T = {
     profiles: [{ id: "u1", role: role === "admin" ? "admin" : role === "sales" ? "sales" : "seller", name: "Rakesh Sharma", email: ME.email, phone: "9876500000" }],
     shops: [shop], items, orders,

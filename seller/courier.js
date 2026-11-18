@@ -77,13 +77,17 @@ function sellBox() {
         <input class="in" id="cs_dmax" type="number" min="1" max="15" style="max-width:90px" value="${S.courier_days_max ?? ""}" placeholder="6"> days</div>
       <div class="sub">Give the real days for your courier. Wrong days lead to cancellations and refusals.</div>
       <div class="note">Gali Bazaar doesn't book couriers. Every courier order is <b>COD + Open-box</b>. <a href="#" onclick="courierRules(false);return false" style="color:#7C3AED">What customers can do →</a></div></div>
+    <div id="pkset" style="display:${m === "courier" ? "none" : "block"}"><label>PICKUP FROM YOUR SHOP <span class="sub" style="font-weight:400">(dukaan se pickup)</span></label>
+      <select class="in" id="cs_pick">${[["off", "Off — home delivery only"], ["both", "Pickup + delivery — customer chooses"], ["only", "Pickup only — no home delivery"]].map(([k, t]) => `<option value="${k}" ${(S.pickup_mode || "off") === k ? "selected" : ""}>${t}</option>`).join("")}</select>
+      <div class="sub">Pickup has no delivery charge and no delivery partner. Customers order in the app, you pack it and tap <b>Ready for pickup</b>, they collect and pay at your counter.</div></div>
     <div class="msg" id="csm"></div><button class="btn pink" style="margin-top:10px" onclick="saveSell()">Save</button></div>`;
 }
-function sellMode(v) { S._mode = v; $("#cset").style.display = v === "local" ? "none" : "block"; }
+function sellMode(v) { S._mode = v; $("#cset").style.display = v === "local" ? "none" : "block"; if ($("#pkset")) $("#pkset").style.display = v === "courier" ? "none" : "block"; }
 async function saveSell(afterRules) {
   const mode = S._mode || S.delivery_mode || "local", v = id => $(id)?.value?.trim() ?? "", m = $("#csm");
   if (mode !== "local" && !afterRules && ((S.delivery_mode || "local") === "local" || !S.courier_rules_ok_at)) return courierRules(true);
   const patch = { delivery_mode: mode };
+  if ($("#cs_pick") && "pickup_mode" in S) patch.pickup_mode = mode === "courier" ? "off" : $("#cs_pick").value;   // update-100
   if (mode !== "local") {
     const a = parseInt(v("#cs_dmin")), b = parseInt(v("#cs_dmax"));
     if (!(a >= 1 && a <= 15 && b >= a && b <= 15)) { if (m) { m.className = "msg err"; m.textContent = "Delivery time: fill both, from 1 to 15 days (From ≤ To)"; } return; }

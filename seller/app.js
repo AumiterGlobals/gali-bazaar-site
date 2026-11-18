@@ -30,8 +30,9 @@ const backItems = o => o.status === "CANCELLED" ? (o.items || []) : (o.items || 
 const photos = i => (i.images && i.images.length ? i.images : [i.img_url]).filter(Boolean);
 const hidden = i => i.photos_ok === false || (i.photos_ok == null && photos(i).length < NEED());
 const SLOT_ABBR = { front: "F", label: "L", ingredients: "I", back: "B", tag: "T", side: "S", top: "Tp", sole: "So", cut: "C", bis: "BIS", more: "+", more2: "+" };
-const STATUS = { PLACED: ["New", "bad"], ACCEPTED: ["Packing", "warn"], OUT: ["On the way", "grey"], DELIVERED: ["Delivered", "ok"], CANCELLED: ["Cancelled", "grey"], DECLINED: ["Rejected", "grey"] };
-const pill = o => { const [l, c] = STATUS[o.status] || [o.status, "grey"]; return `<span class="pill ${c}">${l}</span>`; };
+const STATUS = { PLACED: ["New", "bad"], ACCEPTED: ["Packing", "warn"], OUT: ["On the way", "grey"], READY: ["Ready for pickup", "ok"], DELIVERED: ["Delivered", "ok"], CANCELLED: ["Cancelled", "grey"], DECLINED: ["Rejected", "grey"] };
+const pill = o => { const [l, c] = (o.delivery_type === "pickup" && o.status === "OUT" ? STATUS.READY : STATUS[o.status]) || [o.status, "grey"];
+  return `<span class="pill ${c}">${l}</span>${o.delivery_type === "pickup" && ["PLACED", "ACCEPTED"].includes(o.status) ? ` <span class="pill grey">Pickup</span>` : ""}`; };
 const retLabel = i => i.ret_policy === "replace" && i.ret_days ? `Replacement • ${i.ret_days} days` : i.ret_policy === "return" && i.ret_days ? `Return & refund • ${i.ret_days} days` : "At door only";
 const daysLeft = () => S.sub_until ? Math.round((new Date(S.sub_until) - new Date(todayStr())) / 864e5) : null;
 // same rule as the server's shop_live(): 5 days' grace after the plan ends, not paused for dues, not closed (update-71)
@@ -322,6 +323,11 @@ function orderTable(list, compact) {
     <td style="white-space:nowrap">${actions(o)}</td></tr>`).join("")}</tbody></table>`;
 }
 function actions(o) {
+  if (o.delivery_type === "pickup") {   // update-100: no partner — ready, then hand over at the counter
+    if (o.status === "PLACED") return `<button class="mini" onclick="rejectOrder('${o.id}')">Reject</button><button class="mini" style="background:#16A34A;color:#fff;border-color:#16A34A" onclick="pkAccept('${o.id}')">Accept</button>`;
+    if (o.status === "ACCEPTED") return `<button class="mini dk" onclick="pkReady('${o.id}')">Ready for pickup</button>`;
+    if (o.status === "OUT") return `<button class="mini" style="background:#16A34A;color:#fff;border-color:#16A34A" onclick="pkHand('${o.id}')">Handed over</button>`;
+  }
   if (o.status === "PLACED") return `<button class="mini" onclick="rejectOrder('${o.id}')">Reject</button><button class="mini" style="background:#16A34A;color:#fff;border-color:#16A34A" onclick="acceptOrder('${o.id}')">Accept</button>`;
   if (o.status === "ACCEPTED") return `<button class="mini" onclick="assign('${o.id}','ACCEPTED')">${o.rider ? "Change partner" : "Assign partner"}</button><button class="mini dk" onclick="dispatchOrder('${o.id}')">Out for delivery</button>`;
   if (o.status === "OUT") return `${o.pin_locked ? `<button class="mini" onclick="unlockPin('${o.id}')">Unlock PIN</button>` : ""}<button class="mini" onclick="openOrder('${o.id}')">View</button>`;
@@ -329,7 +335,7 @@ function actions(o) {
   return `<button class="mini" onclick="printBill('${o.id}')">Bill</button>`;
 }
 function orders() {
-  const T = [["new", "New", o => o.status === "PLACED"], ["packing", "Packing", o => o.status === "ACCEPTED"], ["out", "On the way", o => o.status === "OUT"],
+  const T = [["new", "New", o => o.status === "PLACED"], ["packing", "Packing", o => o.status === "ACCEPTED"], ["out", "On the way / ready", o => o.status === "OUT"],
     ["done", "Done (3 days)", o => ["DELIVERED", "CANCELLED", "DECLINED"].includes(o.status)]];
   const cur = T.find(t => t[0] === ordTab) || T[0], loc = D.recent.filter(o => o.delivery_type !== "courier"), list = loc.filter(cur[2]);
   $("#main").innerHTML = head("Orders", "Running orders and the last 3 days • older ones are in Bills & GST") + `
@@ -370,6 +376,32 @@ async function dispatchOrder(id) {
   if (r && r.profile && r.profile === me.id) return toast("You're delivering this one — open the order in the app's delivery screen (PIN check).");
   if (await setStatus(o, "OUT")) { toast(`${short(o)} is out for delivery with ${r?.name || "your partner"}`); page(); }
 }
+// ---- update-100: pickup orders ----
+async function pkAccept(id) { const o = findO(id); if (await setStatus(o, "ACCEPTED", null)) { toast(`Accepted ${short(o)} — pack it, then mark it ready`); page(); } }
+async function pkReady(id) { const o = findO(id); if (await setStatus(o, "OUT")) { toast(`${short(o)} is ready — the customer is told to collect it`); page(); } }
+function pkHand(id) {
+  const o = findO(id); if (!o) return;
+  drawer(`<h2><span>Hand over ${short(o)}</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <div class="sub">${esc(o.cust_name)} • pickup at your shop</div>
+    <label>1. CHECK THE ITEMS WITH THE CUSTOMER — UNTICK ANYTHING THEY HAND BACK</label>
+    ${(o.items || []).map((l, k) => `<label class="row" style="cursor:pointer"><div><b>${esc(l.n)} × ${l.q}</b><span>${inr(l.p * l.q)}</span></div><input type="checkbox" data-k="${k}" checked></label>`).join("")}
+    <label>2. PAYMENT</label><select class="in" id="pk_mode"><option value="CASH">Cash</option><option value="UPI">UPI</option></select>
+    <label class="row" style="cursor:pointer;margin-top:8px"><div><b id="pk_amt"></b><span>I have received this amount</span></div><input type="checkbox" id="pk_got"></label>
+    <div class="msg" id="pk_m"></div><button class="btn pink full" id="pk_ok" style="margin-top:12px">Complete handover</button>`);
+  const kept = () => (o.items || []).filter((l, k) => $(`[data-k="${k}"]`).checked);
+  const show = () => { const k = kept(); $("#pk_amt").textContent = k.length ? `Collect ${inr(k.reduce((a, l) => a + l.p * l.q, 0))}` : "Everything handed back — cancel the order instead"; };
+  $$("[data-k]").forEach(c => c.onchange = show); show();
+  $("#pk_ok").onclick = async () => {
+    const k = kept(), m = $("#pk_m"); if (!k.length) { m.className = "msg err"; m.textContent = "Everything is handed back — use Cancel order."; return; }
+    if (!$("#pk_got").checked) { m.className = "msg err"; m.textContent = "Tick that you received the money"; return; }
+    const now = new Date().toISOString(), returned = (o.items || []).filter(l => !k.includes(l)).map(l => l.n);
+    const patch = { status: "DELIVERED", returned, pay_mode: $("#pk_mode").value, delivered_by: "Shop", delivered_at: now,
+      checklist: (o.items || []).map(l => ({ n: l.n, q: l.q, ok: !returned.includes(l.n), t: now })), log: [...(o.log || []), { s: "DELIVERED", t: now }] };
+    const { data, error } = await db.from("orders").update(patch).eq("id", o.id).eq("status", "OUT").select("id");
+    if (error || !data?.length) { m.className = "msg err"; m.textContent = error ? niceErr(error) : "This order was just changed — refresh."; return; }
+    closeDrawer(); toast("Handed over — bill created"); await loadAll(); page();
+  };
+}
 async function unlockPin(id) {
   if (!confirm("Unlock the delivery PIN? The partner can try again (5 tries).")) return;
   const { error } = await db.rpc("shop_unlock_pin", { p_order: id }); if (error) return toast(niceErr(error));
@@ -380,7 +412,7 @@ async function openOrder(id) {
   const cn = D.cns.filter(c => c.order_id === id), r = D.riders.find(x => x.id === o.rider);
   drawer(`<h2><span>Order ${short(o)}</span><button class="x" onclick="closeDrawer()">×</button></h2>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${pill(o)}<span class="sub" style="margin:0">${dt(o.created_at)}</span></div>
-    <div class="box" style="background:#F6F2FB;margin-top:12px"><b>${esc(o.cust_name)}</b>${o.cust_phone ? (/^X/.test(o.cust_phone) ? ` • ${esc(o.cust_phone)} <span class="sub" style="margin:0">(hidden 24 h after the order)</span>` : ` • <a href="${phoneLink(o.cust_phone)}" style="color:#7C3AED">${esc(o.cust_phone)}</a>`) : ""}<div class="sub">${esc(o.addr)}</div>
+    <div class="box" style="background:#F6F2FB;margin-top:12px"><b>${esc(o.cust_name)}</b>${o.cust_phone ? (/^X/.test(o.cust_phone) ? ` • ${esc(o.cust_phone)} <span class="sub" style="margin:0">(hidden 24 h after the order)</span>` : ` • <a href="${phoneLink(o.cust_phone)}" style="color:#7C3AED">${esc(o.cust_phone)}</a>`) : ""}<div class="sub">${o.delivery_type === "pickup" ? "🏪 Pickup — the customer collects at your shop" : esc(o.addr)}</div>
       <div class="sub">Slot: ${esc(o.slot_label || "")} ${o.slot_date ? "• " + dmy(o.slot_date) : ""}${r ? ` • 🛵 ${esc(r.name)}` : ""}</div>${o.note ? `<div class="note" style="margin:8px 0 0">Note: ${esc(o.note)}</div>` : ""}</div>
     <table><thead><tr><th>ITEM</th><th>QTY</th><th>AMOUNT</th></tr></thead><tbody>${(o.items || []).map(l => `<tr><td>${esc(l.n)}${l.u ? ` <span class="sub">${esc(l.u)}</span>` : ""}${(o.returned || []).includes(l.n) ? ` <span class="pill bad">Returned</span>` : ""}</td><td>${l.q}</td><td>${inr(l.p * l.q)}</td></tr>`).join("")}
       ${Number(o.fee) ? `<tr><td>Delivery fee</td><td></td><td>${inr(o.fee)}</td></tr>` : ""}<tr><td><b>Total</b></td><td></td><td><b>${inr(o.total)}</b></td></tr>
