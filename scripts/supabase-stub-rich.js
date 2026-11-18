@@ -12,7 +12,7 @@
     mrp: [280, 305, 30, 100][i - 1], unit: ["5 kg", "500 g", "1 kg", "800 g"][i - 1], in_stock: true, gst_rate: [5, 12, 0, 18][i - 1], hsn: "1101", grp: "Atta & Rice", images: [], photos: {}, variants: [] }));
   const orders = [1, 2, 3].map(i => ({ id: "o" + i, short_id: "GB24" + i, shop: "s1", customer: "c" + i, cust_name: ["Neha", "Ravi", "Asha"][i - 1], status: ["NEW", "PACKING", "DELIVERED"][i - 1],
     items: [{ n: "Amul Butter 500 g", p: 299, q: 1, g: 12 }, { n: "Tata Salt 1 kg", p: 28, q: 2, g: 0 }], subtotal: 355, fee: 20, total: 375, created_at: new Date().toISOString(),
-    slot_date: today, slot_label: "5–7 pm", addr: "B-12, Gali 4, Laxmi Nagar", phone: "98765xxxxx", returned: [], log: [] }));
+    bill_no: i === 3 ? "GB/26-27/0039" : null, delivered_at: new Date().toISOString(), slot_date: today, slot_label: "5–7 pm", addr: "B-12, Gali 4, Laxmi Nagar", phone: "98765xxxxx", returned: [], log: [] }));
   const T = {
     profiles: [{ id: "u1", role: role === "admin" ? "admin" : role === "sales" ? "sales" : "seller", name: "Rakesh Sharma", email: ME.email, phone: "9876500000" }],
     shops: [shop], items, orders,
@@ -23,7 +23,12 @@
     payouts: [{ id: "p1", sales: "sp1", pdate: today, gross: 167.8, tds: 4, net: 163.8, utr: "UTR123456", advice_no: "GB/PO/1", tds_rate: 2 }],
     pay_claims: [{ id: "pc1", shop: "s1", utr: "4325123456", amount: 28, months: 1, paid_on: today, purpose: "DUES", status: "PENDING", created_at: new Date().toISOString() },
                  { id: "pc2", shop: "s1", utr: "4325123457", amount: 99, months: 1, paid_on: today, purpose: "PLAN", status: "APPROVED", inv_no: "GB/26-27/12", created_at: new Date().toISOString() }],
-    terms_acceptances: [], categories: [], festivals: []
+    terms_acceptances: [], categories: [], festivals: [],
+    counter_sales: [{ id: "cs1", shop: "s1", bill_no: "GB/26-27/0041", cust_name: "Ramesh", cust_phone: "9876543210", items: [{ n: "Aashirvaad Atta 5 kg", p: 262.5, q: 2, g: 5 }], fee: 0, total: 525, pay_mode: "CREDIT", created_at: new Date().toISOString() },
+                    { id: "cs2", shop: "s1", bill_no: "GB/26-27/0042", cust_name: "Sunita", cust_phone: "", items: [{ n: "Parle-G 800 g", p: 95, q: 1, g: 18 }], fee: 0, total: 95, pay_mode: "CREDIT", reminded_on: today, created_at: new Date().toISOString() }],
+    shop_expenses: [{ id: "e1", shop: "s1", on_date: today, head: "Stock purchase", amount: 1102.5, gst: 52.5, gst_rate: 5, mode: "Cash", vendor: "Sharma Wholesale", bill_no: "SW-118", paid: true, paid_on: today, paid_mode: "Cash" }],
+    purchase_lines: [{ id: "pl1", expense_id: "e1", shop: "s1", item_id: "i1", item_name: "Aashirvaad Atta 5 kg", variant: null, qty: 5, rate: 210, gst_rate: 5 }],
+    item_costs: [{ item_id: "i1", cost_price: 210 }]
   };
   const R = {
     my_billing: { balance: -28, plan_due: 0, pay_now: 28, tds_this_month: 28, due_by: today, paused: false, sub_until: later, quotes: [], invoices: [], payments: [], statement: [] },
@@ -55,7 +60,7 @@
   } });
   const channel = () => { const c = new Proxy({}, { get: () => () => c }); return c; };
   window.supabase = { createClient: () => ({
-    auth, from: chain, rpc: async n => ({ data: n in R ? JSON.parse(JSON.stringify(R[n])) : [], error: null }), channel, removeChannel() {}, removeAllChannels() {},
+    auth, from: chain, rpc: async (n, a) => { (window.__rpc = window.__rpc || []).push([n, a]); return { data: n in R ? JSON.parse(JSON.stringify(R[n])) : n === "udhaar_reminded" ? today : [], error: null }; }, channel, removeChannel() {}, removeAllChannels() {},
     storage: { from: () => asyncNoop(() => ({ data: null, error: null })) },
     functions: { invoke: async () => ({ data: null, error: null }) }
   }) };

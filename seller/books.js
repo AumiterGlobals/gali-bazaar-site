@@ -82,7 +82,11 @@ async function books() {
     db.from("shop_expenses").select("*").eq("shop", S.id).lte("on_date", BKD.to).order("on_date").limit(5000),
     db.from("shop_receipts").select("*").eq("shop", S.id).lte("on_date", BKD.to).limit(5000),
     db.from("pay_claims").select("*").eq("shop", S.id).eq("status", "APPROVED")]);
-  const vq = await db.from("shop_vendors").select("*").eq("shop", S.id).order("name");
+  const [vq, plq, icq] = await Promise.all([db.from("shop_vendors").select("*").eq("shop", S.id).order("name"),
+    db.from("purchase_lines").select("*").eq("shop", S.id).order("created_at").limit(20000),
+    db.from("item_costs").select("item_id,cost_price").eq("shop", S.id)]);
+  BKD.plOk = !plq.error; BKD.pl = plq.error ? [] : plq.data || [];
+  BKD.cost = new Map((icq.error ? [] : icq.data || []).map(r => [r.item_id, Number(r.cost_price)]));
   BKD.vendors = vq.error ? null : vq.data || [];
   const x = { orders: o.data || [], counter: cs.data || [], cns: cn.data || [], exps: (ex.data || []).filter(e => !e.cancelled_at), recs: rc.error ? [] : (rc.data || []).filter(r => !r.cancelled_at), claims: cl.data || [] };
   BKD.x = x; const es = BKD.es = bkBuild(x), f = BKD.from, to = BKD.to;
@@ -90,7 +94,7 @@ async function books() {
   const ud = x.counter.filter(c => c.pay_mode === "CREDIT").map(c => ({ c, due: r2(c.total - x.recs.filter(r => r.sale_id === c.id).reduce((a, r) => a + Number(r.amount), 0) - x.cns.filter(n => n.sale_id === c.id && n.kind !== "REPLACEMENT").reduce((a, n) => a + Number(n.amount), 0)) }));
   BKD.ud = ud;
   const unpaid = x.exps.filter(e => e.paid === false);
-  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["vendors", "Vendors"], ["day", "Day book"]];
+  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["profit", "Item profit"], ["vendors", "Vendors"], ["day", "Day book"]];
   $("#kb").innerHTML = `<div class="sub" style="font-size:12.5px;background:#F6F2FB;border-radius:12px;padding:10px 12px;margin-bottom:12px">🔒 Entries can't be deleted — a wrong expense is cancelled instead. If you delete your shop, all your records are first saved to your phone as Excel, then deleted from Gali Bazaar. Keeping them for GST / income tax is then your responsibility. Download your books any time. <a href="/help/seller-guide/#records-en" style="color:#7C3AED">Your records &amp; deleting your shop →</a></div>${rc.error ? `<div class="soon err">Run update-30 (books) in Supabase to save udhaar collections and owner money.</div>` : ""}
     <div class="kpis k4" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>Net profit</span><b style="color:${profit >= 0 ? "#15803D" : "#BE185D"}">${inr2(profit)}</b></div>
       <div class="kpi"><span>Udhaar to collect</span><b>${inr2(ud.reduce((a, u) => a + Math.max(u.due, 0), 0))}</b></div><div class="kpi"><span>Bills to pay</span><b class="pk">${inr2(unpaid.reduce((a, e) => a + Number(e.amount), 0))}</b></div></div>
@@ -122,10 +126,11 @@ function bkRows() {
         const v = vs.find(z => z.name === n) || {}, b = ex.filter(e => (e.vendor || "").toLowerCase() === n.toLowerCase()), tot = b.reduce((a, e) => a + Number(e.amount), 0), due = b.filter(e => e.paid === false).reduce((a, e) => a + Number(e.amount), 0);
         return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", v.addr || "", String(b.length), f2(tot), f2(tot - due), f2(due)]; })]];
     }
-    case "udhaar": return ["Udhaar (customers) · counter bills on credit", [["Bill", "Date", "Customer", "Mobile", "Bill total", "Collected / returned", "Still due"], ...BKD.ud.map(({ c, due }) => [c.bill_no || "", bkDay(c.created_at), c.cust_name, c.cust_phone || "", f2(c.total), f2(c.total - due), f2(Math.max(due, 0))])]];
-    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note"],
+    case "udhaar": return ["Udhaar (customers) · counter bills on credit", [["Bill", "Date", "Customer", "Mobile", "Bill total", "Collected / returned", "Still due", "Last reminder"], ...BKD.ud.map(({ c, due }) => [c.bill_no || "", bkDay(c.created_at), c.cust_name, c.cust_phone || "", f2(c.total), f2(c.total - due), f2(Math.max(due, 0)), c.reminded_on || ""])]];
+    case "profit": return bkProfit();
+    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note", "Items"],
       ...x.exps.filter(e => e.on_date >= f && e.on_date <= t).map(e => [e.on_date, e.head, e.vendor || "", e.vendor_gstin || "", e.bill_no || "", f2(e.amount - (e.gst || 0)), e.gst_rate ?? "", f2(e.gst || 0), f2(e.amount),
-        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.paid_ref || "", e.note || ""])]];
+        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.paid_ref || "", e.note || "", bkLinesText(e.id)])]];
     default: return [`Day book · ${f} to ${t}`, [["Date", "Type", "Ref", "Details", "Account", "Debit", "Credit"], ...es.filter(e => e.date >= f && e.date <= t).flatMap(e => e.lines.map((l, i) => [i ? "" : e.date, i ? "" : e.type, i ? "" : e.ref, i ? "" : e.text, l.a, l.dr ? f2(l.dr) : "", l.cr ? f2(l.cr) : ""]))]];
   }
 }
@@ -135,50 +140,122 @@ function bkShow() {
   BKD.cur = [title, rows];
   $("#kbody").innerHTML = `<h3>${esc(title)} <button class="btn ghost" style="float:right;padding:7px 12px" onclick="bkDl()">⇩ Excel</button></h3>
     ${BKD.tab === "bs" ? `<div class="sub">Negative cash means you paid from your own pocket — add it with “Owner money”.</div>` : ""}
+    ${BKD.tab === "profit" ? `<div class="sub">Cost = quantity sold × the item's cost price (the rate of its latest stock purchase with items). ${S.gst_billing && S.gstin ? "Sales and cost are before GST." : "Sales and cost include GST."} Items with no stock purchase show “cost not set”.${BKD.plOk ? "" : " <b>Run update-99 in Supabase to turn this on.</b>"}</div>` : ""}
+    ${BKD.tab === "udhaar" ? bkRemindBox() : ""}
     <div style="overflow:auto"><table><thead><tr>${rows[0].map(h => `<th>${esc(h)}</th>`).join("")}${["udhaar", "vend"].includes(BKD.tab) ? "<th></th>" : ""}</tr></thead><tbody>${rows.slice(1).map((r, i) => {
-      const bold = /^[A-Z &]+$/.test(r[0]) && /[A-Z]/.test(r[0]) || /^Total/.test(r[0]);
+      const bold = /^[A-Z &]+$/.test(r[0]) && /[A-Z]/.test(r[0]) || /^total/i.test(r[0]);
       let act = "";
       if (BKD.tab === "udhaar") { const u = BKD.ud[i]; if (u && u.due > .009) act = `<button class="edit" onclick="bkCollect('${u.c.id}')">Collect</button>`; }
-      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Cancel</button>` : ""}`; }
+      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e && e.head === "Stock purchase" && BKD.plOk ? ` <button class="edit" onclick="bkExpense('${e.id}')">Edit</button>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Cancel</button>` : ""}`; }
       return `<tr>${r.map(v => `<td style="${num(v) ? "text-align:right;" : ""}${bold ? "font-weight:700" : ""}">${num(v) ? inr2(v) : esc(v)}</td>`).join("")}${["udhaar", "vend"].includes(BKD.tab) ? `<td style="white-space:nowrap">${act}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
     ${rows.length <= 1 ? '<div class="sub">Nothing here for this period.</div>' : ""}`;
 }
 function bkDl() { const [title, rows] = BKD.cur; csvDownload(`${title.split(" ·")[0].toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${BKD.from}_to_${BKD.to}.csv`, [[S.name + " — " + title], ...rows]); }
 
-function bkExpense() {
+/* stock purchase lines: picked from the catalogue; the bill total comes from the lines (save_purchase, update-99) */
+let XL = [];
+const bkOpt = (i, v) => v ? `${i.name} (${v})` : i.name;
+function bkLinesText(expId) { return (BKD.pl || []).filter(l => l.expense_id === expId).map(l => `${l.item_name}${l.variant ? " (" + l.variant + ")" : ""} ×${l.qty} @${f2(l.rate)}${Number(l.gst_rate) ? " +" + Number(l.gst_rate) + "%" : ""}`).join("; "); }
+function bkLineAmt(l, gstOn) { const q = +l.q || 0, r = +l.r || 0, g = gstOn ? +l.g || 0 : 0; return { tax: r2(q * r * g / 100), tot: r2(q * r * (1 + g / 100)) }; }
+function bkLinesDraw() {
+  const gstOn = !!(S.gst_billing && S.gstin), box = $("#xlines"); if (!box) return;
+  const cols = gstOn ? ".8fr 1.15fr 1.15fr 1fr" : "1fr 1.3fr 1.2fr";
+  box.innerHTML = XL.map((l, k) => {
+    const it = D.items.find(i => i.id === l.id), st = it?.stock_qty;
+    return `<div style="border:1px solid #EEE6F7;border-radius:12px;padding:8px 10px;margin-top:8px">
+      <div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(l.name)}</b>${l.v ? ` <span class="sub">(${esc(l.v)})</span>` : ""}
+        <div class="sub" style="font-size:11.5px">${it ? (st == null ? "Stock not counted yet — counting starts with this purchase" : `In stock now: ${st}`) : "Item not in your catalogue any more"}</div></div>
+        <button class="edit" style="color:#BE185D;font-size:18px;line-height:1" title="Remove item" aria-label="Remove item" onclick="XL.splice(${k},1);bkLinesDraw()">×</button></div>
+      <div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:end;margin-top:6px">
+        <div><label style="margin:0">QTY</label><input class="in" inputmode="numeric" data-k="${k}" data-f="q" value="${esc(l.q)}"></div>
+        <div><label style="margin:0">RATE ₹${gstOn ? " (EX-GST)" : ""}</label><input class="in" inputmode="decimal" data-k="${k}" data-f="r" value="${esc(l.r)}"></div>
+        ${gstOn ? `<div><label style="margin:0">GST</label><select class="in" data-k="${k}" data-f="g">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}" ${+l.g === r ? "selected" : ""}>${r}%</option>`).join("")}</select></div>` : ""}
+        <div style="text-align:right"><label style="margin:0">AMOUNT</label><div style="padding:10px 0;font-weight:600;white-space:nowrap" id="xla${k}">${inr2(bkLineAmt(l, gstOn).tot)}</div></div></div></div>`; }).join("");
+  $$("#xlines [data-k]").forEach(el => { el[el.tagName === "SELECT" ? "onchange" : "oninput"] = () => {
+    const l = XL[+el.dataset.k], f = el.dataset.f;
+    if (f === "g") l.g = +el.value; else { const v = el.value.replace(f === "q" ? /\D/g : /[^\d.]/g, ""); if (v !== el.value) el.value = v; l[f] = v; }
+    $("#xla" + el.dataset.k).textContent = inr2(bkLineAmt(l, gstOn).tot); bkLinesTotal(); }; });
+  bkLinesTotal();
+}
+function bkLinesTotal() {
+  const gstOn = !!(S.gst_billing && S.gstin), on = XL.length > 0, a = $("#xa"); if (!a) return;
+  a.readOnly = on; if ($("#xrw")) $("#xrw").style.display = on ? "none" : "";
+  if (!on) return;
+  const tot = r2(XL.reduce((s, l) => s + bkLineAmt(l, gstOn).tot, 0)), tax = r2(XL.reduce((s, l) => s + bkLineAmt(l, gstOn).tax, 0));
+  a.value = tot ? tot : ""; if ($("#xs")) $("#xs").textContent = gstOn && tax ? `Taxable ${inr2(tot - tax)} + GST ${inr2(tax)}` : "";
+}
+function bkPick() {
+  const v = $("#xls").value.trim(); if (!v) return;
+  for (const i of D.items) {
+    const vs = (i.variants || []).length ? i.variants.map(x => x.n) : [null];
+    for (const vn of vs) if (bkOpt(i, vn).toLowerCase() === v.toLowerCase()) {
+      const had = XL.find(l => l.id === i.id && l.v === vn);
+      if (had) had.q = String((+had.q || 0) + 1);
+      else XL.push({ id: i.id, name: i.name, v: vn, q: "1", r: BKD.cost?.has(i.id) ? String(BKD.cost.get(i.id)) : "", g: +(i.gst_rate || 0) });
+      $("#xls").value = ""; bkLinesDraw(); return;
+    }
+  }
+}
+
+function bkExpense(editId) {
   const gstOn = !!(S.gst_billing && S.gstin), heads = ["Stock purchase", "Rent", "Electricity", "Salary", "Transport", "Packaging", "Repairs", "Phone / internet", "Subscription / software", "Other"];
-  drawer(`<h2><span>Expense / vendor bill</span><button class="x" onclick="closeDrawer()">×</button></h2>
-    <label>WHAT FOR?</label><select class="in" id="xh">${heads.map(h => `<option>${h}</option>`).join("")}</select><input class="in" id="xo" placeholder="Expense name (for Other)" style="display:none;margin-top:6px">
-    <label>VENDOR / PAID TO <a class="edit" onclick="bkVendor(true)">＋ New vendor</a></label><input class="in" id="xv" list="xvl" placeholder="Pick or type — e.g. Sharma Wholesale">
+  const ed = editId ? BKD.x.exps.find(e => e.id === editId) : null; if (editId && !ed) return;
+  XL = ed ? (BKD.pl || []).filter(l => l.expense_id === ed.id && l.item_id).map(l => ({ id: l.item_id, name: l.item_name, v: l.variant || null, q: String(l.qty), r: String(Number(l.rate)), g: Number(l.gst_rate) })) : [];
+  const opts = D.items.flatMap(i => ((i.variants || []).length ? i.variants.map(x => x.n) : [null]).map(vn => `<option value="${esc(bkOpt(i, vn))}">`)).join("");
+  drawer(`<h2><span>${ed ? "Edit stock purchase" : "Expense / vendor bill"}</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <label>WHAT FOR?</label><select class="in" id="xh" ${ed ? "disabled" : ""}>${heads.map(h => `<option>${h}</option>`).join("")}</select><input class="in" id="xo" placeholder="Expense name (for Other)" style="display:none;margin-top:6px">
+    <div id="xlw" style="display:none;margin-top:4px"><label>ITEMS BOUGHT (optional — adds to stock and sets the cost price)</label>
+      ${BKD.plOk ? `<input class="in" id="xls" list="xll" placeholder="${D.items.length ? "Search your catalogue — type and pick an item" : "Add items to your catalogue first"}" autocomplete="off"><datalist id="xll">${opts}</datalist><div id="xlines"></div>
+      <div class="sub" style="font-size:11.5px;margin-top:4px">With items, the bill total is worked out from them. Leave items empty to enter only a total, as before.</div>` : `<div class="sub">Run update-99 in Supabase to add items to a stock purchase.</div>`}</div>
+    <label>VENDOR / PAID TO ${ed ? "" : `<a class="edit" onclick="bkVendor(true)">＋ New vendor</a>`}</label><input class="in" id="xv" list="xvl" placeholder="Pick or type — e.g. Sharma Wholesale">
     <datalist id="xvl">${(BKD.vendors || []).map(v => `<option value="${esc(v.name)}">`).join("")}</datalist>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>INVOICE NO</label><input class="in" id="xn"></div><div><label>INVOICE DATE</label><input class="in" type="date" id="xd" value="${todayStr()}"></div></div>
     ${gstOn ? `<label>VENDOR GSTIN</label><input class="in" id="xg" maxlength="15">` : ""}
     <label>BILL TOTAL ₹ (incl. GST)</label><input class="in" id="xa" inputmode="decimal">
-    ${gstOn ? `<label>GST ON THIS BILL (input credit)</label><select class="in" id="xr">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}">${r ? r + "%" : "Nil / 0%"}</option>`).join("")}</select><div class="sub" id="xs"></div>` : ""}
-    <label>PAID?</label><select class="in" id="xp"><option value="Cash">Paid now — Cash</option><option value="UPI">Paid now — UPI</option><option value="Bank">Paid now — Bank</option><option value="">Pay later</option></select>
-    <div id="xuw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="xu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="xud" value="${todayStr()}"></div></div>
+    ${gstOn ? `<div id="xrw"><label>GST ON THIS BILL (input credit)</label><select class="in" id="xr">${[0, 5, 12, 18, 28, 40].map(r => `<option value="${r}">${r ? r + "%" : "Nil / 0%"}</option>`).join("")}</select></div><div class="sub" id="xs"></div>` : ""}
+    ${ed ? `<div class="sub" style="margin-top:8px">Payment details stay as they are. To take the whole purchase back, cancel it instead.</div>` : `<label>PAID?</label><select class="in" id="xp"><option value="Cash">Paid now — Cash</option><option value="UPI">Paid now — UPI</option><option value="Bank">Paid now — Bank</option><option value="">Pay later</option></select>
+    <div id="xuw" style="display:none;grid-template-columns:1fr 1fr;gap:8px"><div><label>UTR / CHEQUE NO</label><input class="in" id="xu"></div><div><label>UTR (PAYMENT) DATE</label><input class="in" type="date" id="xud" value="${todayStr()}"></div></div>`}
     <label>NOTE</label><input class="in" id="xx">
     <div class="msg" id="xm"></div><button class="btn pink full" id="xsv" style="margin-top:12px">Save</button>`);
-  $("#xh").onchange = () => $("#xo").style.display = $("#xh").value === "Other" ? "block" : "none";
-  const calc = () => { if (!gstOn) return 0; const a = +$("#xa").value || 0, r = +$("#xr").value; const g = r2(a * r / (100 + r)); $("#xs").textContent = r && a ? `Taxable ${inr2(a - g)} + GST ${inr2(g)}` : ""; return g; };
+  const stockOn = () => $("#xh").value === "Stock purchase";
+  $("#xh").onchange = () => { $("#xo").style.display = $("#xh").value === "Other" ? "block" : "none"; $("#xlw").style.display = stockOn() ? "block" : "none"; if (!stockOn()) { XL = []; bkLinesDraw(); $("#xa").readOnly = false; if ($("#xrw")) $("#xrw").style.display = ""; } };
+  $("#xh").onchange();
+  if ($("#xls")) { $("#xls").oninput = bkPick; $("#xls").onchange = bkPick; }
+  const calc = () => { if (!gstOn || XL.length) return 0; const a = +$("#xa").value || 0, r = +$("#xr").value; const g = r2(a * r / (100 + r)); $("#xs").textContent = r && a ? `Taxable ${inr2(a - g)} + GST ${inr2(g)}` : ""; return g; };
   if (gstOn) { $("#xa").oninput = calc; $("#xr").onchange = calc; }
-  $("#xp").onchange = () => $("#xuw").style.display = ["UPI", "Bank"].includes($("#xp").value) ? "grid" : "none";
+  if ($("#xp")) $("#xp").onchange = () => $("#xuw").style.display = ["UPI", "Bank"].includes($("#xp").value) ? "grid" : "none";
   $("#xv").onchange = () => { const v = (BKD.vendors || []).find(z => z.name.toLowerCase() === $("#xv").value.trim().toLowerCase()); if (v && gstOn && v.gstin && !$("#xg").value) $("#xg").value = v.gstin; };
+  if (ed) { $("#xv").value = ed.vendor || ""; $("#xn").value = ed.bill_no || ""; $("#xd").value = ed.on_date; $("#xx").value = ed.note || ""; if (gstOn) $("#xg").value = ed.vendor_gstin || ""; }
+  bkLinesDraw();
   $("#xsv").onclick = async () => {
-    const a = +$("#xa").value || 0, head = $("#xh").value === "Other" ? $("#xo").value.trim() : $("#xh").value, m = $("#xm");
-    if (!a || !head) { m.className = "msg err"; return m.textContent = "Enter what for and the amount"; }
+    const head = $("#xh").value === "Other" ? $("#xo").value.trim() : $("#xh").value, m = $("#xm"), lines = stockOn() ? XL : [];
+    const bad = t => { m.className = "msg err"; m.textContent = t; };
+    if (ed && !lines.length) return bad("Add at least one item, or cancel the purchase to take it back");
+    if (lines.some(l => !(Math.round(+l.q) >= 1) || l.r === "" || !(+l.r >= 0))) return bad("Enter the quantity and purchase rate for every item");
+    const a = +$("#xa").value || 0;
+    if (!a || !head) return bad("Enter what for and the amount");
     $("#xsv").disabled = true;
     try {
-      const pm = $("#xp").value, later = !pm;
-      const row = { shop: S.id, on_date: $("#xd").value, head, amount: a, mode: pm || "Cash", note: $("#xx").value.trim() || null, vendor: $("#xv").value.trim() || null,
-        vendor_gstin: gstOn ? ($("#xg").value.trim().toUpperCase() || null) : null, bill_no: $("#xn").value.trim() || null, gst_rate: gstOn ? +$("#xr").value : null, gst: calc(),
-        paid: !later, paid_on: later ? null : (["UPI", "Bank"].includes(pm) ? $("#xud").value : $("#xd").value), paid_mode: later ? null : pm,
-        ...(["UPI", "Bank"].includes(pm) && $("#xu").value.trim() ? { paid_ref: $("#xu").value.trim() } : {}) };
-      const { error } = await db.from("shop_expenses").insert(row); if (error) throw error;
-      if (row.vendor && BKD.vendors && !BKD.vendors.some(v => v.name.toLowerCase() === row.vendor.toLowerCase()))
-        await db.from("shop_vendors").insert({ shop: S.id, name: row.vendor, gstin: row.vendor_gstin });
-      closeDrawer(); toast("Saved"); BKD.tab = "vend"; books();
-    } catch (e) { m.className = "msg err"; m.textContent = dupMsg(e); $("#xsv").disabled = false; }
+      const pm = ed ? null : $("#xp").value, later = !ed && !pm;
+      const vendor = $("#xv").value.trim() || null, vgst = gstOn ? ($("#xg").value.trim().toUpperCase() || null) : null;
+      if (lines.length) {
+        const p = { on_date: $("#xd").value, vendor, vendor_gstin: vgst, bill_no: $("#xn").value.trim() || null, note: $("#xx").value.trim() || null,
+          ...(ed ? {} : { mode: pm || "Cash", paid: !later, paid_on: later ? null : (["UPI", "Bank"].includes(pm) ? $("#xud").value : $("#xd").value), paid_mode: later ? null : pm,
+            paid_ref: ["UPI", "Bank"].includes(pm) && $("#xu").value.trim() ? $("#xu").value.trim() : null }) };
+        const { error } = await db.rpc("save_purchase", { p_id: ed ? ed.id : null, p, p_lines: lines.map(l => ({ item_id: l.id, variant: l.v, qty: Math.round(+l.q), rate: +l.r, gst_rate: gstOn ? +l.g || 0 : 0 })) });
+        if (error) throw error;
+      } else {
+        const row = { shop: S.id, on_date: $("#xd").value, head, amount: a, mode: pm || "Cash", note: $("#xx").value.trim() || null, vendor,
+          vendor_gstin: vgst, bill_no: $("#xn").value.trim() || null, gst_rate: gstOn ? +$("#xr").value : null, gst: calc(),
+          paid: !later, paid_on: later ? null : (["UPI", "Bank"].includes(pm) ? $("#xud").value : $("#xd").value), paid_mode: later ? null : pm,
+          ...(["UPI", "Bank"].includes(pm) && $("#xu").value.trim() ? { paid_ref: $("#xu").value.trim() } : {}) };
+        const { error } = await db.from("shop_expenses").insert(row); if (error) throw error;
+      }
+      if (vendor && BKD.vendors && !BKD.vendors.some(v => v.name.toLowerCase() === vendor.toLowerCase()))
+        await db.from("shop_vendors").insert({ shop: S.id, name: vendor, gstin: vgst });
+      if (lines.length) { const it = await db.from("items").select("*").eq("shop", S.id).order("name"); if (!it.error) D.items = it.data || D.items; }
+      closeDrawer(); toast(lines.length ? (ed ? "Purchase updated — stock adjusted" : `Saved — stock added for ${lines.length} item${lines.length > 1 ? "s" : ""}`) : "Saved"); BKD.tab = "vend"; books();
+    } catch (e) { bad(dupMsg(e)); $("#xsv").disabled = false; }
   };
 }
 function bkOwner() {
@@ -238,4 +315,75 @@ function bkVendor(fromExpense) {
     if (error) { $("#vm").className = "msg err"; return $("#vm").textContent = /duplicate|unique/i.test(error.message) ? "This vendor is already in your list" : niceErr(error); }
     closeDrawer(); toast("Vendor added"); if (fromExpense) { await books(); bkExpense(); $("#xv").value = name; } else { BKD.tab = "vendors"; books(); }
   };
+}
+
+/* Item profit: what each item sold for in the period against its cost price (latest stock purchase with items) */
+function bkProfit() {
+  const x = BKD.x, f = BKD.from, t = BKD.to, gstOn = !!(S.gst_billing && S.gstin), cost = BKD.cost || new Map();
+  const byId = new Map(D.items.map(i => [i.id, i])), byName = new Map(D.items.map(i => [String(i.name).trim().toLowerCase(), i]));
+  const find = l => { if (l.i && byId.has(l.i)) return byId.get(l.i); const n = String(l.n || "").trim().toLowerCase(); return byName.get(n) || byName.get(n.replace(/\s*\([^)]*\)\s*$/, "")) || null; };
+  const agg = new Map(), add = (l, sign) => {
+    const it = find(l), k = it ? it.id : "n:" + String(l.n || "").toLowerCase(), g = gstOn ? +l.g || 0 : 0, q = +l.q || 0, v = (+l.p || 0) * q * (gstOn ? 100 / (100 + g) : 1);
+    const a = agg.get(k) || { name: it ? it.name : l.n || "Item", id: it?.id || null, q: 0, v: 0 }; a.q += sign * q; a.v += sign * v; agg.set(k, a);
+  };
+  const inP = d => d >= f && d <= t;
+  x.orders.filter(o => o.status === "DELIVERED" && o.bill_no && inP(bkDay(o.delivered_at || o.created_at))).forEach(o => (o.items || []).forEach(l => add(l, 1)));
+  x.counter.filter(c => c.bill_no && inP(bkDay(c.created_at))).forEach(c => (c.items || []).forEach(l => add(l, 1)));
+  x.cns.filter(n => n.kind !== "REPLACEMENT" && inP(n.cn_date || bkDay(n.created_at))).forEach(n => (n.items || []).forEach(l => add(l, -1)));
+  const rows = [...agg.values()].filter(a => a.q > 0 || Math.abs(a.v) > .004).map(a => {
+    const cp = a.id != null && cost.has(a.id) ? cost.get(a.id) : null, c = cp == null ? null : r2(a.q * cp), p = c == null ? null : r2(a.v - c);
+    return { ...a, v: r2(a.v), cp, c, p };
+  }).sort((a, b) => (a.p == null) - (b.p == null) || (b.p ?? b.v) - (a.p ?? a.v));
+  const set = rows.filter(r => r.p != null), sv = r2(set.reduce((s, r) => s + r.v, 0)), sc = r2(set.reduce((s, r) => s + r.c, 0));
+  const pct = (p, v) => v > 0 ? (p / v * 100).toFixed(1) + "%" : "";
+  return [`Item profit · ${f} to ${t}`, [["Item", "Qty sold", gstOn ? "Sales (before GST)" : "Sales value", "Cost price / unit", "Cost", "Profit", "Margin %"],
+    ...rows.map(r => [r.name, String(r.q), f2(r.v), r.cp == null ? "cost not set" : f2(r.cp), r.c == null ? "" : f2(r.c), r.p == null ? "" : f2(r.p), r.p == null ? "" : pct(r.p, r.v)]),
+    ...(set.length ? [["TOTAL (items with cost)", String(set.reduce((s, r) => s + r.q, 0)), f2(sv), "", f2(sc), f2(sv - sc), pct(sv - sc, sv)]] : [])]];
+}
+
+/* Udhaar reminder: a ready message opens in the seller's own WhatsApp / SMS. Gali Bazaar sends nothing; only the date is noted. */
+function bkCusts() {
+  const m = new Map();
+  (BKD.ud || []).filter(u => u.due > .009).forEach(({ c, due }) => {
+    const ph = String(c.cust_phone || "").replace(/\D/g, "").slice(-10), k = ph.length === 10 ? ph : "n:" + String(c.cust_name || "").trim().toLowerCase();
+    const a = m.get(k) || { name: c.cust_name || "Customer", phone: ph.length === 10 ? ph : "", due: 0, ids: [], rem: null };
+    a.due = r2(a.due + due); a.ids.push(c.id); if (c.reminded_on && (!a.rem || c.reminded_on > a.rem)) a.rem = c.reminded_on; m.set(k, a);
+  });
+  return BKD.cust = [...m.values()].sort((a, b) => b.due - a.due);
+}
+function bkRemindBox() {
+  const cs = bkCusts(), today = todayStr();
+  if (!cs.length) return "";
+  return `<div style="border:1px solid #EEE6F7;border-radius:12px;padding:10px 12px;margin:8px 0 12px"><b style="font-size:14px">Send a reminder</b>
+    <div class="sub" style="font-size:12px">Opens a ready message in your WhatsApp or SMS — you send it yourself. Once a day per customer.</div>
+    ${cs.map((c, i) => `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #F3EEF9">
+      <div style="flex:1;min-width:160px"><b>${esc(c.name)}</b> <span class="sub">${c.phone ? esc(c.phone) : "no mobile"}</span><div class="sub" style="font-size:12px">${inr2(c.due)} due${c.rem ? ` · Reminded ${dmy(c.rem)}` : ""}</div></div>
+      ${c.rem === today ? `<button class="btn ghost" style="padding:7px 12px" disabled>Reminded today</button>` : `<button class="btn ghost" style="padding:7px 12px" onclick="bkRemind(${i})">Send reminder</button>`}</div>`).join("")}</div>`;
+}
+function bkRemMsg(c, lang) {
+  const amt = "₹" + Number(c.due).toLocaleString("en-IN", { maximumFractionDigits: 2 }), d = dmy(todayStr()), upi = String(S.upi_id || "").trim();
+  return lang === "en"
+    ? `Hello ${c.name}, ${amt} is due at ${S.name} (as of ${d}).${upi ? ` UPI: ${upi}` : ""} — thank you.`
+    : `Namaste ${c.name}, ${S.name} par aapke ${amt} baaki hain (${d} tak).${upi ? ` UPI: ${upi}` : ""} — dhanyavaad.`;
+}
+function bkRemind(i) {
+  const c = BKD.cust?.[i]; if (!c) return;
+  drawer(`<h2><span>Udhaar reminder</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <div class="sub">${esc(c.name)} · ${c.phone ? esc(c.phone) : "no mobile on the bill — pick the contact in WhatsApp"} · ${inr2(c.due)} due</div>
+    <label>LANGUAGE</label><select class="in" id="rl"><option value="hi">Hindi (Roman)</option><option value="en">English</option></select>
+    <label>MESSAGE (you can change it)</label><textarea class="in" id="rmsg" rows="4"></textarea>
+    ${S.upi_id ? "" : `<div class="sub" style="font-size:12px">Add your UPI ID in Shop to put it in the message.</div>`}
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><a class="btn pink" id="rwa" target="_blank" rel="noopener" style="flex:1;text-align:center">WhatsApp</a><a class="btn ghost" id="rsms" style="flex:1;text-align:center">SMS</a></div>
+    <div class="sub" style="font-size:11.5px;margin-top:8px">Nothing is sent by Gali Bazaar. We only note today's date so you don't remind twice in a day.</div>`);
+  const link = () => { const t = encodeURIComponent($("#rmsg").value.trim()), ph = c.phone ? "91" + c.phone : "";
+    $("#rwa").href = `https://wa.me/${ph}?text=${t}`; $("#rsms").href = `sms:${c.phone ? "+91" + c.phone : ""}?body=${t}`; };
+  $("#rl").onchange = () => { $("#rmsg").value = bkRemMsg(c, $("#rl").value); link(); };
+  $("#rmsg").oninput = link; $("#rl").onchange();
+  $("#rwa").onclick = $("#rsms").onclick = () => { bkRemLog(c); };
+}
+async function bkRemLog(c) {
+  const { data, error } = await db.rpc("udhaar_reminded", { p_ids: c.ids });
+  if (error) return toast(/udhaar_reminded|function/i.test(error.message) ? "Run update-99 in Supabase to note reminders" : niceErr(error));
+  BKD.x.counter.forEach(s => { if (c.ids.includes(s.id)) s.reminded_on = data || todayStr(); });
+  closeDrawer(true); toast(`Reminder noted for ${c.name}`); bkShow();
 }
