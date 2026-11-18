@@ -28,7 +28,9 @@
                     { id: "cs2", shop: "s1", bill_no: "GB/26-27/0042", cust_name: "Sunita", cust_phone: "", items: [{ n: "Parle-G 800 g", p: 95, q: 1, g: 18 }], fee: 0, total: 95, pay_mode: "CREDIT", reminded_on: today, created_at: new Date().toISOString() }],
     shop_expenses: [{ id: "e1", shop: "s1", on_date: today, head: "Stock purchase", amount: 1102.5, gst: 52.5, gst_rate: 5, mode: "Cash", vendor: "Sharma Wholesale", bill_no: "SW-118", paid: true, paid_on: today, paid_mode: "Cash" }],
     purchase_lines: [{ id: "pl1", expense_id: "e1", shop: "s1", item_id: "i1", item_name: "Aashirvaad Atta 5 kg", variant: null, qty: 5, rate: 210, gst_rate: 5 }],
-    item_costs: [{ item_id: "i1", cost_price: 210 }]
+    item_costs: [{ item_id: "i1", cost_price: 210 }],
+    purchase_returns: [{ id: "r1", shop: "s1", expense_id: "e1", on_date: today, amount: 220.5, gst: 10.5, mode: "Cash", ref: "SW-CN-4", note: "torn bag" }],
+    purchase_return_lines: [{ id: "rl1", return_id: "r1", shop: "s1", line_id: "pl1", item_id: "i1", item_name: "Aashirvaad Atta 5 kg", qty: 1, rate: 210, gst_rate: 5 }]
   };
   const R = {
     my_billing: { balance: -28, plan_due: 0, pay_now: 28, tds_this_month: 28, due_by: today, paused: false, sub_until: later, quotes: [], invoices: [], payments: [], statement: [] },

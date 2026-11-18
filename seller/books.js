@@ -38,11 +38,19 @@ function bkBuild(x) {
     const auto = n.auto || n.refund_mode === "NOT_CHARGED";
     if (!auto && ["CASH", "UPI"].includes(String(n.refund_mode).toUpperCase())) E(d, "Refund", n.cn_no, `Refund paid · ${n.cn_no || ""}`, [{ a: BK.DEBT, dr: r2(n.amount) }, { a: bkMoney(n.refund_mode), cr: r2(n.amount) }]);
   });
+  const adj = id => r2((x.rets || []).filter(r => r.expense_id === id && r.mode === "ADJUST").reduce((a, r) => a + Number(r.amount), 0));
   x.exps.forEach(e => {
-    const gst = gstOn ? r2(e.gst || 0) : 0, later = e.paid === false || (e.paid_on && e.paid_on !== e.on_date);
+    const gst = gstOn ? r2(e.gst || 0) : 0, later = e.paid === false || (e.paid_on && e.paid_on !== e.on_date), toPay = r2(e.amount - adj(e.id));
     const who = [e.vendor, e.bill_no && "bill " + e.bill_no].filter(Boolean).join(" · ");
     E(e.on_date, later ? "Purchase (credit)" : "Expense", e.bill_no, e.head + (who ? " — " + who : ""), [{ a: e.head, dr: r2(e.amount - gst) }, gst > 0 && { a: BK.INGST, dr: gst }, { a: later ? BK.VEND : bkMoney(e.mode), cr: r2(e.amount) }].filter(Boolean));
-    if (e.paid !== false && later) E(e.paid_on || e.on_date, "Payment", e.bill_no, `Paid ${e.vendor || e.head}`, [{ a: BK.VEND, dr: r2(e.amount) }, { a: bkMoney(e.paid_mode || e.mode), cr: r2(e.amount) }]);
+    if (e.paid !== false && later && toPay > 0) E(e.paid_on || e.on_date, "Payment", e.bill_no, `Paid ${e.vendor || e.head}`, [{ a: BK.VEND, dr: toPay }, { a: bkMoney(e.paid_mode || e.mode), cr: toPay }]);
+  });
+  // purchase return (debit note): set off against the bill, or the vendor paid back; input GST on it is reversed
+  (x.rets || []).forEach(r => {
+    const e = x.exps.find(z => z.id === r.expense_id); if (!e) return;
+    const amt = r2(r.amount), gst = gstOn ? r2(r.gst || 0) : 0;
+    E(r.on_date, "Purchase return", r.ref || e.bill_no, `Return to ${e.vendor || "vendor"}${e.bill_no ? " · bill " + e.bill_no : ""}${r.mode === "ADJUST" ? " (taken off the bill)" : ` (${r.mode} received)`}`,
+      [{ a: r.mode === "ADJUST" ? BK.VEND : bkMoney(r.mode), dr: amt }, { a: e.head, cr: r2(amt - gst) }, gst > 0 && { a: BK.INGST, cr: gst }].filter(Boolean));
   });
   x.claims.filter(c => c.status === "APPROVED").forEach(c => {
     const gst = gstOn ? r2(Number(c.cgst || 0) + Number(c.sgst || 0) + Number(c.igst || 0)) : 0;
@@ -82,22 +90,27 @@ async function books() {
     db.from("shop_expenses").select("*").eq("shop", S.id).lte("on_date", BKD.to).order("on_date").limit(5000),
     db.from("shop_receipts").select("*").eq("shop", S.id).lte("on_date", BKD.to).limit(5000),
     db.from("pay_claims").select("*").eq("shop", S.id).eq("status", "APPROVED")]);
-  const [vq, plq, icq] = await Promise.all([db.from("shop_vendors").select("*").eq("shop", S.id).order("name"),
+  const [vq, plq, icq, prq, prlq] = await Promise.all([db.from("shop_vendors").select("*").eq("shop", S.id).order("name"),
     db.from("purchase_lines").select("*").eq("shop", S.id).order("created_at").limit(20000),
-    db.from("item_costs").select("item_id,cost_price").eq("shop", S.id)]);
+    db.from("item_costs").select("item_id,cost_price").eq("shop", S.id),
+    db.from("purchase_returns").select("*").eq("shop", S.id).order("on_date").limit(5000),
+    db.from("purchase_return_lines").select("*").eq("shop", S.id).limit(20000)]);
+  BKD.retAll = prq.error ? [] : prq.data || []; BKD.retLines = prlq.error ? [] : prlq.data || []; BKD.retOk = !prq.error;
   BKD.plOk = !plq.error; BKD.pl = plq.error ? [] : plq.data || [];
   BKD.cost = new Map((icq.error ? [] : icq.data || []).map(r => [r.item_id, Number(r.cost_price)]));
   BKD.vendors = vq.error ? null : vq.data || [];
   const x = { orders: o.data || [], counter: cs.data || [], cns: cn.data || [], exps: (ex.data || []).filter(e => !e.cancelled_at), recs: rc.error ? [] : (rc.data || []).filter(r => !r.cancelled_at), claims: cl.data || [] };
+  x.rets = (BKD.retAll || []).filter(r => !r.cancelled_at && r.on_date <= BKD.to);
   BKD.x = x; const es = BKD.es = bkBuild(x), f = BKD.from, to = BKD.to;
   const pl = bkNet(es, f, to), profit = -Object.entries(pl).filter(([a]) => bkNom(a)).reduce((s, [, v]) => s + v, 0);
   const ud = x.counter.filter(c => c.pay_mode === "CREDIT").map(c => ({ c, due: r2(c.total - x.recs.filter(r => r.sale_id === c.id).reduce((a, r) => a + Number(r.amount), 0) - x.cns.filter(n => n.sale_id === c.id && n.kind !== "REPLACEMENT").reduce((a, n) => a + Number(n.amount), 0)) }));
   BKD.ud = ud;
   const unpaid = x.exps.filter(e => e.paid === false);
-  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["profit", "Item profit"], ["vendors", "Vendors"], ["day", "Day book"]];
+  const owed = e => r2(Number(e.amount) - x.rets.filter(r => r.expense_id === e.id && r.mode === "ADJUST").reduce((a, r) => a + Number(r.amount), 0));
+  const tabs = [["pl", "Profit & loss"], ["tb", "Trial balance"], ["bs", "Balance sheet"], ["cash", "Cash & bank book"], ["udhaar", "Udhaar"], ["vend", "Expenses & vendor bills"], ["pret", "Purchase returns"], ["profit", "Item profit"], ["vendors", "Vendors"], ["day", "Day book"]];
   $("#kb").innerHTML = `<div class="sub" style="font-size:12.5px;background:#F6F2FB;border-radius:12px;padding:10px 12px;margin-bottom:12px">🔒 Entries can't be deleted — a wrong expense is cancelled instead. If you delete your shop, all your records are first saved to your phone as Excel, then deleted from Gali Bazaar. Keeping them for GST / income tax is then your responsibility. Download your books any time. <a href="/help/seller-guide/#records-en" style="color:#7C3AED">Your records &amp; deleting your shop →</a></div>${rc.error ? `<div class="soon err">Run update-30 (books) in Supabase to save udhaar collections and owner money.</div>` : ""}
     <div class="kpis k4" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><span>Net profit</span><b style="color:${profit >= 0 ? "#15803D" : "#BE185D"}">${inr2(profit)}</b></div>
-      <div class="kpi"><span>Udhaar to collect</span><b>${inr2(ud.reduce((a, u) => a + Math.max(u.due, 0), 0))}</b></div><div class="kpi"><span>Bills to pay</span><b class="pk">${inr2(unpaid.reduce((a, e) => a + Number(e.amount), 0))}</b></div></div>
+      <div class="kpi"><span>Udhaar to collect</span><b>${inr2(ud.reduce((a, u) => a + Math.max(u.due, 0), 0))}</b></div><div class="kpi"><span>Bills to pay</span><b class="pk">${inr2(unpaid.reduce((a, e) => a + owed(e), 0))}</b></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">${tabs.map(([k, l]) => `<button class="btn ${BKD.tab === k ? "pink" : "ghost"}" style="padding:9px 14px" onclick="BKD.tab='${k}';bkShow()">${l}</button>`).join("")}</div><div class="box" id="kbody"></div>`;
   bkShow();
 }
@@ -122,15 +135,19 @@ function bkRows() {
     case "vendors": {
       const vs = BKD.vendors || [], ex = x.exps;
       const names = [...new Set([...vs.map(v => v.name), ...ex.map(e => e.vendor).filter(Boolean)])].sort();
-      return ["Vendors · all time", [["Vendor", "GSTIN", "Phone", "Address", "Bills", "Bill total", "Paid", "Still to pay"], ...names.map(n => {
-        const v = vs.find(z => z.name === n) || {}, b = ex.filter(e => (e.vendor || "").toLowerCase() === n.toLowerCase()), tot = b.reduce((a, e) => a + Number(e.amount), 0), due = b.filter(e => e.paid === false).reduce((a, e) => a + Number(e.amount), 0);
-        return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", v.addr || "", String(b.length), f2(tot), f2(tot - due), f2(due)]; })]];
+      return ["Vendors · all time", [["Vendor", "GSTIN", "Phone", "Address", "Bills", "Bill total", "Returned", "Paid", "Still to pay"], ...names.map(n => {
+        const v = vs.find(z => z.name === n) || {}, b = ex.filter(e => (e.vendor || "").toLowerCase() === n.toLowerCase()), tot = b.reduce((a, e) => a + Number(e.amount), 0), due = b.filter(e => e.paid === false).reduce((a, e) => a + bkOwed(e), 0), back = b.reduce((a, e) => a + bkRetSum(e.id), 0);
+        return [n, v.gstin || b.find(e => e.vendor_gstin)?.vendor_gstin || "", v.phone || "", v.addr || "", String(b.length), f2(tot), f2(back), f2(tot - back - due), f2(due)]; })]];
     }
     case "udhaar": return ["Udhaar (customers) · counter bills on credit", [["Bill", "Date", "Customer", "Mobile", "Bill total", "Collected / returned", "Still due", "Last reminder"], ...BKD.ud.map(({ c, due }) => [c.bill_no || "", bkDay(c.created_at), c.cust_name, c.cust_phone || "", f2(c.total), f2(c.total - due), f2(Math.max(due, 0)), c.reminded_on || ""])]];
     case "profit": return bkProfit();
-    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note", "Items"],
+    case "pret": return [`Purchase returns · ${f} to ${t}`, [["Date", "Vendor", "Purchase bill", "Items", "Taxable", "GST (reversed)", "Total", "Settled by", "Vendor CN / UTR", "Status"],
+      ...bkRetRows().map(r => { const e = x.exps.find(z => z.id === r.expense_id) || {};
+        return [r.on_date, e.vendor || "", e.bill_no || "", (BKD.retLines || []).filter(l => l.return_id === r.id).map(l => `${l.item_name}${l.variant ? " (" + l.variant + ")" : ""} ×${l.qty}`).join("; "),
+          f2(r.amount - (r.gst || 0)), f2(r.gst || 0), f2(r.amount), r.mode === "ADJUST" ? "Taken off the bill" : r.mode + " received", r.ref || "", r.cancelled_at ? "Cancelled" + (r.cancel_reason ? " — " + r.cancel_reason : "") : "Done"]; })]];
+    case "vend": return [`Expenses & vendor bills · ${f} to ${t}`, [["Date", "Head", "Vendor", "Vendor GSTIN", "Invoice no", "Taxable", "GST %", "GST (input)", "Total", "Status", "Paid by", "Paid on", "UTR", "Note", "Items", "Returned"],
       ...x.exps.filter(e => e.on_date >= f && e.on_date <= t).map(e => [e.on_date, e.head, e.vendor || "", e.vendor_gstin || "", e.bill_no || "", f2(e.amount - (e.gst || 0)), e.gst_rate ?? "", f2(e.gst || 0), f2(e.amount),
-        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.paid_ref || "", e.note || "", bkLinesText(e.id)])]];
+        e.paid === false ? "To pay" : "Paid", e.paid === false ? "" : (e.paid_mode || e.mode), e.paid === false ? "" : (e.paid_on || e.on_date), e.paid_ref || "", e.note || "", bkLinesText(e.id), bkRetSum(e.id) ? f2(bkRetSum(e.id)) : ""])]];
     default: return [`Day book · ${f} to ${t}`, [["Date", "Type", "Ref", "Details", "Account", "Debit", "Credit"], ...es.filter(e => e.date >= f && e.date <= t).flatMap(e => e.lines.map((l, i) => [i ? "" : e.date, i ? "" : e.type, i ? "" : e.ref, i ? "" : e.text, l.a, l.dr ? f2(l.dr) : "", l.cr ? f2(l.cr) : ""]))]];
   }
 }
@@ -142,12 +159,14 @@ function bkShow() {
     ${BKD.tab === "bs" ? `<div class="sub">Negative cash means you paid from your own pocket — add it with “Owner money”.</div>` : ""}
     ${BKD.tab === "profit" ? `<div class="sub">Cost = quantity sold × the item's cost price (the rate of its latest stock purchase with items). ${S.gst_billing && S.gstin ? "Sales and cost are before GST." : "Sales and cost include GST."} Items with no stock purchase show “cost not set”.${BKD.plOk ? "" : " <b>Run update-99 in Supabase to turn this on.</b>"}</div>` : ""}
     ${BKD.tab === "udhaar" ? bkRemindBox() : ""}
-    <div style="overflow:auto"><table><thead><tr>${rows[0].map(h => `<th>${esc(h)}</th>`).join("")}${["udhaar", "vend"].includes(BKD.tab) ? "<th></th>" : ""}</tr></thead><tbody>${rows.slice(1).map((r, i) => {
+    ${BKD.tab === "pret" ? `<div class="sub">Items sent back to a vendor. Add one from Expenses &amp; vendor bills → <b>Return</b> on a stock purchase with items.${BKD.retOk ? "" : " <b>Run update-99 in Supabase to turn this on.</b>"}</div>` : ""}
+    <div style="overflow:auto"><table><thead><tr>${rows[0].map(h => `<th>${esc(h)}</th>`).join("")}${["udhaar", "vend", "pret"].includes(BKD.tab) ? "<th></th>" : ""}</tr></thead><tbody>${rows.slice(1).map((r, i) => {
       const bold = /^[A-Z &]+$/.test(r[0]) && /[A-Z]/.test(r[0]) || /^total/i.test(r[0]);
       let act = "";
       if (BKD.tab === "udhaar") { const u = BKD.ud[i]; if (u && u.due > .009) act = `<button class="edit" onclick="bkCollect('${u.c.id}')">Collect</button>`; }
-      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e && e.head === "Stock purchase" && BKD.plOk ? ` <button class="edit" onclick="bkExpense('${e.id}')">Edit</button>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Cancel</button>` : ""}`; }
-      return `<tr>${r.map(v => `<td style="${num(v) ? "text-align:right;" : ""}${bold ? "font-weight:700" : ""}">${num(v) ? inr2(v) : esc(v)}</td>`).join("")}${["udhaar", "vend"].includes(BKD.tab) ? `<td style="white-space:nowrap">${act}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
+      if (BKD.tab === "pret") { const r = bkRetRows()[i]; if (r && !r.cancelled_at) act = `<button class="edit" style="color:#BE185D" onclick="bkRetCancel('${r.id}')">Cancel</button>`; }
+      if (BKD.tab === "vend") { const e = BKD.x.exps.filter(e => e.on_date >= BKD.from && e.on_date <= BKD.to)[i]; act = `${e && e.paid === false ? `<button class="edit" onclick="bkPay('${e.id}')">Mark paid</button>` : ""}${e?.bill_url ? ` <a class="edit" href="${esc(e.bill_url)}" target="_blank">Bill</a>` : ""}${e && e.head === "Stock purchase" && BKD.plOk ? ` <button class="edit" onclick="bkExpense('${e.id}')">Edit</button>` : ""}${e && BKD.retOk && (BKD.pl || []).some(l => l.expense_id === e.id) ? ` <button class="edit" onclick="bkReturn('${e.id}')">Return</button>` : ""}${e ? ` <button class="edit" style="color:#BE185D" onclick="bkDel('${e.id}')">Cancel</button>` : ""}`; }
+      return `<tr>${r.map(v => `<td style="${num(v) ? "text-align:right;" : ""}${bold ? "font-weight:700" : ""}">${num(v) ? inr2(v) : esc(v)}</td>`).join("")}${["udhaar", "vend", "pret"].includes(BKD.tab) ? `<td style="white-space:nowrap">${act}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
     ${rows.length <= 1 ? '<div class="sub">Nothing here for this period.</div>' : ""}`;
 }
 function bkDl() { const [title, rows] = BKD.cur; csvDownload(`${title.split(" ·")[0].toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${BKD.from}_to_${BKD.to}.csv`, [[S.name + " — " + title], ...rows]); }
@@ -386,4 +405,51 @@ async function bkRemLog(c) {
   if (error) return toast(/udhaar_reminded|function/i.test(error.message) ? "Run update-99 in Supabase to note reminders" : niceErr(error));
   BKD.x.counter.forEach(s => { if (c.ids.includes(s.id)) s.reminded_on = data || todayStr(); });
   closeDrawer(true); toast(`Reminder noted for ${c.name}`); bkShow();
+}
+
+/* Purchase return (debit note): items of a stock purchase sent back to the vendor — save_purchase_return (update-99) */
+const bkRetSum = id => r2((BKD.x?.rets || []).filter(r => r.expense_id === id).reduce((a, r) => a + Number(r.amount), 0));
+const bkOwed = e => r2(Number(e.amount) - (BKD.x?.rets || []).filter(r => r.expense_id === e.id && r.mode === "ADJUST").reduce((a, r) => a + Number(r.amount), 0));
+const bkRetRows = () => (BKD.retAll || []).filter(r => r.on_date >= BKD.from && r.on_date <= BKD.to);
+function bkReturn(expId) {
+  const e = BKD.x.exps.find(z => z.id === expId); if (!e) return;
+  const gstOn = !!(S.gst_billing && S.gstin), live = new Set((BKD.retAll || []).filter(r => !r.cancelled_at).map(r => r.id));
+  const lines = (BKD.pl || []).filter(l => l.expense_id === expId).map(l => ({ ...l, left: l.qty - (BKD.retLines || []).filter(rl => rl.line_id === l.id && live.has(rl.return_id)).reduce((a, rl) => a + rl.qty, 0) }));
+  const owe = e.paid === false ? bkOwed(e) : 0;
+  drawer(`<h2><span>Purchase return</span><button class="x" onclick="closeDrawer()">×</button></h2>
+    <div class="sub">${esc(e.vendor || "Vendor")}${e.bill_no ? " · bill " + esc(e.bill_no) : ""} · ${esc(e.on_date)} · ${inr2(e.amount)}</div>
+    <label>HOW MANY OF EACH ITEM ARE YOU SENDING BACK?</label>
+    ${lines.map((l, k) => `<div style="display:flex;gap:8px;align-items:center;border-top:1px solid #F3EEF9;padding:8px 0"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(l.item_name)}</b>${l.variant ? ` <span class="sub">(${esc(l.variant)})</span>` : ""}
+      <div class="sub" style="font-size:11.5px">Bought ${l.qty} @ ${inr2(l.rate)}${Number(l.gst_rate) ? " + " + Number(l.gst_rate) + "% GST" : ""} · can return ${l.left}</div></div>
+      <input class="in" style="width:76px" inputmode="numeric" data-r="${k}" value="0" ${l.left > 0 ? "" : "disabled"}></div>`).join("")}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>RETURN DATE</label><input class="in" type="date" id="rd" value="${todayStr()}" min="${esc(e.on_date)}"></div>
+      <div><label>VENDOR CREDIT NOTE / UTR</label><input class="in" id="rr" maxlength="40"></div></div>
+    <label>HOW DOES THE VENDOR SETTLE IT?</label><select class="in" id="rmode">${e.paid === false ? `<option value="ADJUST">Take it off this bill (still to pay ${inr2(owe)})</option>` : ""}<option value="Cash">Vendor paid me back — Cash</option><option value="UPI">Vendor paid me back — UPI</option><option value="Bank">Vendor paid me back — Bank</option></select>
+    <label>NOTE</label><input class="in" id="rn" placeholder="e.g. damaged packets">
+    <div class="sub" id="rtot" style="margin-top:10px;font-weight:600"></div>
+    <div class="sub" style="font-size:11.5px">The items come off your stock${gstOn ? " and the input GST on them is reversed" : ""}. A return can be cancelled later, not deleted.</div>
+    <div class="msg" id="rm"></div><button class="btn pink full" id="rsv" style="margin-top:12px">Save return</button>`);
+  const q = () => lines.map((l, k) => { const el = $(`[data-r="${k}"]`), v = Math.max(0, Math.round(+el.value.replace(/\D/g, "") || 0)); return { l, v }; });
+  const tot = () => { let a = 0, g = 0; q().forEach(({ l, v }) => { const gr = gstOn ? Number(l.gst_rate) || 0 : 0; a += r2(v * l.rate * (1 + gr / 100)); g += r2(v * l.rate * gr / 100); }); return { a: r2(a), g: r2(g) }; };
+  const show = () => { const t = tot(); $("#rtot").textContent = t.a ? `Return total ${inr2(t.a)}${t.g ? ` (GST ${inr2(t.g)})` : ""}` : ""; };
+  $$("[data-r]").forEach(el => el.oninput = () => { const v = el.value.replace(/\D/g, ""); if (v !== el.value) el.value = v; $("#rm").textContent = ""; show(); });
+  $("#rsv").onclick = async () => {
+    const m = $("#rm"), bad = t => { m.className = "msg err"; m.textContent = t; }, picks = q().filter(x => x.v > 0);
+    if (!picks.length) return bad("Type how many of an item you are sending back");
+    const over = picks.find(x => x.v > x.l.left); if (over) return bad(`You can return up to ${over.l.left} of ${over.l.item_name}`);
+    if ($("#rmode").value === "ADJUST" && tot().a > owe + .005) return bad(`Only ${inr2(owe)} is still to pay on this bill — pick how the vendor paid you back`);
+    $("#rsv").disabled = true;
+    const { error } = await db.rpc("save_purchase_return", { p_exp: e.id, p: { on_date: $("#rd").value, mode: $("#rmode").value, ref: $("#rr").value.trim() || null, note: $("#rn").value.trim() || null },
+      p_lines: picks.map(x => ({ line_id: x.l.id, qty: x.v })) });
+    if (error) { $("#rsv").disabled = false; return bad(niceErr(error)); }
+    const it = await db.from("items").select("*").eq("shop", S.id).order("name"); if (!it.error) D.items = it.data || D.items;
+    closeDrawer(); toast("Return saved — stock reduced"); BKD.tab = "pret"; books();
+  };
+  show();
+}
+async function bkRetCancel(id) {
+  const why = prompt("Cancel this purchase return? The items go back into your stock. It stays in your records, left out of every total.\n\nReason (e.g. entered twice):");
+  if (why === null) return;
+  const { error } = await db.rpc("cancel_purchase_return", { p_id: id, p_reason: why.trim() || "Cancelled" });
+  if (error) return toast(niceErr(error)); toast("Return cancelled — stock put back"); books();
 }
